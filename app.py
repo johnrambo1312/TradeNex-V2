@@ -418,6 +418,13 @@ def admin_add_entry(user_id):
         entry_date=entry_date,
     )
     db.session.add(entry)
+
+    if entry_type == "close":
+        # Nilai Close menjadi baki rasmi akaun selepas sesi tamat.
+        user.balance = round(value_float, 2)
+        if user.live_balance_snapshot:
+            db.session.delete(user.live_balance_snapshot)
+
     db.session.commit()
 
     label = "Close" if entry_type == "close" else "Entry"
@@ -474,6 +481,8 @@ def admin_withdraw(user_id):
 
     # Auto buang semua history entry selepas withdraw
     TradeEntry.query.filter_by(user_id=user.id).delete()
+    if user.live_balance_snapshot:
+        db.session.delete(user.live_balance_snapshot)
     db.session.commit()
 
     flash(f"Withdraw RM {amount:,.2f} berjaya untuk '{user.nova_id}'. Baki baru: RM {new_balance:,.2f}.", "success")

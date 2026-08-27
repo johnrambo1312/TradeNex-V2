@@ -88,7 +88,9 @@ class User(db.Model):
 
     @property
     def withdraw_live_balance(self):
-        """Nilai withdraw diambil terus dari candle terakhir yang disimpan dari dashboard user."""
+        """Selepas Close, gunakan baki akaun rasmi, bukan snapshot live lama."""
+        if self.is_trade_closed:
+            return float(self.balance)
         if self.live_balance_snapshot:
             return float(self.live_balance_snapshot.value)
         return self.current_balance
