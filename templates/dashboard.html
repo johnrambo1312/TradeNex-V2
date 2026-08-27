@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dashboard — TradeNex Capital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
+  --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
+  --text-muted:#8FA3BF;--text-light:#C8D8EE;--border:#1E3050;
+  --green:#22C98A;--red:#FF5B5B;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.num{font-family:'IBM Plex Mono',monospace}
+
+nav{background:rgba(11,22,41,0.97);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;color:var(--white);text-decoration:none}
+.logo span{color:var(--gold)}
+.nav-right{display:flex;align-items:center;gap:0.75rem;min-width:0}
+.nav-user{color:var(--text-light);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:0.45rem 0.9rem;border-radius:6px;font-size:0.78rem;cursor:pointer;text-decoration:none;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;flex-shrink:0}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+
+.wrap{max-width:1100px;margin:0 auto;padding:2.5rem 1.5rem}
+h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:0.3rem}
+.sub{color:var(--text-muted);font-size:0.88rem;margin-bottom:2rem}
+
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-bottom:2rem}
+.card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.5rem}
+.card-label{color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem}
+.card-val{font-family:'IBM Plex Mono',monospace;font-size:1.8rem;font-weight:600;transition:color 0.3s;letter-spacing:-0.5px}
+.card-sub{font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem}
+.pl-pos{color:var(--green)}
+.pl-neg{color:var(--red)}
+
+/* ===== CHART ===== */
+.chart-wrap{background:#FFFFFF;border:1px solid #E3E8EF;border-radius:16px;margin-bottom:2rem;overflow:hidden;position:relative}
+.chart-header{display:flex;justify-content:space-between;align-items:center;padding:0.85rem 1rem 0.6rem;border-bottom:1px solid #F0F3F7}
+.chart-ohlc{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8C99AD;display:flex;gap:0.75rem}
+.chart-ohlc span{white-space:nowrap}
+.ohlc-o{color:#8C99AD}.ohlc-h{color:#26a69a}.ohlc-l{color:#ef5350}.ohlc-c{color:#1A2236;font-weight:600}
+.chart-status-badge{font-size:0.68rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;letter-spacing:0.5px}
+.badge-live{background:rgba(38,166,154,0.1);color:#26a69a}
+.badge-live::before{content:'●';margin-right:0.35rem;animation:blink 1.4s infinite}
+.badge-closed{background:#F1F3F6;color:#64748B}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.chart-canvas-wrap{position:relative;width:100%}
+#tvCandle{display:block;width:100%}
+#tvVolume{display:block;width:100%}
+.chart-xaxis{height:24px;position:relative;border-top:1px solid #F0F3F7}
+.chart-wrap.no-session{min-height:180px;display:flex;align-items:center;justify-content:center;background:#F8FAFC}
+.chart-wrap.no-session .chart-header{border-bottom:none;background:transparent;padding:2rem 1rem}
+.chart-wrap.no-session .chart-header div{width:100%;text-align:center}
+@media(max-width:800px){
+  .chart-wrap{border-radius:10px;margin-bottom:1.25rem}
+  .chart-ohlc{display:none}
+}
+.market-section{margin-bottom:2rem}
+.market-section-title{font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem}
+.market-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.market-panel{background:#FFFFFF;border:1px solid #E3E8EF;border-radius:16px;padding:1.25rem 1.5rem;overflow:hidden}
+.market-panel-title{font-size:0.82rem;font-weight:700;color:#1A2236;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.market-panel-title .badge{background:#F1F3F6;color:#64748B;font-size:0.65rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:4px;letter-spacing:0.5px}
+
+/* Indices Table */
+.index-row{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid #F1F3F6}
+.index-row:last-child{border-bottom:none}
+.index-left{display:flex;align-items:center;gap:0.75rem}
+.index-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:800;flex-shrink:0}
+.index-icon.blue{background:#1c4ed8;color:#fff}
+.index-icon.red{background:#dc2626;color:#fff}
+.index-icon.gray{background:#475569;color:#fff}
+.index-icon.green{background:#16a34a;color:#fff}
+.index-icon.orange{background:#ea580c;color:#fff}
+.index-icon.purple{background:#7c3aed;color:#fff}
+.index-name{font-size:0.82rem;font-weight:600;color:#1A2236}
+.index-ticker{font-size:0.68rem;color:#8C99AD;margin-top:1px;background:#F1F3F6;padding:0.1rem 0.4rem;border-radius:3px;display:inline-block}
+.index-right{text-align:right}
+.index-price{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:500;color:#1A2236}
+.index-unit{font-size:0.65rem;color:#8C99AD;text-transform:uppercase;margin-left:2px}
+.index-chg{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:500}
+.chg-pos{color:#1A9E63}
+.chg-neg{color:#E0394B}
+
+/* Crypto Panel */
+.crypto-market-cap{margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid #F1F3F6}
+.crypto-cap-val{font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:600;color:#1A2236;letter-spacing:-0.5px}
+.crypto-cap-unit{font-size:0.72rem;color:#8C99AD;margin-left:4px;text-transform:uppercase}
+.crypto-cap-chg{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:500;margin-top:2px}
+#cryptoSparkCanvas{width:100%;height:56px;display:block;margin-top:0.5rem}
+
+/* Bitcoin dominance bar */
+.dom-section{margin:0.85rem 0}
+.dom-labels{display:flex;gap:1.25rem;margin-bottom:0.5rem;flex-wrap:wrap}
+.dom-label{font-size:0.72rem;color:#475569}
+.dom-label span{display:inline-block !important;width:8px;height:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;flex-shrink:0}
+.dom-label .dom-pct{font-family:'IBM Plex Mono',monospace;font-weight:600;color:#1A2236}
+.dom-bar{height:8px;border-radius:4px;display:flex;overflow:hidden;gap:2px}
+.dom-btc{background:#2563eb;border-radius:4px 0 0 4px}
+.dom-eth{background:#16a34a}
+.dom-others{background:#dc2626;border-radius:0 4px 4px 0}
+
+/* Crypto coin rows */
+.crypto-row{display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid #F1F3F6}
+.crypto-row:last-child{border-bottom:none}
+.crypto-left{display:flex;align-items:center;gap:0.75rem}
+.crypto-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;flex-shrink:0}
+.crypto-icon.btc{background:#F7931A;color:#fff}
+.crypto-icon.eth{background:#627EEA;color:#fff;font-size:0.85rem}
+.crypto-name{font-size:0.82rem;font-weight:600;color:#1A2236}
+.crypto-ticker{font-size:0.68rem;color:#8C99AD;background:#F1F3F6;padding:0.1rem 0.4rem;border-radius:3px;display:inline-block;margin-top:1px}
+.crypto-right{text-align:right}
+.crypto-price{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:500;color:#1A2236}
+.crypto-unit{font-size:0.65rem;color:#8C99AD;text-transform:uppercase;margin-left:2px}
+
+/* ===== MINI CHARTS ===== */
+.mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;margin-bottom:2rem}
+.mini-card{background:#FFFFFF;border:1px solid #E3E8EF;border-radius:14px;padding:1.1rem 1.1rem 0.6rem}
+.mini-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem}
+.mini-name{font-size:0.78rem;font-weight:600;color:#1A2236;font-family:'IBM Plex Sans',sans-serif}
+.mini-price{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:600;color:#1A2236}
+.mini-period{font-size:0.62rem;font-weight:700;color:#8C99AD;background:#F1F3F6;padding:0.1rem 0.4rem;border-radius:3px;letter-spacing:0.5px;margin-left:0.4rem}
+.mini-canvas{width:100%;display:block}
+
+/* ===== EDUKASI ===== */
+.edu-box{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.75rem;margin-bottom:1.5rem}
+.edu-box h2{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:0.4rem}
+.edu-box .edu-intro{color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem;line-height:1.6}
+.edu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem}
+.edu-card{background:var(--navy3);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+.edu-card h4{font-size:0.92rem;font-weight:700;margin-bottom:0.5rem;color:var(--gold)}
+.edu-card p{font-size:0.82rem;color:var(--text-light);line-height:1.65}
+
+/* ===== FOOTER (Phillip Capital style) ===== */
+footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;margin-top:3rem}
+.footer-wrap{max-width:1200px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:2.5rem}
+.footer-logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;text-decoration:none;display:inline-block;margin-bottom:0.85rem}
+.footer-logo span{color:var(--gold)}
+.footer-brand-desc{color:#607a99;font-size:0.8rem;line-height:1.75;max-width:270px;margin-bottom:1.25rem}
+.footer-contact{display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.25rem}
+.footer-contact a{color:#8fa3bf;font-size:0.78rem;text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s}
+.footer-contact a:hover{color:var(--gold)}
+.footer-contact svg{width:14px;height:14px;flex-shrink:0;opacity:0.6}
+.footer-social{display:flex;gap:0.5rem}
+.fsocial-btn{width:32px;height:32px;border-radius:6px;border:1px solid #1a2f50;display:flex;align-items:center;justify-content:center;color:#607a99;font-size:0.72rem;font-weight:700;text-decoration:none;transition:all 0.2s;background:rgba(255,255,255,0.02)}
+.fsocial-btn:hover{border-color:var(--gold);color:var(--gold)}
+.footer-col h5{font-size:0.8rem;font-weight:700;color:#c8d8ee;margin-bottom:1rem;letter-spacing:0.5px;text-transform:uppercase}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.6rem}
+.footer-col ul li a{color:#607a99;font-size:0.8rem;text-decoration:none;transition:color 0.2s}
+.footer-col ul li a:hover{color:#fff}
+.footer-regulators{border-top:1px solid #1a2f50;padding:1.75rem 0;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+.reg-badge{display:flex;align-items:center;gap:0.5rem;color:#607a99;font-size:0.72rem}
+.reg-badge svg{width:20px;height:20px;opacity:0.5}
+.reg-badge strong{color:#8fa3bf}
+.footer-legal-bar{border-top:1px solid #1a2f50;padding:1.25rem 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem}
+.footer-legal-bar p{color:#435a75;font-size:0.72rem}
+.footer-legal-links{display:flex;gap:1.5rem;flex-wrap:wrap}
+.footer-legal-links a{color:#435a75;font-size:0.72rem;text-decoration:none;transition:color 0.2s}
+.footer-legal-links a:hover{color:#8fa3bf}
+.footer-disclaimer{background:#071020;border-top:1px solid #1a2f50;padding:1.25rem 2rem}
+.footer-disclaimer-inner{max-width:1200px;margin:0 auto}
+.footer-disclaimer p{color:#3d5470;font-size:0.7rem;line-height:1.7}
+
+@media(max-width:800px){
+  nav{padding:0 1rem;height:56px}
+  .nav-user{display:none}
+  .btn-logout{padding:0.4rem 0.85rem;font-size:0.75rem;white-space:nowrap}
+  .wrap{padding:1.25rem 1rem}
+  body{overflow-x:hidden}
+  h1{font-size:1.2rem;margin-bottom:0.2rem}
+  .sub{font-size:0.8rem;margin-bottom:1rem}
+  .cards{grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem}
+  .card{padding:1rem 1rem}
+  .card-label{font-size:0.68rem}
+  .card-val{font-size:1.3rem}
+  .card-sub{font-size:0.68rem}
+  .edu-grid{grid-template-columns:1fr}
+  .mini-grid{grid-template-columns:1fr}
+  .market-grid{grid-template-columns:1fr}
+
+  .market-panel{padding:0.85rem 1rem;border-radius:12px}
+  .market-panel-title{font-size:0.78rem}
+  .index-icon{width:28px;height:28px;font-size:0.6rem}
+  .index-name{font-size:0.75rem}
+  .index-price{font-size:0.78rem}
+  .index-chg{font-size:0.72rem}
+  .edu-card{padding:1rem}
+  .edu-box{padding:1.25rem;border-radius:12px}
+  .edu-box h2{font-size:1rem}
+  .footer-top{grid-template-columns:1fr}
+  footer{padding:2rem 1rem 1.5rem}
+  .footer-legal-bar{flex-direction:column;gap:0.5rem}
+  .market-section-title{font-size:0.7rem}
+}
+@media(max-width:480px){
+  .cards{grid-template-columns:1fr}
+  .card-val{font-size:1.5rem}
+  .mini-card{padding:0.85rem 0.85rem 0.5rem}
+  .mini-head{flex-direction:column;align-items:flex-start;gap:0.25rem}
+  .mini-price{font-size:0.8rem}
+  .crypto-icon{width:28px;height:28px;font-size:0.85rem}
+  .crypto-name{font-size:0.78rem}
+  .crypto-price{font-size:0.78rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Trade<span>Nex</span></a>
+  <div class="nav-right">
+    <span class="nav-user">{{ user.full_name }} ({{ user.nova_id }})</span>
+    <a href="/logout" class="btn-logout">Log Keluar</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <h1>Akaun Anda</h1>
+  <p class="sub">Selamat datang, {{ user.full_name }}.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Baki / Modal Akaun</div>
+      <div class="card-val num" id="balanceVal">RM {{ "%.2f"|format(user.balance) }}</div>
+      <div class="card-sub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Untung / Rugi Semasa</div>
+      <div class="card-val num" id="plVal">RM 0.00</div>
+      <div class="card-sub" id="plSub"></div>
+    </div>
+  </div>
+
+  <!-- ===== CHART ===== -->
+  {% if show_chart %}
+  <div class="chart-wrap" id="chartWrap">
+    <div class="chart-header">
+      <div style="display:flex;align-items:center;gap:1rem;flex:1">
+        <div class="chart-ohlc">
+          <span class="ohlc-o">O <span id="ohlcO">—</span></span>
+          <span class="ohlc-h">H <span id="ohlcH">—</span></span>
+          <span class="ohlc-l">L <span id="ohlcL">—</span></span>
+          <span class="ohlc-c">C <span id="ohlcC">—</span></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.3rem;margin-left:auto;justify-content:flex-end">
+        <span class="num" id="priceNow" style="font-size:1.05rem;font-weight:600;color:#1A2236;margin-right:0.5rem">RM {{ "%.2f"|format(chart_values[0]) }}</span>
+        <span class="chart-status-badge badge-live" id="chartStatus">LIVE</span>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap" style="position:relative">
+      <div id="chartSpinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;text-align:center">
+        <div style="width:40px;height:40px;border:3px solid #E2E8F0;border-top-color:#F59E0B;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 0.5rem"></div>
+        <div style="color:#64748B;font-size:0.85rem">Loading chart...</div>
+      </div>
+      <canvas id="tvCandle" style="height:340px"></canvas>
+      <canvas id="tvVolume" style="height:70px;border-top:1px solid #F0F3F7"></canvas>
+    </div>
+  </div>
+  {% else %}
+  <div class="chart-wrap no-session" id="chartWrap">
+    <div class="chart-header">
+      <div>
+        <div style="font-size:1.05rem;font-weight:700;color:#1A2236">Tiada sesi trade lagi</div>
+        <div style="color:#64748B;margin-top:0.55rem;line-height:1.6">Harap bersabar &amp; Terima Kasih kerana menunggu.</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ===== MARKET INDICES + CRYPTO ===== -->
+  <div class="market-section">
+    <div class="market-section-title">Pasaran Global</div>
+    <div class="market-grid">
+      <!-- Major Indices -->
+      <div class="market-panel">
+        <div class="market-panel-title">Indeks Utama</div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon blue">100</div>
+            <div>
+              <div class="index-name">Nasdaq 100</div>
+              <span class="index-ticker">NDX</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">29,347.27<span class="index-unit">PT</span></div>
+            <div class="index-chg chg-neg num">−3.29%</div>
+          </div>
+        </div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon red">225</div>
+            <div>
+              <div class="index-name">Japan 225</div>
+              <span class="index-ticker">NI225</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">69,137.69<span class="index-unit">JPY</span></div>
+            <div class="index-chg chg-neg num">−0.93%</div>
+          </div>
+        </div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon gray" style="font-size:0.6rem">SSE</div>
+            <div>
+              <div class="index-name">SSE Composite</div>
+              <span class="index-ticker">000001</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">4,096.14<span class="index-unit">PT</span></div>
+            <div class="index-chg chg-neg num">−0.25%</div>
+          </div>
+        </div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon blue">100</div>
+            <div>
+              <div class="index-name">FTSE 100</div>
+              <span class="index-ticker">UKX</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">10,428.85<span class="index-unit">PT</span></div>
+            <div class="index-chg chg-neg num">−0.09%</div>
+          </div>
+        </div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon orange" style="font-size:0.65rem">DAX</div>
+            <div>
+              <div class="index-name">DAX</div>
+              <span class="index-ticker">DAX</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">24,893.58<span class="index-unit">PT</span></div>
+            <div class="index-chg chg-neg num">−0.98%</div>
+          </div>
+        </div>
+        <div class="index-row">
+          <div class="index-left">
+            <div class="index-icon purple">40</div>
+            <div>
+              <div class="index-name">CAC 40</div>
+              <span class="index-ticker">PX1</span>
+            </div>
+          </div>
+          <div class="index-right">
+            <div class="index-price">8,340.71<span class="index-unit">PT</span></div>
+            <div class="index-chg chg-neg num">−0.71%</div>
+          </div>
+        </div>
+        <div style="padding-top:0.85rem">
+          <a href="#" style="color:#1A9E63;font-size:0.75rem;font-weight:600;text-decoration:none">Lihat semua indeks →</a>
+        </div>
+      </div>
+
+      <!-- Crypto Panel -->
+      <div class="market-panel">
+        <div class="market-panel-title">
+          <span>🔄</span> Crypto Market Cap <span class="badge">JUMLAH</span>
+        </div>
+        <div class="crypto-market-cap">
+          <div>
+            <span class="crypto-cap-val num">2.13 T</span><span class="crypto-cap-unit">USD</span>
+          </div>
+          <div class="crypto-cap-chg chg-neg num">−16.31%</div>
+          <canvas id="cryptoSparkCanvas"></canvas>
+        </div>
+        <div class="dom-section">
+          <div class="dom-labels">
+            <span class="dom-label"><span style="background:#2563eb"></span>Bitcoin <span class="dom-pct num">59.07%</span></span>
+            <span class="dom-label"><span style="background:#16a34a"></span>Ethereum <span class="dom-pct num">9.46%</span></span>
+            <span class="dom-label"><span style="background:#dc2626"></span>Lain-lain <span class="dom-pct num">31.47%</span></span>
+          </div>
+          <div class="dom-bar">
+            <div class="dom-btc" style="flex:59.07"></div>
+            <div class="dom-eth" style="flex:9.46"></div>
+            <div class="dom-others" style="flex:31.47"></div>
+          </div>
+        </div>
+        <div class="crypto-row">
+          <div class="crypto-left">
+            <div class="crypto-icon btc">₿</div>
+            <div>
+              <div class="crypto-name">Bitcoin</div>
+              <span class="crypto-ticker">BTCUSD</span>
+            </div>
+          </div>
+          <div class="crypto-right">
+            <div class="crypto-price num" id="btcPriceDisplay">62,634<span class="crypto-unit">USD</span></div>
+            <div class="index-chg chg-neg num" id="btcChgDisplay">−0.03%</div>
+          </div>
+        </div>
+        <div class="crypto-row">
+          <div class="crypto-left">
+            <div class="crypto-icon eth">Ξ</div>
+            <div>
+              <div class="crypto-name">Ethereum</div>
+              <span class="crypto-ticker">ETHUSD</span>
+            </div>
+          </div>
+          <div class="crypto-right">
+            <div class="crypto-price num" id="ethPriceDisplay">1,665.9<span class="crypto-unit">USD</span></div>
+            <div class="index-chg chg-pos num" id="ethChgDisplay">+0.05%</div>
+          </div>
+        </div>
+        <div style="padding-top:0.85rem">
+          <a href="#" style="color:#1A9E63;font-size:0.75rem;font-weight:600;text-decoration:none">Lihat semua syiling →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MINI CHARTS ===== -->
+  <div style="margin-bottom:0.5rem">
+    <div class="market-section-title">Pasaran Lain</div>
+    <div class="mini-grid">
+      <div class="mini-card">
+        <div class="mini-head">
+          <span class="mini-name">₿ Bitcoin (BTC/USD) <span class="mini-period">AT · 2009</span></span>
+          <span class="mini-price" id="miniPrice-btc">—</span>
+        </div>
+        <canvas class="mini-canvas" id="miniChart-btc" height="80"></canvas>
+      </div>
+      <div class="mini-card">
+        <div class="mini-head">
+          <span class="mini-name">🥇 Emas (Gold/USD) <span class="mini-period">AT · 1970</span></span>
+          <span class="mini-price" id="miniPrice-gold">—</span>
+        </div>
+        <canvas class="mini-canvas" id="miniChart-gold" height="80"></canvas>
+      </div>
+      <div class="mini-card">
+        <div class="mini-head">
+          <span class="mini-name">💱 USD/MYR <span class="mini-period">AT · 1990</span></span>
+          <span class="mini-price" id="miniPrice-usdmyr">—</span>
+        </div>
+        <canvas class="mini-canvas" id="miniChart-usdmyr" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BAHAGIAN EDUKASI ===== -->
+  <div class="edu-box">
+    <h2>Memahami Instrumen Trading</h2>
+    <p class="edu-intro">Sebelum melabur atau berniaga, penting untuk faham asas setiap instrumen kewangan. Berikut adalah penerangan ringkas untuk tujuan pembelajaran.</p>
+    <div class="edu-grid">
+      <div class="edu-card">
+        <h4>📈 FCPO (Futures Crude Palm Oil)</h4>
+        <p>FCPO adalah kontrak futures minyak sawit mentah yang diniagakan di Bursa Malaysia Derivatives (BMD). Ia digunakan oleh pengeluar, pembeli, dan peniaga untuk lindung nilai (hedging) atau spekulasi terhadap pergerakan harga minyak sawit dunia.</p>
+      </div>
+      <div class="edu-card">
+        <h4>💹 CFD (Contract for Difference)</h4>
+        <p>CFD adalah kontrak yang membolehkan peniaga untung atau rugi berdasarkan perbezaan harga aset (saham, indeks, komoditi) tanpa perlu memiliki aset sebenar. CFD biasanya menggunakan leverage, yang boleh menggandakan potensi untung — tetapi juga risiko kerugian.</p>
+      </div>
+      <div class="edu-card">
+        <h4>💱 Forex (Pertukaran Mata Wang Asing)</h4>
+        <p>Forex melibatkan niaga sepasang mata wang (contoh USD/MYR) berdasarkan jangkaan pergerakan nilai tukaran. Pasaran forex adalah pasaran kewangan paling besar dan paling cair di dunia, beroperasi 24 jam sehari pada hari bekerja.</p>
+      </div>
+      <div class="edu-card">
+        <h4>📊 Saham &amp; ETF</h4>
+        <p>Saham mewakili pemilikan dalam sesebuah syarikat awam. ETF (Exchange Traded Fund) adalah dana yang menggabungkan pelbagai saham/aset dalam satu unit niaga, membolehkan kepelbagaian dengan kos lebih rendah.</p>
+      </div>
+      <div class="edu-card">
+        <h4>🕯️ Cara Membaca Candlestick</h4>
+        <p>Setiap "candle" mewakili pergerakan harga dalam satu tempoh masa: badan (body) menunjukkan harga pembukaan dan penutupan, manakala "wick" menunjukkan harga tertinggi dan terendah. Candle hijau = harga naik; candle merah = harga turun.</p>
+      </div>
+      <div class="edu-card">
+        <h4>⚠️ Risiko &amp; Leverage</h4>
+        <p>Leverage membolehkan peniaga mengawal posisi lebih besar dengan modal lebih kecil, tetapi ia menggandakan risiko kerugian sama seperti potensi untung. Sentiasa faham risiko sepenuhnya sebelum berniaga.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOOTER (Phillip Capital style) ===== -->
+<footer>
+  <div class="footer-wrap">
+    <div class="footer-top">
+      <div>
+        <a href="/" class="footer-logo">Trade<span>Nex</span> Capital</a>
+        <p class="footer-brand-desc">Platform niaga bertauliah untuk pasaran Malaysia dan global. Akses lebih 40 bursa antarabangsa dengan sokongan pakar 24/5.</p>
+        <div class="footer-contact">
+          <a href="tel:+60327830388">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18a2 2 0 011.99-2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 6.55a16 16 0 006.29 6.29l.78-.78a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            03-2783 0388
+          </a>
+          <a href="mailto:enquiry@tradenex.com.my">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            enquiry@tradenex.com.my
+          </a>
+        </div>
+        <div class="footer-social">
+          <a class="fsocial-btn" href="#" title="Facebook">f</a>
+          <a class="fsocial-btn" href="#" title="LinkedIn">in</a>
+          <a class="fsocial-btn" href="#" title="Telegram">tg</a>
+          <a class="fsocial-btn" href="#" title="YouTube">▶</a>
+          <a class="fsocial-btn" href="#" title="Instagram">ig</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h5>Produk</h5>
+        <ul>
+          <li><a href="#">Futures</a></li>
+          <li><a href="#">Saham &amp; SW</a></li>
+          <li><a href="#">ETF &amp; IPO</a></li>
+          <li><a href="#">CFD</a></li>
+          <li><a href="#">DLC</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Platform</h5>
+        <ul>
+          <li><a href="#">NOVA Desktop</a></li>
+          <li><a href="#">NOVA Mobile</a></li>
+          <li><a href="#">NOVA × TradingView</a></li>
+          <li><a href="#">POEMS Global MY</a></li>
+          <li><a href="#">CQG</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Sokongan</h5>
+        <ul>
+          <li><a href="#">Hubungi Kami</a></li>
+          <li><a href="#">Borang &amp; Muat Turun</a></li>
+          <li><a href="#">Deposit &amp; Pengeluaran</a></li>
+          <li><a href="#">Jadual Cuti Pasaran</a></li>
+          <li><a href="#">Soalan Lazim</a></li>
+          <li><a href="#">Pengumuman</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-regulators">
+      <div class="reg-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div><strong>SC Malaysia</strong><br>Broker Bertauliah</div>
+      </div>
+      <div class="reg-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+        <div><strong>Bursa Malaysia</strong><br>Ahli Bertauliah</div>
+      </div>
+      <div class="reg-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        <div><strong>24/5</strong><br>Sokongan Langsung</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#607a99;line-height:1.8">
+          Lesen SC: CMSL/A0189/2007<br>
+          Lesen Derivatif: DAD/A009/2007
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-legal-bar">
+      <p>© 2026 TradeNex Capital Sdn Bhd. Hak Cipta Terpelihara.</p>
+      <div class="footer-legal-links">
+        <a href="#">Dasar Privasi</a>
+        <a href="#">Pendedahan Risiko</a>
+        <a href="#">Penafian</a>
+        <a href="#">Nota Penting</a>
+        <a href="#">Terma Penggunaan</a>
+      </div>
+    </div>
+  </div>
+</footer>
+<div class="footer-disclaimer">
+  <div class="footer-disclaimer-inner">
+    <p>Pelaburan melibatkan risiko. Nilai pelaburan boleh naik dan turun. Prestasi lepas bukan jaminan hasil masa hadapan. Maklumat di laman web ini adalah untuk tujuan umum sahaja dan bukan nasihat pelaburan. Sila baca Pendedahan Risiko sebelum membuat sebarang keputusan pelaburan. TradeNex Capital Sdn Bhd dilesenkan oleh Suruhanjaya Sekuriti Malaysia.</p>
+  </div>
+</div>
+
+<script>
+// ===== TRADINGVIEW-STYLE CANDLESTICK CHART =====
+{% if chart_values|length > 0 %}
+(function(){
+  var anchorValues    = {{ chart_values|tojson }};
+  var anchorTimes     = {{ chart_timestamps|tojson }};
+  var startingBalance = {{ user.balance }};
+  var SEED_BASE       = {{ user.id }};
+  var sessionStart    = anchorTimes[0];
+  // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
+  var entryTime       = anchorTimes[0];
+  var closeTime       = anchorTimes[anchorTimes.length - 1];
+  var sessionDuration = Math.max(60, closeTime - entryTime);
+  var sessionEnd      = closeTime; // Stop tepat pada masa Close
+
+  // ── AGGRESSIVENESS PROFILE BY TRADE DURATION ───────────────────────
+  var tradeMinutes = sessionDuration / 60;
+  var profile;
+  if(tradeMinutes <= 30){
+    profile = {
+      baseVolPct: 0.030, moveMul: 2.35, momentumMul: 1.90,
+      highSpikeTh: 0.80, midSpikeTh: 0.55,
+      highSpikeMin: 3.8, highSpikeRange: 2.8,
+      midSpikeMin: 2.5, midSpikeRange: 2.0,
+      medSpikeMin: 1.4, medSpikeRange: 1.0,
+      shockTh: 0.90, shockMin: 0.012, shockRange: 0.020,
+      clampHigh: 0.20, clampNorm: 0.12,
+      liveImpulseBull: 0.011, liveImpulseBear: 0.011,
+      liveImpulseFlat: 0.0040, liveImpulseShock: 0.045,
+      liveShockTh: 0.955, liveShockMin: 0.013, liveShockRange: 0.021,
+      liveVelKeep: 0.45, liveVelImpulse: 0.75
+    };
+  } else if(tradeMinutes <= 120){
+    profile = {
+      baseVolPct: 0.027, moveMul: 2.15, momentumMul: 1.75,
+      highSpikeTh: 0.84, midSpikeTh: 0.62,
+      highSpikeMin: 3.5, highSpikeRange: 2.6,
+      midSpikeMin: 2.3, midSpikeRange: 1.8,
+      medSpikeMin: 1.3, medSpikeRange: 0.9,
+      shockTh: 0.93, shockMin: 0.010, shockRange: 0.018,
+      clampHigh: 0.18, clampNorm: 0.10,
+      liveImpulseBull: 0.009, liveImpulseBear: 0.009,
+      liveImpulseFlat: 0.0035, liveImpulseShock: 0.038,
+      liveShockTh: 0.965, liveShockMin: 0.012, liveShockRange: 0.020,
+      liveVelKeep: 0.48, liveVelImpulse: 0.72
+    };
+  } else if(tradeMinutes <= 360){
+    profile = {
+      baseVolPct: 0.023, moveMul: 1.95, momentumMul: 1.55,
+      highSpikeTh: 0.88, midSpikeTh: 0.68,
+      highSpikeMin: 3.1, highSpikeRange: 2.2,
+      midSpikeMin: 2.0, midSpikeRange: 1.5,
+      medSpikeMin: 1.2, medSpikeRange: 0.7,
+      shockTh: 0.95, shockMin: 0.008, shockRange: 0.014,
+      clampHigh: 0.16, clampNorm: 0.09,
+      liveImpulseBull: 0.007, liveImpulseBear: 0.007,
+      liveImpulseFlat: 0.0028, liveImpulseShock: 0.030,
+      liveShockTh: 0.972, liveShockMin: 0.010, liveShockRange: 0.016,
+      liveVelKeep: 0.52, liveVelImpulse: 0.66
+    };
+  } else {
+    profile = {
+      baseVolPct: 0.020, moveMul: 1.75, momentumMul: 1.35,
+      highSpikeTh: 0.91, midSpikeTh: 0.74,
+      highSpikeMin: 2.8, highSpikeRange: 1.8,
+      midSpikeMin: 1.7, midSpikeRange: 1.2,
+      medSpikeMin: 1.1, medSpikeRange: 0.5,
+      shockTh: 0.97, shockMin: 0.006, shockRange: 0.010,
+      clampHigh: 0.14, clampNorm: 0.08,
+      liveImpulseBull: 0.0055, liveImpulseBear: 0.0055,
+      liveImpulseFlat: 0.0022, liveImpulseShock: 0.024,
+      liveShockTh: 0.982, liveShockMin: 0.007, liveShockRange: 0.012,
+      liveVelKeep: 0.56, liveVelImpulse: 0.60
+    };
+  }
+
+  // ── RNG ──────────────────────────────────────────────────────────────
+  function hashSeed(s){ var h=2166136261; for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);} return h>>>0; }
+  function mulberry32(seed){ return function(){ seed|=0;seed=(seed+0x6D2B79F5)|0;var t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;}; }
+  function seededRng(idx){ return mulberry32(hashSeed(SEED_BASE+'_c'+idx)); }
+
+  // ── WAYPOINT INTERPOLATION ───────────────────────────────────────────
+  var waypoints = [{ts:sessionStart, val:startingBalance}];
+  for(var wi=0;wi<anchorTimes.length;wi++) waypoints.push({ts:anchorTimes[wi], val:anchorValues[wi]});
+
+  // ── BUILD 1-MINUTE CANDLES ───────────────────────────────────────────
+  // Each candle is exactly 60 seconds. No variable duration.
+  // Candle index i covers [sessionStart + i*60, sessionStart + (i+1)*60)
+  var CANDLE_SEC = 60;
+  var totalSessionCandles = Math.max(1, Math.ceil((sessionEnd - sessionStart) / CANDLE_SEC));
+  var allCandles = [];
+
+  function buildHistoricCandles(){
+    var nowTs = Date.now()/1000;
+    var effectiveNow = Math.min(nowTs, sessionEnd);
+    var totalSecs = effectiveNow - sessionStart;
+    if(totalSecs < 0) return [];
+
+    var completedCount = Math.min(totalSessionCandles, Math.floor(totalSecs / CANDLE_SEC));
+    var result = [];
+    var price = startingBalance;
+    var momentum = 0;
+
+    // Total candles expected for full session — used to spread pull evenly
+    var totalCandles = totalSessionCandles;
+    var sessionDur = waypoints[waypoints.length-1].ts - sessionStart;
+
+    for(var ci=0; ci<completedCount; ci++){
+      var tOpen  = sessionStart + ci * CANDLE_SEC;
+      var tClose = tOpen + CANDLE_SEC;
+      var r1 = seededRng(ci*4+0), r2 = seededRng(ci*4+1), r3 = seededRng(ci*4+2), r4 = seededRng(ci*4+3);
+
+      // ── STEADY PULL from start to end: share the gap evenly across all candles ──
+      // This means from candle 1, price is gently nudged toward final target.
+      var finalTarget  = waypoints[waypoints.length-1].val;
+      var candlesLeft  = Math.max(1, totalCandles - ci);
+      // Per-candle share of remaining gap — 0.85 factor untuk reach target gradually
+      var remainGap    = finalTarget - price;
+      var steadyPull   = (remainGap / candlesLeft) * 0.85;
+
+      // ── Volatility ikut tempoh trade (short = lebih agresif) ──
+      var baseVol = price * profile.baseVolPct;
+      var spikeRoll = r1();
+      var spike;
+      if(spikeRoll > profile.highSpikeTh)      spike = profile.highSpikeMin + r2() * profile.highSpikeRange;
+      else if(spikeRoll > profile.midSpikeTh)  spike = profile.midSpikeMin + r2() * profile.midSpikeRange;
+      else if(spikeRoll > 0.40)                spike = profile.medSpikeMin + r2() * profile.medSpikeRange;
+      else                      spike = 1.0;
+      var vol = baseVol * spike;
+
+      // ── BALANCED RED/GREEN: near-equal distribution ──
+      // biasRoll splits: ~42.5% bull, ~42.5% bear, 15% doji
+      var biasRoll = r4();
+      var bias;
+      if(biasRoll < 0.425)      bias =  (0.5 + r2() * 0.6);   // bullish
+      else if(biasRoll < 0.85)  bias = -(0.5 + r2() * 0.6);   // bearish
+      else                      bias =  (r2() - 0.5) * 0.12;  // flat/doji
+      // Momentum carries direction across candles
+      momentum = momentum * 0.35 + bias * 0.45;
+
+      var move  = (r3() - 0.5) * 2 * vol * profile.moveMul + momentum * vol * profile.momentumMul;
+
+      // Shock burst (naik/turun) berlaku sekali-sekala untuk efek lonjakan jelas.
+      var shockRoll = r4();
+      if(shockRoll > profile.shockTh){
+        var shockDir = r2() > 0.5 ? 1 : -1;
+        move += shockDir * (price * (profile.shockMin + r3() * profile.shockRange));
+      }
+
+      var open  = price;
+      var close = open + move + steadyPull;
+
+      // Candle terakhir mesti lock tepat pada nilai Close supaya baki konsisten.
+      var isFinal = ci === totalCandles - 1;
+      if(isFinal){
+        close = finalTarget;
+      }
+
+      // Hard clamp supaya tetap realistik walaupun agresif.
+      var maxPct = spike > 3 ? profile.clampHigh : profile.clampNorm;
+      var maxMove = price * maxPct * spike;
+      if(Math.abs(close - open) > maxMove) close = open + Math.sign(close-open) * maxMove;
+
+      // Dynamic price floor: min 5% of starting balance, but at least RM 1
+      var minPrice = Math.max(1, startingBalance * 0.05);
+      if(close < minPrice) close = minPrice;
+
+      // ── WICKS: pendek, natural ──
+      var bodySize = Math.max(Math.abs(close - open), price * 0.003);
+      var wUp, wDn;
+      var wRoll = r1();
+      if(wRoll < 0.22){       // upper wick (shooting star)
+        wUp = bodySize * (0.5 + r2() * 0.6);
+        wDn = bodySize * (0.05 + r3() * 0.1);
+      } else if(wRoll < 0.44){ // lower wick (hammer)
+        wUp = bodySize * (0.05 + r2() * 0.1);
+        wDn = bodySize * (0.5 + r3() * 0.6);
+      } else if(wRoll < 0.66){ // balanced wicks
+        wUp = bodySize * (0.15 + r2() * 0.3);
+        wDn = bodySize * (0.15 + r3() * 0.3);
+      } else {                  // doji / small both
+        wUp = bodySize * (0.25 + r2() * 0.35);
+        wDn = bodySize * (0.25 + r3() * 0.35);
+      }
+      // Spike candles boleh wick sikit lebih
+      if(spike > 3){ wUp *= 1.2; wDn *= 1.2; }
+      else if(spike > 1.8){ wUp *= 1.05; wDn *= 1.05; }
+
+      var high = Math.max(open, close) + wUp;
+      var low  = Math.min(open, close) - wDn;
+      var minPrice = Math.max(1, startingBalance * 0.05);
+      if(low < minPrice) low = minPrice;
+
+      var volBar = bodySize * (25 + r4() * 100);
+
+      result.push({t:tOpen, dur:CANDLE_SEC, o:open, c:close, h:high, l:low, v:volBar, ci:ci});
+      price = close;
+    }
+    return result;
+  }
+
+  // ── LIVE CANDLE (current forming minute) ────────────────────────────
+  // tickRng dibuat deterministik berdasarkan timestamp tick (bukan stateful)
+  // supaya nilai yang sama dihasilkan walaupun page di-reload
+  function tickRngAt(ts){
+    // Quantize kepada 350ms slot supaya setiap tick slot ada seed unik & konsisten
+    var slot = Math.floor(ts / 0.35);
+    return mulberry32(hashSeed(SEED_BASE+'_tick_'+slot));
+  }
+
+  // ── LIVE CANDLE — fully deterministik ──────────────────────────────
+  // Setiap kali buildLiveCandle dipanggil, kita simulate semua tick dari
+  // permulaan candle semasa hingga nowTs, guna seed timestamp.
+  // Ini bermakna reload = hasil yang SAMA untuk timestamp yang sama.
+
+  function simulateLiveCandle(prevClose, candleStartTs, nowTs){
+    var TICK_MS = 350;
+    var state = {price: prevClose, vel: 0, hi: prevClose, lo: prevClose, open: prevClose};
+    var finalTarget = waypoints[waypoints.length-1].val;
+
+    // Simulate setiap tick dari candleStartTs hingga nowTs
+    var t = candleStartTs;
+    while(t < nowTs - 0.001){
+      var ts = t;
+      var rng = tickRngAt(ts);
+      var impRoll = rng();
+      var imp;
+      if(impRoll < 0.30)       imp =  rng() * state.price * profile.liveImpulseBull;
+      else if(impRoll < 0.60)  imp = -rng() * state.price * profile.liveImpulseBear;
+      else if(impRoll < 0.82)  imp =  (rng() - 0.5) * state.price * profile.liveImpulseFlat;
+      else                     imp =  (rng() - 0.5) * state.price * profile.liveImpulseShock;
+
+      // Rare intrabar shock untuk live candle (deterministik).
+      var shockLive = rng();
+      if(shockLive > profile.liveShockTh){
+        var liveDir = rng() > 0.5 ? 1 : -1;
+        imp += liveDir * state.price * (profile.liveShockMin + rng() * profile.liveShockRange);
+      }
+
+      var sessionRemain = Math.max(1, sessionEnd - ts);
+      var ticksRemain   = Math.max(1, sessionRemain / (TICK_MS/1000));
+      var remainGap     = finalTarget - state.price;
+      var gap           = (remainGap / ticksRemain) * 0.30 * 0.025;
+
+      state.vel   = state.vel * profile.liveVelKeep + imp * profile.liveVelImpulse + gap;
+      state.price += state.vel;
+      var minPrice = Math.max(1, startingBalance * 0.05);
+      if(state.price < minPrice) state.price = minPrice;
+      if(state.price > state.hi) state.hi = state.price;
+      if(state.price < state.lo) state.lo = state.price;
+
+      t += TICK_MS / 1000;
+    }
+    return state;
+  }
+
+  // tickState masih dipakai untuk live draw tick-by-tick (untuk animasi smooth)
+  // tapi akan di-resync dari simulateLiveCandle bila perlu
+  var tickState = {price: startingBalance, vel: 0, hi: null, lo: null, open: startingBalance};
+  var tickStateCandleIdx = -1; // track candle mana tickState ni
+
+  function buildLiveCandle(){
+    var nowTs = Date.now()/1000;
+    if(nowTs >= sessionEnd) return null;
+    var elapsed = nowTs - sessionStart;
+    if(elapsed < 0) return null;
+
+    var ci = Math.floor(elapsed / CANDLE_SEC);
+    var tOpen = sessionStart + ci * CANDLE_SEC;
+    var prevClose = allCandles.length > 0 ? allCandles[allCandles.length-1].c : startingBalance;
+
+    // Kalau candle baru atau tickState belum diinit untuk candle ini, resync
+    if(tickState.hi === null || tickStateCandleIdx !== ci){
+      var sim = simulateLiveCandle(prevClose, tOpen, nowTs);
+      tickState.price = sim.price;
+      tickState.vel   = sim.vel;
+      tickState.hi    = sim.hi;
+      tickState.lo    = sim.lo;
+      tickState.open  = sim.open;
+      tickStateCandleIdx = ci;
+    }
+
+    return {
+      t: tOpen, dur: CANDLE_SEC,
+      o: tickState.open,
+      c: tickState.price,
+      h: Math.max(tickState.hi, tickState.price),
+      l: Math.min(tickState.lo, tickState.price),
+      v: Math.abs(tickState.price - tickState.open) * 30 + 20,
+      isLive: true
+    };
+  }
+
+  function stepTick(){
+    var nowTs = Date.now()/1000;
+    if(nowTs >= sessionEnd) return;
+    var elapsed = nowTs - sessionStart;
+    if(elapsed < 0) return;
+
+    var ci = Math.floor(elapsed / CANDLE_SEC);
+
+    // Detect candle boundary — resync tickState untuk candle baru
+    if(ci !== tickStateCandleIdx){
+      var tOpen = sessionStart + ci * CANDLE_SEC;
+      var prevClose = allCandles.length > 0 ? allCandles[allCandles.length-1].c : startingBalance;
+      var sim = simulateLiveCandle(prevClose, tOpen, nowTs);
+      tickState.price = sim.price;
+      tickState.vel   = sim.vel;
+      tickState.hi    = sim.hi;
+      tickState.lo    = sim.lo;
+      tickState.open  = sim.open;
+      tickStateCandleIdx = ci;
+      return;
+    }
+
+    // Tick biasa — guna RNG deterministik berdasarkan timestamp
+    var finalTarget = waypoints[waypoints.length-1].val;
+    var remainGap   = finalTarget - tickState.price;
+    var sessionRemain = Math.max(1, sessionEnd - nowTs);
+    var ticksRemain   = Math.max(1, sessionRemain / 0.35);
+    var gap = (remainGap / ticksRemain) * 0.30 * 0.025;
+
+    var rng = tickRngAt(nowTs);
+    var impRoll = rng();
+    var imp;
+    if(impRoll < 0.30)       imp =  rng() * tickState.price * profile.liveImpulseBull;
+    else if(impRoll < 0.60)  imp = -rng() * tickState.price * profile.liveImpulseBear;
+    else if(impRoll < 0.82)  imp =  (rng() - 0.5) * tickState.price * profile.liveImpulseFlat;
+    else                     imp =  (rng() - 0.5) * tickState.price * profile.liveImpulseShock;
+
+    var shockTick = rng();
+    if(shockTick > profile.liveShockTh){
+      var tickDir = rng() > 0.5 ? 1 : -1;
+      imp += tickDir * tickState.price * (profile.liveShockMin + rng() * profile.liveShockRange);
+    }
+
+    tickState.vel   = tickState.vel * profile.liveVelKeep + imp * profile.liveVelImpulse + gap;
+    tickState.price += tickState.vel;
+
+    var minPrice = Math.max(1, startingBalance * 0.05);
+    if(tickState.price < minPrice) tickState.price = minPrice;
+    if(tickState.price > tickState.hi) tickState.hi = tickState.price;
+    if(tickState.price < tickState.lo) tickState.lo = tickState.price;
+  }
+
+  // ── INIT ─────────────────────────────────────────────────────────────
+  allCandles = buildHistoricCandles();
+  var firstPrice = startingBalance;
+
+  // Rebuild completed candles every 5s (new minute boundary)
+  setInterval(function(){
+    var newCandles = buildHistoricCandles();
+    if(newCandles.length > allCandles.length){
+      // Candle baru selesai — tickState akan resync sendiri dalam buildLiveCandle
+      allCandles = newCandles;
+      tickStateCandleIdx = -1; // force resync pada tick seterusnya
+    }
+  }, 5000);
+
+  // ── CANVASES ─────────────────────────────────────────────────────────
+  var cvC = document.getElementById('tvCandle');
+  var cvV = document.getElementById('tvVolume');
+  var ctxC = cvC.getContext('2d');
+  var ctxV = cvV.getContext('2d');
+  var dpr  = window.devicePixelRatio || 1;
+
+  var BULL = '#26a69a', BEAR = '#ef5350';
+  var lastSnapSyncAt = 0;
+  var lastSnapValue = null;
+  var closeSnapSynced = false;
+
+  function syncSnapshotBalance(value, force){
+    var nowMs = Date.now();
+    var rounded = Math.round(value * 100) / 100;
+
+    if(!force){
+      if(lastSnapValue !== null && Math.abs(rounded - lastSnapValue) < 0.01) return;
+      if(nowMs - lastSnapSyncAt < 5000) return;
+    }
+
+    lastSnapSyncAt = nowMs;
+    lastSnapValue = rounded;
+
+    fetch('/api/user/snapshot_balance', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ value: rounded }),
+      keepalive: true
+    }).catch(function(){});
+  }
+
+  // Fixed candle slot width — NEVER changes, chart scrolls instead
+  var SLOT_W = 10;  // px per candle slot (fixed, immutable)
+  var BODY_W = 7;   // px candle body width (fixed)
+  var MAX_PRICE_RANGE = 10000; // Max zoom-out: show ~10,000 RM range
+  var MIN_Y_SCALE = 0.2;      // Max zoom-in: show ~0.2 RM per pixel
+
+  // Pan offset in candle units (float). Positive = scrolled left (older candles visible)
+  var panOffset = 0;   // 0 = latest candle at right edge
+  var userPanned = false;
+
+  // Y-axis pan: offset in price units. 0 = auto-center on current price
+  var yPanOffset = 0;
+  var userYPanned = false;
+
+  // Fixed Y scale: price units per pixel (determines zoom level of price axis)
+  // User can adjust with scroll wheel or touch pinch
+  var yScale = 1.8; // RM per pixel — ~10,000 RM visible range at default zoom
+
+  function resize(){
+    var w = cvC.clientWidth;
+    var hC = window.innerWidth<600 ? 220 : 340;
+    var hV = window.innerWidth<600 ? 50  : 70;
+    cvC.style.height=hC+'px'; cvV.style.height=hV+'px';
+    cvC.width=w*dpr; cvC.height=hC*dpr;
+    cvV.width=w*dpr; cvV.height=hV*dpr;
+    ctxC.setTransform(dpr,0,0,dpr,0,0);
+    ctxV.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize();
+  window.addEventListener('resize',function(){resize();draw();});
+
+  function niceStep(range,n){
+    var s=range/n, m=Math.pow(10,Math.floor(Math.log10(s))), r=s/m;
+    return (r<=1?1:r<=2?2:r<=5?5:10)*m;
+  }
+
+  function draw(){
+    var live = buildLiveCandle();
+    var shown = live ? allCandles.concat([live]) : allCandles;
+    if(!shown.length) return;
+
+    var wC=cvC.clientWidth, hC=cvC.height/dpr;
+    var wV=cvV.clientWidth, hV=cvV.height/dpr;
+    var isMob=window.innerWidth<600;
+    var padL=0, padR=isMob?64:76, padT=8, padB=24;
+    var plotW=wC-padL-padR, plotH=hC-padT-padB;
+
+    var nTotal = shown.length;
+
+    // How many candles fit on screen
+    var perScreen = Math.floor(plotW / SLOT_W);
+
+    // panOffset = scroll left in candle units (0 = candle[0] at left edge)
+    // Auto-follow: keep latest candle near right edge
+    if(!userPanned){
+      panOffset = Math.max(0, nTotal - perScreen);
+    }
+    panOffset = Math.max(0, Math.min(panOffset, Math.max(0, nTotal - 1)));
+    var rightAlignSlots = Math.max(0, perScreen - nTotal);
+
+    // Visible candle indices
+    var startIdx = Math.floor(panOffset);
+    var endIdx   = Math.min(nTotal - 1, startIdx + perScreen + 1);
+    var vis = shown.slice(startIdx, endIdx + 1);
+
+    // Current price
+    var effClose = live ? live.c : shown[shown.length-1].c;
+
+    // ── Y AXIS: fixed scale, pan-able ─────────────────────────────────
+    var centerPrice = effClose + yPanOffset;
+    var halfRange   = (plotH / 2) * yScale;
+    var minV = centerPrice - halfRange;
+    var maxV = centerPrice + halfRange;
+
+    function yp(v){ return padT + plotH - ((v - minV) / (maxV - minV)) * plotH; }
+
+    // X position: candle[0] at left, grows rightward
+    function xp(absIdx){
+      return padL + (rightAlignSlots + absIdx - panOffset + 0.5) * SLOT_W;
+    }
+
+    // ── CANDLE CANVAS ─────────────────────────────────────────────────
+    ctxC.clearRect(0,0,wC,hC);
+    ctxC.fillStyle='#FFFFFF'; ctxC.fillRect(0,0,wC,hC);
+
+    // Grid lines (Y)
+    var step = niceStep(maxV - minV, 6);
+    var tickStart = Math.ceil(minV / step) * step;
+    ctxC.font='500 11px IBM Plex Mono,monospace';
+    ctxC.textAlign='right';
+    for(var tv=tickStart; tv<=maxV+step*0.01; tv+=step){
+      var gy = yp(tv);
+      if(gy < padT-2 || gy > padT+plotH+2) continue;
+      ctxC.strokeStyle='#F0F3F7'; ctxC.lineWidth=1;
+      ctxC.beginPath(); ctxC.moveTo(padL,gy); ctxC.lineTo(wC-padR,gy); ctxC.stroke();
+      ctxC.fillStyle='#9AA5B4';
+      ctxC.fillText(tv.toFixed(2), wC-2, gy+4);
+      ctxC.strokeStyle='#D0D7E2';
+      ctxC.beginPath(); ctxC.moveTo(wC-padR,gy); ctxC.lineTo(wC-padR+4,gy); ctxC.stroke();
+    }
+
+    // Right axis border
+    ctxC.strokeStyle='#E3E8EF'; ctxC.lineWidth=1;
+    ctxC.beginPath(); ctxC.moveTo(wC-padR,padT); ctxC.lineTo(wC-padR,padT+plotH); ctxC.stroke();
+
+    // Entry price dashed line
+    var yEntry = yp(firstPrice);
+    if(yEntry >= padT && yEntry <= padT+plotH){
+      ctxC.setLineDash([4,4]); ctxC.strokeStyle='#D0D7E2'; ctxC.lineWidth=1;
+      ctxC.beginPath(); ctxC.moveTo(padL,yEntry); ctxC.lineTo(wC-padR,yEntry); ctxC.stroke();
+      ctxC.setLineDash([]);
+    }
+
+    // Current price line
+    var yLast = yp(effClose);
+    var lineColor = effClose >= firstPrice ? BULL : BEAR;
+    if(yLast >= padT && yLast <= padT+plotH){
+      ctxC.setLineDash([3,3]); ctxC.strokeStyle=lineColor; ctxC.lineWidth=1;
+      ctxC.beginPath(); ctxC.moveTo(padL,yLast); ctxC.lineTo(wC-padR,yLast); ctxC.stroke();
+      ctxC.setLineDash([]);
+      // Price badge
+      var boxH=18, boxY=yLast-boxH/2;
+      ctxC.fillStyle=lineColor;
+      ctxC.beginPath();
+      if(ctxC.roundRect) ctxC.roundRect(wC-padR, boxY, padR-2, boxH, 2);
+      else ctxC.rect(wC-padR, boxY, padR-2, boxH);
+      ctxC.fill();
+      ctxC.fillStyle='#fff'; ctxC.font='600 11px IBM Plex Mono,monospace'; ctxC.textAlign='right';
+      ctxC.fillText(effClose.toFixed(2), wC-4, yLast+4);
+    }
+
+    // ── CANDLES ───────────────────────────────────────────────────────
+    for(var i=0; i<vis.length; i++){
+      var c = vis[i];
+      var absIdx = startIdx + i;
+      var isLast = (absIdx === shown.length - 1);
+
+      var x = xp(absIdx);
+      if(x + SLOT_W < padL || x - SLOT_W > wC - padR) continue;
+
+      var cOpen  = c.o;
+      var cClose = c.c;
+      var cHigh  = c.h;
+      var cLow   = c.l;
+
+      var up  = cClose >= cOpen;
+      var col = up ? BULL : BEAR;
+
+      var yO  = yp(cOpen);
+      var yC  = yp(cClose);
+      var yH  = yp(cHigh);
+      var yL2 = yp(cLow);
+
+      // Wick
+      ctxC.strokeStyle = col;
+      ctxC.lineWidth = 1;
+      ctxC.beginPath();
+      ctxC.moveTo(Math.round(x), yH);
+      ctxC.lineTo(Math.round(x), yL2);
+      ctxC.stroke();
+
+      // Body
+      var top = Math.min(yO, yC);
+      var bh  = Math.max(Math.abs(yC - yO), 2);
+      var bx  = Math.round(x - BODY_W/2);
+      ctxC.fillStyle = col;
+      ctxC.fillRect(bx, top, BODY_W, bh);
+
+      // Glow on live candle
+      if(isLast && live){
+        ctxC.save();
+        ctxC.shadowColor = col; ctxC.shadowBlur = 10; ctxC.globalAlpha = 0.35;
+        ctxC.fillRect(bx, top, BODY_W, bh);
+        ctxC.restore();
+      }
+    }
+
+    // ── X-AXIS TIME LABELS ────────────────────────────────────────────
+    ctxC.font='11px IBM Plex Mono,monospace'; ctxC.fillStyle='#9AA5B4'; ctxC.textAlign='center';
+    var labelEvery = Math.max(1, Math.round(300 / CANDLE_SEC)); // every ~5 min
+    for(var li=startIdx; li<=endIdx; li++){
+      if((li % labelEvery) !== 0) continue;
+      var lx = xp(li);
+      if(lx < padL+20 || lx > wC-padR-20) continue;
+      var lts = sessionStart + li * CANDLE_SEC;
+      var dd = new Date(lts * 1000);
+      var lbl = dd.getHours().toString().padStart(2,'0')+':'+dd.getMinutes().toString().padStart(2,'0');
+      ctxC.strokeStyle='#E3E8EF'; ctxC.lineWidth=1;
+      ctxC.beginPath(); ctxC.moveTo(lx, padT+plotH); ctxC.lineTo(lx, padT+plotH+4); ctxC.stroke();
+      ctxC.fillStyle='#9AA5B4';
+      ctxC.fillText(lbl, lx, hC-6);
+    }
+
+    // ── VOLUME CANVAS ─────────────────────────────────────────────────
+    ctxV.clearRect(0,0,wV,hV);
+    ctxV.fillStyle='#FFFFFF'; ctxV.fillRect(0,0,wV,hV);
+
+    // Y-axis border
+    ctxV.strokeStyle='#E3E8EF'; ctxV.lineWidth=1;
+    ctxV.beginPath(); ctxV.moveTo(wV-padR,0); ctxV.lineTo(wV-padR,hV); ctxV.stroke();
+
+    var maxVol = 0;
+    for(var vi2=0; vi2<vis.length; vi2++) if(vis[vi2].v > maxVol) maxVol = vis[vi2].v;
+    if(maxVol === 0) maxVol = 1;
+    var vPadT=4, vPadB=20, vPlotH=hV-vPadT-vPadB;
+
+    // Y-axis label (volume scale)
+    ctxV.font='500 10px IBM Plex Mono,monospace';
+    ctxV.fillStyle='#9AA5B4';
+    ctxV.textAlign='right';
+    ctxV.fillText(Math.round(maxVol), wV-padR-2, vPadT+10);
+
+    // Volume bars
+    for(var vi=0; vi<vis.length; vi++){
+      var vc   = vis[vi];
+      var absV = startIdx + vi;
+      var vx   = xp(absV);
+      if(vx + SLOT_W < padL || vx - SLOT_W > wV - padR) continue;
+      var up2  = vc.c >= vc.o;
+      var vcol = up2 ? 'rgba(38,166,154,0.6)' : 'rgba(239,83,80,0.6)';
+      var vh   = Math.max(1.5, (vc.v / maxVol) * vPlotH);
+      var vbx  = Math.round(vx - BODY_W/2);
+      ctxV.fillStyle = vcol;
+      ctxV.fillRect(vbx, hV - vPadB - vh, BODY_W, vh);
+    }
+
+    // X-axis time labels (match candle chart)
+    ctxV.font='10px IBM Plex Mono,monospace'; ctxV.fillStyle='#9AA5B4'; ctxV.textAlign='center';
+    var volLabelEvery = Math.max(1, Math.round(300 / CANDLE_SEC)); // every ~5 min
+    for(var vli=startIdx; vli<=endIdx; vli++){
+      if((vli % volLabelEvery) !== 0) continue;
+      var vlx = xp(vli);
+      if(vlx < padL+20 || vlx > wV-padR-20) continue;
+      var vlts = sessionStart + vli * CANDLE_SEC;
+      var dv = new Date(vlts * 1000);
+      var vlbl = dv.getHours().toString().padStart(2,'0')+':'+dv.getMinutes().toString().padStart(2,'0');
+      ctxV.strokeStyle='#E3E8EF'; ctxV.lineWidth=1;
+      ctxV.beginPath(); ctxV.moveTo(vlx, hV-vPadB); ctxV.lineTo(vlx, hV-vPadB+4); ctxV.stroke();
+      ctxV.fillStyle='#9AA5B4';
+      ctxV.fillText(vlbl, vlx, hV-2);
+    }
+  }
+
+  function updateHeader(){
+    var live = buildLiveCandle();
+    var shown = live ? allCandles.concat([live]) : allCandles;
+    var last  = shown[shown.length-1]; if(!last) return;
+    var eff   = last.c;
+    var pl    = eff - firstPrice;
+    var pct   = firstPrice ? pl/firstPrice*100 : 0;
+    var up    = eff >= firstPrice;
+
+    var pEl=document.getElementById('priceNow');
+    if(pEl){pEl.textContent='RM '+eff.toFixed(2);pEl.style.color=up?BULL:BEAR;}
+
+    var plEl=document.getElementById('plVal');
+    if(plEl){plEl.textContent=(pl>=0?'+':'')+'RM '+pl.toFixed(2);plEl.className='card-val num '+(pl>=0?'pl-pos':'pl-neg');}
+    var plSub=document.getElementById('plSub');
+    if(plSub) plSub.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'% berbanding harga mula sesi';
+    var balEl=document.getElementById('balanceVal');
+    if(balEl) balEl.textContent='RM '+(startingBalance+pl).toFixed(2);
+
+    var lc = last;
+    var oEl=document.getElementById('ohlcO'); if(oEl) oEl.textContent=lc.o.toFixed(2);
+    var hEl=document.getElementById('ohlcH'); if(hEl) hEl.textContent=lc.h.toFixed(2);
+    var lEl=document.getElementById('ohlcL'); if(lEl) lEl.textContent=lc.l.toFixed(2);
+    var cEl=document.getElementById('ohlcC'); if(cEl) cEl.textContent=eff.toFixed(2);
+
+    var nowTs2=Date.now()/1000;
+    var sEl=document.getElementById('chartStatus');
+    if(sEl&&nowTs2>=sessionEnd){
+      sEl.textContent='DITUTUP';
+      sEl.className='chart-status-badge badge-closed';
+      if(!closeSnapSynced){
+        syncSnapshotBalance(eff, true);
+        closeSnapSynced = true;
+      }
+    } else {
+      syncSnapshotBalance(eff, false);
+    }
+  }
+
+  // ── ANIMATION LOOP (350ms tick) ──────────────────────────────────────
+  setInterval(function(){
+    stepTick(); draw(); updateHeader();
+  }, 350);
+
+  var spinnerShown = true;
+  requestAnimationFrame(function(){resize();draw();updateHeader();
+    if(spinnerShown){
+      var spinner = document.getElementById('chartSpinner');
+      if(spinner) spinner.style.display = 'none';
+      spinnerShown = false;
+    }
+  });
+
+  // ── PAN (X) with mouse drag ──────────────────────────────────────────
+  var isMousePan=false, mPanX=0, mPanOff=0;
+  cvC.addEventListener('mousedown',function(e){
+    isMousePan=true; mPanX=e.clientX; mPanOff=panOffset;
+    cvC.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',function(e){
+    if(!isMousePan) return;
+    var dx = e.clientX - mPanX;
+    // drag right = see older (smaller index) candles = decrease panOffset
+    panOffset = mPanOff - dx / SLOT_W;
+    var nTotal = allCandles.length + 1;
+    var perScreen = Math.floor((cvC.clientWidth - (window.innerWidth<600?64:76)) / SLOT_W);
+    panOffset = Math.max(0, Math.min(panOffset, Math.max(0, nTotal - 1)));
+    // resume auto-follow only when scrolled all the way to newest candle
+    userPanned = panOffset < (nTotal - perScreen - 0.5);
+    draw();
+  });
+  window.addEventListener('mouseup',function(){
+    isMousePan=false; cvC.style.cursor='default';
+  });
+
+  // ── SCROLL WHEEL: Y-axis zoom (price scale) ──────────────────────────
+  cvC.addEventListener('wheel',function(e){
+    e.preventDefault();
+    // Ctrl+wheel or plain wheel: adjust Y scale (zoom price axis)
+    if(e.shiftKey){
+      // Shift+scroll: pan Y axis
+      yPanOffset += e.deltaY * yScale * 0.5;
+      userYPanned = true;
+    } else {
+      // Plain scroll: zoom Y (price scale)
+      var factor = e.deltaY > 0 ? 1.12 : 1/1.12;
+      var hC = cvC.height/dpr;
+      var maxYScale = MAX_PRICE_RANGE / hC; // Allow viewing full 10k range
+      yScale = Math.max(MIN_Y_SCALE, Math.min(maxYScale, yScale * factor));
+    }
+    draw();
+  },{passive:false});
+
+  // ── TOUCH PINCH ZOOM: Y-axis zoom (price scale) on mobile ──────────────────
+  var lastPinchDist = 0;
+  cvC.addEventListener('touchmove',function(e){
+    if(e.touches.length === 2){
+      e.preventDefault();
+      var p1 = e.touches[0];
+      var p2 = e.touches[1];
+      var dx = p2.clientX - p1.clientX;
+      var dy = p2.clientY - p1.clientY;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      if(lastPinchDist > 0){
+        var rawFactor = dist / lastPinchDist; // >1 = spreading (zoom in), <1 = pinching (zoom out)
+        var factor = Math.pow(rawFactor, 0.6); // Dampened for smoother feel
+        var hC = cvC.height/dpr;
+        var maxYScale = MAX_PRICE_RANGE / hC;
+        yScale = Math.max(MIN_Y_SCALE, Math.min(maxYScale, yScale / factor));
+        draw();
+      }
+      lastPinchDist = dist;
+    }
+  },{passive:false});
+  cvC.addEventListener('touchend',function(){
+    lastPinchDist = 0;
+  },{passive:true});
+
+  // ── TOUCH: pan X ─────────────────────────────────────────────────────
+  var isPan=false, panX=0, panOff0=0;
+  cvC.addEventListener('touchstart',function(e){
+    if(e.touches.length===1){isPan=true;panX=e.touches[0].clientX;panOff0=panOffset;}
+  },{passive:true});
+  cvC.addEventListener('touchmove',function(e){
+    if(e.touches.length===1&&isPan){
+      e.preventDefault();
+      var dx=e.touches[0].clientX-panX;
+      panOffset=panOff0-dx/SLOT_W;
+      var nTotal=allCandles.length+1;
+      var perScreen=Math.floor((cvC.clientWidth-(window.innerWidth<600?64:76))/SLOT_W);
+      panOffset=Math.max(0,Math.min(panOffset,Math.max(0,nTotal-1)));
+      userPanned=panOffset<(nTotal-perScreen-0.5);
+      draw();
+    }
+  },{passive:false});
+  cvC.addEventListener('touchend',function(){isPan=false;});
+
+})();
+
+{% endif %}
+
+// ===== CRYPTO MARKET CAP SPARKLINE =====
+// ===== CRYPTO MARKET CAP SPARKLINE =====
+(function(){
+  var c = document.getElementById('cryptoSparkCanvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr;
+  c.height = 56 * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  var w = c.clientWidth, h = 56;
+  // Simulate 1-month downtrend then stabilise (like screenshot)
+  var pts = [];
+  var v = 2.55;
+  for (var i = 0; i < 80; i++){
+    if (i < 40) v -= 0.005 + Math.random() * 0.012;
+    else v += (Math.random() - 0.52) * 0.008;
+    pts.push(Math.max(v, 2.05));
+  }
+  var maxV = Math.max.apply(null, pts), minV = Math.min.apply(null, pts);
+  if (maxV === minV) maxV += 0.1;
+  function px(i){ return (i/(pts.length-1)) * w; }
+  function py(v){ return h - 4 - ((v - minV)/(maxV - minV)) * (h - 8); }
+  ctx.beginPath();
+  pts.forEach(function(v,i){ i===0 ? ctx.moveTo(px(i),py(v)) : ctx.lineTo(px(i),py(v)); });
+  ctx.strokeStyle = '#E0394B';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = 'rgba(224,57,75,0.08)';
+  ctx.fill();
+})();
+
+// ===== MINI CHARTS (All-Time — Dari Mula Hingga Kini) =====
+(function(){
+
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5)|0;
+      var t = Math.imul(seed^(seed>>>15), 1|seed);
+      t = (t+Math.imul(t^(t>>>7), 61|t))^t;
+      return ((t^(t>>>14))>>>0)/4294967296;
+    };
+  }
+
+  // Build smooth curve through historical anchor points
+  // anchors: array of [normalised_x (0-1), value]
+  function buildAllTimePts(anchors, numPts, noiseScale, seedOffset) {
+    var rng = mulberry32(0xCAFE0000 + seedOffset);
+    var pts = [];
+    for (var i = 0; i < numPts; i++) {
+      var x = i / (numPts - 1);
+      // Interpolate between anchors
+      var lo = anchors[0], hi = anchors[anchors.length - 1];
+      for (var a = 0; a < anchors.length - 1; a++) {
+        if (x >= anchors[a][0] && x <= anchors[a+1][0]) {
+          lo = anchors[a]; hi = anchors[a+1]; break;
+        }
+      }
+      var t = hi[0] === lo[0] ? 0 : (x - lo[0]) / (hi[0] - lo[0]);
+      // Smooth step
+      var st = t * t * (3 - 2 * t);
+      var base = lo[1] + (hi[1] - lo[1]) * st;
+      var noise = noiseScale * base * (rng() - 0.5) * 2;
+      pts.push(base + noise);
+    }
+    // Force exact last value
+    pts[pts.length - 1] = anchors[anchors.length - 1][1];
+    return pts;
+  }
+
+  var instruments = [
+    {
+      key: 'btc',
+      name: 'Bitcoin',
+      color: '#F7931A',
+      prefix: '$', decimals: 0,
+      label: 'AT',
+      startYear: 2009,
+      currentPrice: 106000,
+      // BTC all-time key prices (x=0 is 2009, x=1 is 2026)
+      anchors: [
+        [0.000, 0.001],   // 2009 genesis
+        [0.059, 0.10],    // early 2010
+        [0.118, 1.00],    // mid 2010 $1
+        [0.176, 31],      // mid 2011 first peak
+        [0.200, 2.00],    // late 2011 crash
+        [0.300, 266],     // Apr 2013 peak
+        [0.330, 70],      // mid 2013 crash
+        [0.380, 1100],    // Dec 2013 peak
+        [0.430, 200],     // 2015 bottom
+        [0.560, 750],     // 2016 pre-halving
+        [0.650, 19800],   // Dec 2017 ATH
+        [0.700, 3200],    // Dec 2018 bottom
+        [0.750, 13000],   // Oct 2019
+        [0.780, 4800],    // Mar 2020 COVID crash
+        [0.820, 29000],   // Dec 2020
+        [0.860, 64000],   // Apr 2021 ATH
+        [0.880, 29000],   // Jul 2021
+        [0.900, 68000],   // Nov 2021 ATH
+        [0.930, 16000],   // Nov 2022 FTX crash
+        [0.950, 25000],   // early 2023
+        [0.960, 44000],   // late 2023
+        [0.975, 73000],   // Mar 2024 ETF ATH
+        [0.985, 58000],   // mid 2024
+        [1.000, 106000],  // 2026 latest
+      ]
+    },
+    {
+      key: 'gold',
+      name: 'Gold',
+      color: '#D4A843',
+      prefix: '$', decimals: 0,
+      label: 'AT',
+      startYear: 1970,
+      currentPrice: 3320,
+      // Gold all-time key prices
+      anchors: [
+        [0.000, 35],    // 1970 fixed price
+        [0.080, 200],   // 1974 post gold standard
+        [0.180, 100],   // 1976 dip
+        [0.300, 850],   // 1980 peak
+        [0.380, 300],   // 1985 low
+        [0.500, 350],   // 1990
+        [0.600, 250],   // 2001 bottom
+        [0.700, 1000],  // 2008 pre-crisis
+        [0.720, 800],   // 2008 crash dip
+        [0.780, 1920],  // 2011 ATH
+        [0.840, 1050],  // 2015 low
+        [0.890, 1350],  // 2019
+        [0.900, 1450],  // early 2020
+        [0.920, 2075],  // Aug 2020 ATH
+        [0.940, 1680],  // 2022 dip
+        [0.960, 2100],  // late 2023
+        [0.975, 2450],  // mid 2024
+        [0.990, 2800],  // late 2024
+        [1.000, 3320],  // 2026 latest
+      ]
+    },
+    {
+      key: 'usdmyr',
+      name: 'USD/MYR',
+      color: '#2563eb',
+      prefix: '', decimals: 4,
+      label: 'AT',
+      startYear: 1990,
+      currentPrice: 4.4520,
+      // USD/MYR all-time key rates
+      anchors: [
+        [0.000, 2.70],  // 1990
+        [0.200, 2.50],  // 1995 strong MYR
+        [0.230, 3.75],  // 1997 Asian crisis surge
+        [0.260, 4.88],  // 1998 peak
+        [0.290, 3.80],  // 1998 peg
+        [0.780, 3.80],  // 2005 peg removed
+        [0.810, 3.18],  // 2011 MYR strong
+        [0.870, 4.47],  // 2016 weak MYR
+        [0.900, 4.08],  // 2018 stabilise
+        [0.930, 4.35],  // 2020 COVID
+        [0.950, 4.10],  // 2021
+        [0.965, 4.73],  // 2023 weak MYR
+        [0.980, 4.40],  // late 2024 recovery
+        [1.000, 4.4520],// 2026 latest
+      ]
+    }
+  ];
+
+  instruments.forEach(function(inst, idx){
+    var canvas = document.getElementById('miniChart-' + inst.key);
+    var priceEl = document.getElementById('miniPrice-' + inst.key);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+
+    var pts = buildAllTimePts(inst.anchors, 500, 0.018, idx);
+
+    function resize(){
+      var cssW = canvas.clientWidth;
+      canvas.width  = cssW * dpr;
+      canvas.height = 80 * dpr;
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    resize();
+    window.addEventListener('resize', function(){ resize(); drawChart(); });
+
+    function drawChart(){
+      var w = canvas.clientWidth, h = 80, padX = 4, padY = 6;
+      var maxV = Math.max.apply(null, pts);
+      var minV = Math.min.apply(null, pts);
+      if (maxV === minV){ maxV += 1; minV -= 1; }
+      ctx.clearRect(0,0,w,h);
+      var color = inst.color;
+      var mapped = pts.map(function(val, i){
+        var x = padX + (i/(pts.length-1))*(w - padX*2);
+        var y = padY + (h - padY*2) - ((val-minV)/(maxV-minV))*(h - padY*2);
+        return [x, y];
+      });
+      // Gradient fill
+      ctx.beginPath();
+      ctx.moveTo(mapped[0][0], h);
+      mapped.forEach(function(p){ ctx.lineTo(p[0], p[1]); });
+      ctx.lineTo(mapped[mapped.length-1][0], h);
+      ctx.closePath();
+      var grad = ctx.createLinearGradient(0,0,0,h);
+      grad.addColorStop(0, color + '30');
+      grad.addColorStop(1, color + '04');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      // Line
+      ctx.beginPath();
+      mapped.forEach(function(p,i){ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Dot at latest
+      var last = mapped[mapped.length-1];
+      ctx.beginPath();
+      ctx.arc(last[0], last[1], 3.5, 0, Math.PI*2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    drawChart();
+
+    var fmt = function(val){
+      return inst.prefix + val.toLocaleString('en-US',{minimumFractionDigits:inst.decimals, maximumFractionDigits:inst.decimals});
+    };
+    priceEl.textContent = fmt(inst.currentPrice);
+    priceEl.style.color = inst.color;
+
+    if (inst.key === 'btc'){
+      var el = document.getElementById('btcPriceDisplay');
+      if (el) el.innerHTML = inst.currentPrice.toLocaleString('en-US',{maximumFractionDigits:0}) + '<span class="crypto-unit">USD</span>';
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>Admin Login — TradeNex Capital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0B1629;--navy2:#111E35;--gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
+  --text-muted:#8FA3BF;--border:#1E3050;--red:#FF5B5B;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.box{background:#0F1C32;border:1px solid var(--border);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px}
+.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:0.4rem}
+.logo span{color:var(--gold)}
+.subtitle{text-align:center;color:var(--text-muted);font-size:0.8rem;margin-bottom:2rem}
+.label{display:block;font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:0.4rem;text-transform:uppercase}
+.input{width:100%;background:#162033;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;color:var(--white);font-size:0.9rem;font-family:'IBM Plex Sans',sans-serif;outline:none;margin-bottom:1.1rem}
+.input:focus{border-color:var(--gold)}
+.btn{width:100%;background:var(--gold);border:none;color:#0B1629;padding:0.85rem;border-radius:8px;font-size:0.92rem;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.btn:hover{background:var(--gold2)}
+.error{background:rgba(255,91,91,0.1);border:1px solid rgba(255,91,91,0.25);border-radius:7px;padding:0.6rem 0.9rem;margin-bottom:1rem;color:#FF8A8A;font-size:0.8rem;display:none}
+.error.show{display:block}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Trade<span>Nex</span> <span style="color:var(--text-muted);font-weight:600;font-size:0.95rem">Admin</span></div>
+  <div class="subtitle">Panel Pentadbiran</div>
+
+  <div class="error" id="loginError">Username atau password tidak sah.</div>
+
+  <label class="label">Username</label>
+  <input class="input" type="text" id="username" placeholder="Username admin" autocomplete="username">
+
+  <label class="label">Password</label>
+  <input class="input" type="password" id="password" placeholder="Password admin" autocomplete="current-password">
+
+  <button class="btn" onclick="handleAdminLogin()">LOG MASUK ADMIN</button>
+</div>
+
+<script>
+function handleAdminLogin(){
+  var u=document.getElementById('username').value.trim();
+  var p=document.getElementById('password').value;
+  var err=document.getElementById('loginError');
+  if(!u||!p){err.textContent='Sila isi username dan password.';err.classList.add('show');return;}
+  err.classList.remove('show');
+
+  fetch('/admin/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
+    body:JSON.stringify({username:u,password:p})
+  })
+  .then(function(res){return res.json();})
+  .then(function(data){
+    if(data.ok){ window.location.href=data.redirect; }
+    else { err.textContent=data.message||'Username atau password tidak sah.'; err.classList.add('show'); }
+  })
+  .catch(function(){ err.textContent='Ralat sambungan.'; err.classList.add('show'); });
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Enter') handleAdminLogin(); });
+</script>
+</body>
+</html>

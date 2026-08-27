@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — TradeNex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
+  --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
+  --muted:#8FA3BF;--light:#C8D8EE;--border:#1E3050;
+  --green:#22C98A;--red:#FF5B5B;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh}
+
+/* NAV */
+nav{
+  background:var(--navy2);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  height:60px;position:sticky;top:0;z-index:50;
+}
+.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800}
+.logo span{color:var(--gold)}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.admin-label{font-size:0.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:6px;font-size:0.78rem;cursor:pointer;text-decoration:none;transition:all 0.2s}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+
+/* WRAP */
+.wrap{max-width:1100px;margin:0 auto;padding:2rem 1.5rem}
+
+/* FLASH */
+.flash-stack{position:fixed;top:calc(60px + 1rem);right:1rem;z-index:100;display:flex;flex-direction:column;gap:0.75rem;width:min(280px,calc(100% - 2rem))}
+.flash{padding:0.7rem 1rem;border-radius:8px;font-size:0.83rem;animation:slideIn 0.3s ease-out;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.flash-success{background:rgba(34,201,138,0.1);border:1px solid rgba(34,201,138,0.3);color:var(--green)}
+.flash-error{background:rgba(255,91,91,0.1);border:1px solid rgba(255,91,91,0.3);color:#FF8A8A}
+@keyframes slideIn{0%{transform:translateX(400px);opacity:0}100%{transform:translateX(0);opacity:1}}
+@keyframes slideOut{0%{transform:translateX(0);opacity:1}100%{transform:translateX(400px);opacity:0}}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem}
+.page-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800}
+.page-title span{color:var(--muted);font-size:0.9rem;font-weight:400;font-family:'IBM Plex Sans',sans-serif;margin-left:0.5rem}
+
+/* PANEL */
+.panel{background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.panel-title{font-size:0.9rem;font-weight:700;color:var(--light)}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:0.83rem}
+th{text-align:left;color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;padding:0.5rem 0.75rem;border-bottom:1px solid var(--border)}
+td{padding:0.65rem 0.75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.015)}
+.col-id{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--gold);font-size:0.8rem}
+.col-modal{font-family:'IBM Plex Mono',monospace;font-size:0.82rem}
+.col-nama{font-weight:500}
+
+/* BADGES */
+.badge{font-size:0.67rem;font-weight:700;padding:0.2rem 0.55rem;border-radius:4px;letter-spacing:0.3px}
+.badge-aktif{background:rgba(34,201,138,0.12);color:var(--green)}
+.badge-sedia{background:rgba(212,168,67,0.12);color:var(--gold)}
+.badge-selesai{background:rgba(100,160,255,0.12);color:#64A0FF}
+.badge-off{background:rgba(255,91,91,0.1);color:#FF8A8A}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:0.3rem;padding:0.45rem 0.9rem;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;font-family:'IBM Plex Sans',sans-serif;transition:all 0.18s;text-decoration:none}
+.btn-gold{background:var(--gold);color:#0B1629}
+.btn-gold:hover{background:var(--gold2)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--light)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-danger{background:transparent;border:1px solid rgba(255,91,91,0.4);color:#FF8A8A}
+.btn-danger:hover{background:rgba(255,91,91,0.08);border-color:var(--red)}
+.btn-wd{background:transparent;border:1px solid rgba(212,168,67,0.35);color:var(--gold)}
+.btn-wd:hover{background:rgba(212,168,67,0.08)}
+.btn-wd-disabled{background:transparent;border:1px solid var(--border);color:var(--muted);cursor:not-allowed;opacity:0.5}
+.actions{display:flex;gap:0.35rem;flex-wrap:wrap}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+.form-row{display:flex;flex-direction:column;gap:0.25rem}
+.form-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px}
+.form-input{background:#0F1C32;border:1px solid var(--border);border-radius:7px;padding:0.6rem 0.8rem;color:var(--white);font-size:0.85rem;font-family:'IBM Plex Sans',sans-serif;outline:none;transition:border-color 0.2s;width:100%}
+.form-input:focus{border-color:var(--gold)}
+.form-full{grid-column:1/-1}
+.checkbox-row{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0}
+.checkbox-row input[type=checkbox]{width:auto;accent-color:var(--gold)}
+.checkbox-row label{font-size:0.82rem;color:var(--light);margin:0}
+
+/* CREATE PANEL */
+#createPanel{display:none}
+#createPanel.open{display:block}
+
+/* DETAIL PANEL */
+.detail-panel{display:none}
+.detail-panel.active{display:block}
+.detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)}
+.detail-title{font-size:1rem;font-weight:700}
+.detail-id{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:0.85rem}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+@media(max-width:800px){.detail-grid{grid-template-columns:1fr}}
+.detail-section-title{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.85rem}
+
+/* ENTRY LIST */
+.entry-list{margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem}
+.entry-item{display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(30,48,80,0.6);font-size:0.78rem}
+.entry-item:last-child{border-bottom:none}
+.entry-info{color:var(--light)}
+.entry-val{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--gold)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.75rem;width:100%;max-width:440px;position:relative}
+.modal-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:0.25rem}
+.modal-sub{font-size:0.78rem;color:var(--muted);margin-bottom:1.25rem}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:0.25rem}
+.modal-close:hover{color:var(--white)}
+.modal-info-row{background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center}
+.modal-info-label{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px}
+.modal-info-val{font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:700;color:var(--gold)}
+.modal-info-val.after{color:var(--green)}
+.modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.25rem}
+
+/* RECEIPT */
+.receipt-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:300;align-items:center;justify-content:center;padding:1rem}
+.receipt-overlay.open{display:flex}
+.receipt-wrap{display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%;max-width:400px}
+.receipt-actions{display:flex;gap:0.6rem}
+#receiptCard,#customReceiptCard{
+  width:380px;max-width:100%;
+  background:
+    radial-gradient(120% 80% at 0% 0%,rgba(36,106,186,0.24) 0%,rgba(36,106,186,0) 55%),
+    radial-gradient(120% 100% at 100% 100%,rgba(16,66,130,0.2) 0%,rgba(16,66,130,0) 60%),
+    linear-gradient(160deg,#0d1e3a 0%,#0B1629 100%);
+  border:1px solid #2e4568;border-radius:20px;
+  overflow:hidden;font-family:'IBM Plex Sans',sans-serif;
+  position:relative;box-shadow:0 22px 70px rgba(0,0,0,0.58),0 0 0 1px rgba(255,255,255,0.03) inset;
+}
+.rc-head{background:linear-gradient(135deg,#1a2f50,#162848);border-bottom:1px solid #2a456b;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
+.rc-head:before{content:'';position:absolute;top:-60%;left:-42%;width:38%;height:220%;background:linear-gradient(110deg,rgba(255,255,255,0),rgba(255,255,255,0.16),rgba(255,255,255,0));transform:skewX(-18deg);animation:rcHeadShine 6.5s ease-in-out infinite;pointer-events:none}
+.rc-head:after{content:'';position:absolute;left:1.5rem;right:1.5rem;bottom:0;height:1px;background:linear-gradient(90deg,rgba(212,168,67,0),rgba(212,168,67,0.35),rgba(212,168,67,0))}
+.rc-logo{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;color:#fff;line-height:1.05}
+.rc-logo span{color:#D4A843}
+.rc-badge{display:inline-flex;align-items:center;gap:0.45rem;background:linear-gradient(180deg,rgba(34,201,138,0.16),rgba(34,201,138,0.1));border:1px solid rgba(55,224,161,0.42);color:#4BE3A8;font-size:0.6rem;font-weight:800;padding:0.26rem 0.72rem;border-radius:999px;letter-spacing:0.95px;box-shadow:0 8px 24px rgba(34,201,138,0.15),0 0 0 1px rgba(255,255,255,0.03) inset}
+.rc-badge-icon{width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 30%,#67f1be,#17b77c);color:#082717;font-size:0.54rem;font-weight:900;line-height:1;box-shadow:0 0 10px rgba(75,227,168,0.55)}
+.rc-badge-text{line-height:1;transform:translateY(0.5px)}
+.rc-amount-sec{padding:1.25rem 1.5rem;border-bottom:1px solid #1a2f4a;text-align:center}
+.rc-amount-label{font-size:0.62rem;font-weight:600;color:#5a7a9f;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.35rem}
+.rc-amount{font-family:'IBM Plex Mono',monospace;font-size:2.25rem;font-weight:600;color:#2DDE9C;letter-spacing:-1px;line-height:1;text-shadow:0 0 20px rgba(45,222,156,0.2)}
+.rc-body{padding:1.1rem 1.5rem}
+.rc-row{display:flex;justify-content:space-between;align-items:baseline;padding:0.4rem 0;border-bottom:1px solid #141f33;font-size:0.78rem}
+.rc-row:last-child{border-bottom:none}
+.rc-key{color:#5a7a9f;font-weight:500}
+.rc-val{font-family:'IBM Plex Mono',monospace;color:#c8d8ee;font-weight:500;text-align:right}
+.rc-val.gold{color:#D4A843}
+.rc-val.green{color:#22C98A}
+.rc-divider{border:none;border-top:1px dashed #1e3050;margin:0.35rem 0}
+.rc-foot{padding:0.9rem 1.5rem 1.2rem;text-align:center}
+.rc-seal{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.2);border-radius:6px;padding:0.3rem 0.7rem}
+.rc-seal-dot{width:5px;height:5px;border-radius:50%;background:#D4A843}
+.rc-seal-text{font-size:0.6rem;font-weight:700;color:#D4A843;letter-spacing:0.5px}
+.rc-ref{font-family:'IBM Plex Mono',monospace;font-size:0.58rem;color:#2d4a6a;letter-spacing:1px;margin-top:0.4rem}
+.rc-wm{position:absolute;bottom:48px;right:14px;font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;color:rgba(212,168,67,0.045);letter-spacing:-1px;pointer-events:none;user-select:none;line-height:1}
+
+/* CUSTOM RECEIPT PANEL */
+.custom-receipt-grid{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start}
+.custom-receipt-form{width:100%;max-width:430px}
+.custom-receipt-preview{display:flex;flex-direction:column;align-items:center;gap:0.7rem}
+.custom-receipt-preview .rc-amount-label{text-transform:none;letter-spacing:0.4px}
+.custom-receipt-actions{display:flex;gap:0.6rem;flex-wrap:wrap;justify-content:center}
+
+@keyframes rcHeadShine{
+  0%, 70%, 100%{left:-42%;opacity:0}
+  10%{opacity:0.5}
+  35%{left:118%;opacity:0.18}
+}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:1rem 0}
+
+/* RESPONSIVE */
+@media(max-width:700px){
+  .wrap{padding:1rem}
+  .panel{padding:1rem}
+  td,th{padding:0.5rem 0.4rem}
+  .col-id{display:none}
+  .flash-stack{top:calc(60px + 0.75rem);right:0.75rem;width:min(240px,calc(100% - 1.5rem))}
+  .custom-receipt-grid{grid-template-columns:1fr}
+  .custom-receipt-form{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Trade<span>Nex</span></div>
+  <div class="nav-right">
+    <span class="admin-label">Admin Panel</span>
+    <a href="/admin/logout" class="btn-logout">Log Keluar</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="page-title">Urus Akaun <span>{{ users|length }} user berdaftar</span></div>
+    <button class="btn btn-gold" onclick="toggleCreate()">+ Cipta User Baru</button>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ===== CIPTA USER BARU ===== -->
+  <div class="panel" id="createPanel">
+    <div class="panel-header">
+      <span class="panel-title">Cipta User Baru</span>
+      <button class="btn btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem" onclick="toggleCreate()">Tutup ✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin_create_user') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="form-row form-full">
+          <label class="form-label">Nama Penuh</label>
+          <input class="form-input" type="text" name="full_name" placeholder="cth: Ahmad bin Ali" required>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="text" name="password" placeholder="Tetapkan password" required>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Modal Awal (RM)</label>
+          <input class="form-input" type="number" step="0.01" min="0" name="balance" value="0.00">
+        </div>
+        <div class="form-full" style="display:flex;justify-content:flex-end;margin-top:0.25rem">
+          <button type="submit" class="btn btn-gold">+ Cipta User</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== SENARAI USER ===== -->
+  <div class="panel" id="customReceiptPanel">
+    <div class="panel-header">
+      <span class="panel-title">Generator Resit Custom</span>
+    </div>
+    <div class="custom-receipt-grid">
+      <div class="custom-receipt-form">
+        <div class="form-grid">
+          <div class="form-row form-full">
+            <label class="form-label">Nama Pelanggan</label>
+            <input class="form-input" type="text" id="customName" placeholder="cth: Natashah Imani Binti Lee" oninput="updateCustomReceipt()">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Amaun (RM)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="customAmount" placeholder="0.00" oninput="updateCustomReceipt()">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Baki Selepas Withdraw (RM)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="customAfter" placeholder="0.00" oninput="updateCustomReceipt()">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Tarikh & Masa</label>
+            <input class="form-input" type="datetime-local" id="customDate" oninput="updateCustomReceipt()">
+          </div>
+          <div class="form-row form-full">
+            <label class="form-label">Jenis Transaksi</label>
+            <input class="form-input" type="text" value="Keuntungan" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="custom-receipt-preview">
+        <div id="customReceiptCard">
+          <div class="rc-wm">TradeNex</div>
+          <div class="rc-head">
+            <div class="rc-logo">Trade<span>Nex</span> Capital</div>
+            <div class="rc-badge">
+              <span class="rc-badge-icon">✓</span>
+              <span class="rc-badge-text">BERJAYA</span>
+            </div>
+          </div>
+          <div class="rc-amount-sec">
+            <div class="rc-amount-label">Amaun Withdraw</div>
+            <div class="rc-amount" id="crcAmount">RM 0.00</div>
+          </div>
+          <div class="rc-body">
+            <div class="rc-row">
+              <span class="rc-key">Nama Pelanggan</span>
+              <span class="rc-val" id="crcName">—</span>
+            </div>
+            <div class="rc-row">
+              <span class="rc-key">NOVA ID</span>
+              <span class="rc-val gold" id="crcNovaId">—</span>
+            </div>
+            <div class="rc-row">
+              <span class="rc-key">Jenis Transaksi</span>
+              <span class="rc-val" id="crcType">Keuntungan</span>
+            </div>
+            <div class="rc-row">
+              <span class="rc-key">Baki Selepas Withdraw</span>
+              <span class="rc-val green" id="crcAfter">RM —</span>
+            </div>
+            <div class="rc-row">
+              <span class="rc-key">Tarikh &amp; Masa</span>
+              <span class="rc-val" id="crcDate">—</span>
+            </div>
+            <hr class="rc-divider">
+            <div class="rc-row">
+              <span class="rc-key">No. Rujukan</span>
+              <span class="rc-val gold" id="crcRef">—</span>
+            </div>
+          </div>
+          <div class="rc-foot">
+            <div class="rc-seal">
+              <div class="rc-seal-dot"></div>
+              <span class="rc-seal-text">DISAHKAN OLEH TRADENEX CAPITAL</span>
+              <div class="rc-seal-dot"></div>
+            </div>
+            <div class="rc-ref" id="crcFootRef">tradenex.com.my</div>
+          </div>
+        </div>
+        <div class="custom-receipt-actions">
+          <button class="btn btn-outline" type="button" onclick="regenCustomCodes()">Jana NOVA ID & Rujukan</button>
+          <button class="btn btn-outline" type="button" onclick="resetCustomReceipt()">Reset</button>
+          <button class="btn btn-gold" type="button" id="btnSaveCustomImg" onclick="saveCustomReceipt()">⬇ Simpan Resit Custom</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>NOVA ID</th>
+          <th class="col-nama">Nama</th>
+          <th>Modal (RM)</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="col-id">{{ u.nova_id }}</td>
+          <td class="col-nama">{{ u.full_name }}</td>
+          <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
+          <td>
+            {% if not u.is_active %}
+              <span class="badge badge-off">Tidak Aktif</span>
+            {% elif u.is_trade_closed %}
+              <span class="badge badge-selesai">Selesai</span>
+            {% elif u.entries|length > 0 %}
+              <span class="badge badge-aktif">Aktif</span>
+            {% else %}
+              <span class="badge badge-sedia">Sedia</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-outline" onclick="selectUser({{ u.id }})">Urus</button>
+              <form method="POST" action="{{ url_for('admin_clear_history', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Buang semua history entry untuk {{ u.nova_id }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">Clear</button>
+              </form>
+                {% if u.is_trade_closed %}
+                <button type="button" class="btn btn-wd" onclick='openWithdraw({{ u.id }}, {{ u.nova_id|tojson }}, {{ u.full_name|tojson }}, {{ u.withdraw_live_balance|default(0)|float }})'>Withdraw</button>
+              {% else %}
+              <button class="btn btn-wd-disabled" disabled title="Hanya boleh withdraw bila status Selesai">Withdraw</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada user lagi. Cipta user baru untuk mula.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== DETAIL PANEL PER USER ===== -->
+  {% for u in users %}
+  <div class="panel detail-panel" id="detail-{{ u.id }}">
+
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">{{ u.full_name }}</div>
+        <div class="detail-id">{{ u.nova_id }}</div>
+      </div>
+      <button class="btn btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem" onclick="closeUser({{ u.id }})">Tutup ✕</button>
+    </div>
+
+    <div class="detail-grid">
+
+      <!-- Kiri: Kemaskini maklumat -->
+      <div>
+        <div class="detail-section-title">Kemaskini Akaun</div>
+        <form method="POST" action="{{ url_for('admin_update_user', user_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-row" style="margin-bottom:0.7rem">
+            <label class="form-label">Nama Penuh</label>
+            <input class="form-input" type="text" name="full_name" value="{{ u.full_name }}">
+          </div>
+          <div class="form-row" style="margin-bottom:0.7rem">
+            <label class="form-label">Modal Asal (RM)</label>
+            <input class="form-input" type="number" step="0.01" min="0" name="balance" value="{{ u.balance }}">
+          </div>
+          <div class="form-row" style="margin-bottom:0.7rem">
+            <label class="form-label">Tukar Password (kosong = tak tukar)</label>
+            <input class="form-input" type="text" name="new_password" placeholder="Password baru">
+          </div>
+          <div class="checkbox-row" style="margin-bottom:0.85rem">
+            <input type="checkbox" name="is_active" id="active-{{ u.id }}" {{ 'checked' if u.is_active }}>
+            <label for="active-{{ u.id }}">Akaun Aktif</label>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <button type="submit" class="btn btn-gold">Simpan</button>
+          </div>
+        </form>
+        <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.id) }}" style="display:block;margin-top:0.5rem" onsubmit="return confirm('Padam akaun {{ u.nova_id }}? Tidak boleh diundur.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">🗑 Padam Akaun</button>
+        </form>
+      </div>
+
+      <!-- Kanan: Tambah entry graf -->
+      <div>
+        <div class="detail-section-title">Tambah Entry Graf</div>
+        <form method="POST" action="{{ url_for('admin_add_entry', user_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="entry_type" id="entryType-{{ u.id }}" value="entry">
+          <div class="form-row" style="margin-bottom:0.7rem">
+            <label class="form-label">Masa (kosong = sekarang)</label>
+            <input class="form-input" type="datetime-local" name="entry_time">
+          </div>
+          <div class="form-row" style="margin-bottom:0.7rem">
+            <label class="form-label">Nilai Portfolio (RM)</label>
+            <input class="form-input" type="number" step="0.01" min="0" name="value" placeholder="cth: 15250.00" required>
+          </div>
+          <div class="form-row" style="margin-bottom:0.85rem">
+            <label class="form-label">Catatan (pilihan)</label>
+            <input class="form-input" type="text" name="note" placeholder="cth: Beli FCPO">
+          </div>
+          <div style="display:flex;gap:0.5rem">
+            <button type="button" class="btn btn-outline" style="flex:1;color:var(--gold);border-color:var(--gold)" onclick="previewChart({{ u.id }}, {{ u.balance }})">👁 Preview</button>
+            <button type="submit" class="btn btn-gold" style="flex:1" onclick="document.getElementById('entryType-{{ u.id }}').value='entry'">▶ Entry</button>
+            <button type="submit" class="btn btn-danger" style="flex:1" onclick="document.getElementById('entryType-{{ u.id }}').value='close'">■ Close</button>
+          </div>
+        </form>
+
+        <!-- Senarai entry -->
+        <div class="entry-list">
+          {% for e in u.entries %}
+          <div class="entry-item">
+            <div>
+              <span style="color:var(--muted);font-size:0.72rem">{{ e.entry_date.strftime('%d/%m/%y %H:%M') }}</span>
+              {% if e.note %}<span style="color:var(--muted);font-size:0.72rem"> · {{ e.note }}</span>{% endif %}
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              <span class="entry-val">RM {{ "%.2f"|format(e.value) }}</span>
+              <form method="POST" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" style="display:inline" onsubmit="return confirm('Padam entry ini?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger" style="padding:0.15rem 0.45rem;font-size:0.7rem">✕</button>
+              </form>
+            </div>
+          </div>
+          {% else %}
+          <p style="color:var(--muted);font-size:0.78rem;padding:0.5rem 0">Tiada entry lagi.</p>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+<!-- ===== WITHDRAW MODAL ===== -->
+<div class="modal-overlay" id="withdrawModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeWithdraw()">✕</button>
+    <div class="modal-title">Withdraw</div>
+    <p class="modal-sub" id="wModalSub">—</p>
+
+    <div class="modal-info-row">
+      <div class="modal-info-label">Baki Terkini (Live)</div>
+      <div class="modal-info-val" id="wCurrentBal">RM —</div>
+    </div>
+
+    <div class="form-row" style="margin-bottom:0.75rem">
+      <label class="form-label">Amaun Withdraw (RM)</label>
+      <input class="form-input" type="number" step="0.01" min="0.01" id="wAmount" placeholder="0.00" oninput="recalcWd()">
+    </div>
+
+    <div class="modal-info-row">
+      <div class="modal-info-label">Baki Selepas Withdraw</div>
+      <div class="modal-info-val after" id="wAfterBal">RM —</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeWithdraw()">Batal</button>
+      <button class="btn btn-gold" id="wConfirmBtn" disabled onclick="showReceipt()">Sahkan Withdraw</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RECEIPT MODAL ===== -->
+<div class="receipt-overlay" id="receiptOverlay">
+  <div class="receipt-wrap">
+    <div id="receiptCard">
+      <div class="rc-wm">TradeNex</div>
+      <div class="rc-head">
+        <div class="rc-logo">Trade<span>Nex</span> Capital</div>
+        <div class="rc-badge">
+          <span class="rc-badge-icon">✓</span>
+          <span class="rc-badge-text">BERJAYA</span>
+        </div>
+      </div>
+      <div class="rc-amount-sec">
+        <div class="rc-amount-label">Amaun Withdraw</div>
+        <div class="rc-amount" id="rcAmount">RM 0.00</div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-row">
+          <span class="rc-key">Nama Pelanggan</span>
+          <span class="rc-val" id="rcName">—</span>
+        </div>
+        <div class="rc-row">
+          <span class="rc-key">NOVA ID</span>
+          <span class="rc-val gold" id="rcNovaId">—</span>
+        </div>
+        <div class="rc-row">
+          <span class="rc-key">Jenis Transaksi</span>
+          <span class="rc-val">Pengeluaran Keuntungan</span>
+        </div>
+        <div class="rc-row">
+          <span class="rc-key">Baki Selepas Withdraw</span>
+          <span class="rc-val green" id="rcAfter">RM —</span>
+        </div>
+        <div class="rc-row">
+          <span class="rc-key">Tarikh &amp; Masa</span>
+          <span class="rc-val" id="rcDate">—</span>
+        </div>
+        <hr class="rc-divider">
+        <div class="rc-row">
+          <span class="rc-key">No. Rujukan</span>
+          <span class="rc-val gold" id="rcRef">—</span>
+        </div>
+      </div>
+      <div class="rc-foot">
+        <div class="rc-seal">
+          <div class="rc-seal-dot"></div>
+          <span class="rc-seal-text">DISAHKAN OLEH TRADENEX CAPITAL</span>
+          <div class="rc-seal-dot"></div>
+        </div>
+        <div class="rc-ref" id="rcFootRef">tradenex.com.my</div>
+      </div>
+    </div>
+    <div class="receipt-actions">
+      <button class="btn btn-outline" id="btnSaveImg" onclick="saveReceipt()">⬇ Simpan Resit</button>
+      <button class="btn btn-gold" onclick="submitWithdraw()">Tutup &amp; Hantar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden withdraw form -->
+<form id="wForm" method="POST" style="display:none">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="withdraw_amount" id="wAmountHidden">
+</form>
+
+<!-- ===== CHART PREVIEW MODAL ===== -->
+<div class="modal-overlay" id="previewModal" style="display:none">
+  <div class="modal" style="max-width:600px">
+    <button class="modal-close" onclick="closePreview()">✕</button>
+    <div class="modal-title">Preview Candlestick Chart</div>
+    <div style="padding:1rem 0;text-align:center;font-size:0.82rem;color:var(--muted)">
+      <div id="previewInfo">Entry: RM —  →  Close: RM —</div>
+    </div>
+    <div style="background:#0F1C32;border-radius:8px;padding:0.5rem;margin-bottom:1rem;position:relative;min-height:300px">
+      <canvas id="previewCanvas" style="width:100%;border-radius:6px;display:block"></canvas>
+    </div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closePreview()">Tutup</button>
+      <button class="btn btn-gold" onclick="closePreview()">OK, Sambung</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ── TOAST AUTO-DISMISS ── */
+document.addEventListener('DOMContentLoaded', function(){
+  var toasts = document.querySelectorAll('.flash');
+  toasts.forEach(function(toast){
+    setTimeout(function(){
+      toast.style.animation = 'slideOut 0.3s ease-out forwards';
+      setTimeout(function(){ toast.remove(); }, 300);
+    }, 4000);
+  });
+
+  initCustomReceipt();
+});
+
+var _wUserId = null, _wBalance = 0, _wNovaId = '', _wFullName = '';
+var _customNovaId = '';
+var _customRef = '';
+
+/* ── CREATE PANEL ── */
+function toggleCreate(){
+  var p = document.getElementById('createPanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) p.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ── DETAIL PANEL ── */
+function selectUser(id){
+  document.querySelectorAll('.detail-panel').forEach(function(el){ el.classList.remove('active'); });
+  var t = document.getElementById('detail-'+id);
+  if(t){ t.classList.add('active'); setTimeout(function(){ t.scrollIntoView({behavior:'smooth',block:'start'}); },50); }
+}
+function closeUser(id){
+  var t = document.getElementById('detail-'+id);
+  if(t) t.classList.remove('active');
+}
+
+/* ── WITHDRAW MODAL ── */
+function openWithdraw(userId, novaId, fullName, currentBalance){
+  _wUserId = userId; _wBalance = currentBalance; _wNovaId = novaId; _wFullName = fullName;
+  document.getElementById('wModalSub').textContent = novaId + ' — ' + fullName;
+  document.getElementById('wCurrentBal').textContent = 'RM ' + currentBalance.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('wAmount').value = '';
+  document.getElementById('wAfterBal').textContent = 'RM —';
+  document.getElementById('wConfirmBtn').disabled = true;
+  document.getElementById('withdrawModal').classList.add('open');
+}
+function closeWithdraw(){
+  document.getElementById('withdrawModal').classList.remove('open');
+}
+function recalcWd(){
+  var amt = parseFloat(document.getElementById('wAmount').value) || 0;
+  var after = _wBalance - amt;
+  var btn = document.getElementById('wConfirmBtn');
+  if(amt > 0 && amt <= _wBalance){
+    document.getElementById('wAfterBal').textContent = 'RM ' + after.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+    btn.disabled = false;
+  } else {
+    document.getElementById('wAfterBal').textContent = amt > _wBalance ? '⚠ Melebihi baki' : 'RM —';
+    btn.disabled = true;
+  }
+}
+document.getElementById('withdrawModal').addEventListener('click',function(e){ if(e.target===this) closeWithdraw(); });
+
+/* ── RECEIPT ── */
+function genRef(){
+  var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', r='TXW-';
+  for(var i=0;i<4;i++) r+=c[Math.floor(Math.random()*c.length)];
+  r+='-';
+  for(var j=0;j<5;j++) r+=c[Math.floor(Math.random()*c.length)];
+  return r;
+}
+function fmtDate(d){
+  var dy=['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
+  var mo=['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogs','Sep','Okt','Nov','Dis'];
+  return dy[d.getDay()]+', '+d.getDate()+' '+mo[d.getMonth()]+' '+d.getFullYear()+
+    '  ·  '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function showReceipt(){
+  var amt = parseFloat(document.getElementById('wAmount').value) || 0;
+  if(amt <= 0 || amt > _wBalance) return;
+  var after = _wBalance - amt;
+  var ref = genRef();
+  var now = new Date();
+
+  document.getElementById('rcAmount').textContent = 'RM '+amt.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('rcName').textContent = _wFullName;
+  document.getElementById('rcNovaId').textContent = _wNovaId;
+  document.getElementById('rcAfter').textContent = 'RM '+after.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('rcDate').textContent = fmtDate(now);
+  document.getElementById('rcRef').textContent = ref;
+  document.getElementById('rcFootRef').textContent = 'tradenex.com.my  ·  Ref: '+ref;
+
+  document.getElementById('wAmountHidden').value = amt.toFixed(2);
+  document.getElementById('wForm').action = '/admin/user/'+_wUserId+'/withdraw';
+
+  closeWithdraw();
+  document.getElementById('receiptOverlay').classList.add('open');
+}
+function submitWithdraw(){
+  document.getElementById('receiptOverlay').classList.remove('open');
+  document.getElementById('wForm').submit();
+}
+function saveReceipt(){
+  var btn = document.getElementById('btnSaveImg');
+  btn.textContent = '⏳ Menjana...'; btn.disabled = true;
+  html2canvas(document.getElementById('receiptCard'),{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(function(canvas){
+    var a = document.createElement('a');
+    a.download = 'Resit-Withdraw-'+_wNovaId+'-'+document.getElementById('rcRef').textContent+'.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    btn.textContent = '✓ Tersimpan!';
+    setTimeout(function(){ btn.textContent = '⬇ Simpan Resit'; btn.disabled = false; }, 2500);
+  }).catch(function(){ btn.textContent = '⬇ Simpan Resit'; btn.disabled = false; });
+}
+document.getElementById('receiptOverlay').addEventListener('click',function(e){ if(e.target===this) submitWithdraw(); });
+
+/* ── CUSTOM RECEIPT GENERATOR ── */
+function formatRm(value){
+  return 'RM ' + value.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function genCustomNovaId(){
+  return 'TN' + String(Math.floor(Math.random()*10000)).padStart(4,'0');
+}
+function parseIsoDateToMs(iso){
+  if(!iso) return null;
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+function initCustomReceipt(){
+  var now = new Date();
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  var local = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+  _customNovaId = genCustomNovaId();
+  _customRef = genRef();
+  document.getElementById('customDate').value = local;
+  updateCustomReceipt();
+}
+function regenCustomCodes(){
+  _customNovaId = genCustomNovaId();
+  _customRef = genRef();
+  updateCustomReceipt();
+}
+function updateCustomReceipt(){
+  var name = (document.getElementById('customName').value || '').trim();
+  var dateIso = document.getElementById('customDate').value;
+  var dateObj = parseIsoDateToMs(dateIso) || new Date();
+  var amount = parseFloat(document.getElementById('customAmount').value);
+  var after = parseFloat(document.getElementById('customAfter').value);
+
+  if(!_customNovaId) _customNovaId = genCustomNovaId();
+  if(!_customRef) _customRef = genRef();
+
+  document.getElementById('crcName').textContent = name || '—';
+  document.getElementById('crcNovaId').textContent = _customNovaId;
+  document.getElementById('crcType').textContent = 'Keuntungan';
+  document.getElementById('crcDate').textContent = fmtDate(dateObj);
+  document.getElementById('crcRef').textContent = _customRef;
+  document.getElementById('crcFootRef').textContent = 'tradenex.com.my  ·  Ref: ' + _customRef;
+  document.getElementById('crcAmount').textContent = isFinite(amount) ? formatRm(amount) : 'RM 0.00';
+  document.getElementById('crcAfter').textContent = isFinite(after) ? formatRm(after) : 'RM —';
+}
+function resetCustomReceipt(){
+  document.getElementById('customName').value = '';
+  document.getElementById('customAmount').value = '';
+  document.getElementById('customAfter').value = '';
+  initCustomReceipt();
+}
+function saveCustomReceipt(){
+  updateCustomReceipt();
+  var btn = document.getElementById('btnSaveCustomImg');
+  var customRef = (document.getElementById('crcRef').textContent || '').replace(/[^A-Za-z0-9-]/g,'') || 'Custom';
+  var customNova = (_customNovaId || 'NOID').replace(/[^A-Za-z0-9-]/g,'');
+
+  btn.textContent = '⏳ Menjana...';
+  btn.disabled = true;
+  html2canvas(document.getElementById('customReceiptCard'),{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(function(canvas){
+    var a = document.createElement('a');
+    a.download = 'Resit-Custom-' + customNova + '-' + customRef + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    btn.textContent = '✓ Tersimpan!';
+    setTimeout(function(){ btn.textContent = '⬇ Simpan Resit Custom'; btn.disabled = false; }, 2500);
+  }).catch(function(){
+    btn.textContent = '⬇ Simpan Resit Custom';
+    btn.disabled = false;
+  });
+}
+
+/* ── CHART PREVIEW ── */
+function closePreview(){
+  document.getElementById('previewModal').style.display = 'none';
+}
+
+function previewChart(userId, startingBalance){
+  var panel = document.getElementById('detail-' + userId);
+  if(!panel){
+    alert('Panel user tidak ditemui. Sila buka panel user dahulu.');
+    return;
+  }
+
+  var valueInput = panel.querySelector('input[name="value"]');
+  var entryVal = valueInput ? parseFloat(valueInput.value) || 0 : 0;
+  if(entryVal <= 0){
+    alert('Sila masukkan nilai entry yang sah (> 0)');
+    return;
+  }
+  
+  document.getElementById('previewInfo').textContent = 'Entry: RM '+startingBalance.toFixed(2)+' → Close: RM '+entryVal.toFixed(2);
+  document.getElementById('previewModal').style.display = 'flex';
+  
+  setTimeout(function(){
+    renderPreviewChart(startingBalance, entryVal, userId);
+  }, 50);
+}
+
+function renderPreviewChart(startingBalance, finalTarget, userId){
+  var cvs = document.getElementById('previewCanvas');
+  var ctx = cvs.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  
+  cvs.width = cvs.offsetWidth * dpr;
+  cvs.height = 280 * dpr;
+  ctx.scale(dpr, dpr);
+  
+  var w = cvs.width / dpr;
+  var h = cvs.height / dpr;
+  var pad = 30;
+  var chartW = w - pad * 2;
+  var chartH = h - pad * 2;
+  
+  // Background
+  ctx.fillStyle = '#0F1C32';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Grid
+  ctx.strokeStyle = 'rgba(30,48,80,0.5)';
+  ctx.lineWidth = 0.5;
+  for(var i=0;i<=4;i++){
+    var y = pad + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(w - pad, y);
+    ctx.stroke();
+  }
+  
+  // Y-axis labels
+  ctx.fillStyle = '#8FA3BF';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'right';
+  var yMin = Math.max(1, startingBalance * 0.5);
+  var yMax = finalTarget * 1.3;
+  for(var i=0;i<=4;i++){
+    var frac = i / 4;
+    var val = yMin + (yMax - yMin) * frac;
+    var y = pad + chartH - (chartH / 4) * i;
+    ctx.fillText('RM ' + val.toFixed(0), pad - 5, y + 4);
+  }
+  
+  // Simulate candles
+  var numCandles = 20;
+  var candleW = chartW / (numCandles + 1);
+  var priceFloor = Math.max(1, startingBalance * 0.05);
+  
+  for(var ci=0; ci<numCandles; ci++){
+    var frac = ci / (numCandles - 1);
+    var targetPrice = startingBalance + (finalTarget - startingBalance) * frac;
+    
+    // Random noise (small)
+    var noise = (Math.random() - 0.5) * (Math.abs(finalTarget - startingBalance) * 0.05);
+    var o = Math.max(priceFloor, targetPrice + noise);
+    var c = Math.max(priceFloor, targetPrice + (Math.random() - 0.5) * (targetPrice * 0.02));
+    var h = Math.max(o, c) * (1 + Math.random() * 0.03);
+    var l = Math.min(o, c) * (1 - Math.random() * 0.02);
+    l = Math.max(priceFloor, l);
+    
+    // Plot candle
+    var x = pad + (ci + 1) * candleW;
+    var yO = pad + chartH - ((o - yMin) / (yMax - yMin)) * chartH;
+    var yC = pad + chartH - ((c - yMin) / (yMax - yMin)) * chartH;
+    var yH = pad + chartH - ((h - yMin) / (yMax - yMin)) * chartH;
+    var yL = pad + chartH - ((l - yMin) / (yMax - yMin)) * chartH;
+    
+    // Wick
+    ctx.strokeStyle = c >= o ? '#22C98A' : '#FF5B5B';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, yH);
+    ctx.lineTo(x, yL);
+    ctx.stroke();
+    
+    // Body
+    var bodyH = Math.abs(yC - yO);
+    ctx.fillStyle = c >= o ? 'rgba(34,201,138,0.7)' : 'rgba(255,91,91,0.7)';
+    ctx.fillRect(x - 2, Math.min(yO, yC), 4, Math.max(bodyH, 1));
+  }
+  
+  // Title
+  ctx.fillStyle = '#D4A843';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  var gap = finalTarget - startingBalance;
+  var label = gap > 0 ? '+' + gap.toFixed(0) : gap.toFixed(0);
+  ctx.fillText('Price Movement: ' + label + ' RM', w / 2, 20);
+}
+</script>
+</body>
+</html>

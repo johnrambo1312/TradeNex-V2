@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeNex Capital — Platform Niaga Malaysia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0B1629;
+  --navy2:#111E35;
+  --navy3:#192847;
+  --gold:#D4A843;
+  --gold2:#F0C96A;
+  --white:#FFFFFF;
+  --text-muted:#8FA3BF;
+  --text-light:#C8D8EE;
+  --border:#1E3050;
+  --green:#22C98A;
+  --red:#FF5B5B;
+}
+html{scroll-behavior:smooth}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);overflow-x:hidden}
+.num{font-family:'IBM Plex Mono',monospace}
+
+/* ===== NAV ===== */
+nav{
+  background:rgba(11,22,41,0.97);
+  border-bottom:1px solid var(--border);
+  padding:0 4rem;
+  display:flex;align-items:center;justify-content:space-between;
+  height:68px;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(8px);
+}
+.logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--white);letter-spacing:-0.5px;text-decoration:none}
+.logo span{color:var(--gold)}
+.nav-links{display:flex;gap:2.25rem;list-style:none}
+.nav-links a{color:var(--text-muted);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover{color:var(--white)}
+.nav-btns{display:flex;gap:0.75rem;align-items:center}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.5rem 1.2rem;border-radius:6px;font-size:0.82rem;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn-primary{background:var(--gold);border:none;color:#0B1629;padding:0.5rem 1.3rem;border-radius:6px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s}
+.btn-primary:hover{background:var(--gold2)}
+
+/* ===== TICKER ===== */
+.ticker{background:var(--navy3);border-bottom:1px solid var(--border);padding:0.55rem 0;overflow:hidden;font-size:0.75rem;position:relative}
+.ticker-track{display:flex;gap:3rem;min-width:max-content;padding:0 4rem;animation:ticker-scroll 36s linear infinite}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.tick-item{display:flex;align-items:center;gap:0.5rem;white-space:nowrap}
+.tick-name{color:var(--text-muted);font-weight:600}
+.tick-price{color:var(--white);font-weight:600}
+.tick-up{color:var(--green)}
+.tick-dn{color:var(--red)}
+@keyframes ticker-scroll{
+  from{transform:translateX(0)}
+  to{transform:translateX(-50%)}
+}
+
+/* ===== HERO ===== */
+.hero{
+  min-height:600px;
+  display:flex;align-items:center;
+  padding:6rem 4rem 5rem;
+  background:
+    radial-gradient(ellipse 55% 65% at 72% 50%, rgba(212,168,67,0.08) 0%, transparent 65%),
+    linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-40%;right:-10%;
+  width:600px;height:600px;
+  border-radius:50%;
+  border:1px solid rgba(212,168,67,0.06);
+  pointer-events:none;
+}
+.hero-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;width:100%}
+.hero-badge{display:inline-flex;align-items:center;gap:0.5rem;background:rgba(212,168,67,0.12);border:1px solid rgba(212,168,67,0.3);color:var(--gold);font-size:0.72rem;font-weight:700;padding:0.35rem 0.9rem;border-radius:20px;margin-bottom:1.75rem;letter-spacing:0.8px;text-transform:uppercase}
+.hero h1{font-family:'Syne',sans-serif;font-size:3.25rem;font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin-bottom:1.25rem}
+.hero h1 .accent{color:var(--gold)}
+.hero-desc{color:var(--text-muted);font-size:1rem;line-height:1.75;margin-bottom:2.25rem;max-width:460px}
+.hero-ctas{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.cta-main{background:var(--gold);color:#0B1629;padding:0.85rem 1.9rem;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer;border:none;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;text-decoration:none;display:inline-block}
+.cta-main:hover{background:var(--gold2);transform:translateY(-2px)}
+.cta-sec{background:transparent;color:var(--white);padding:0.85rem 1.7rem;border-radius:8px;font-size:0.9rem;font-weight:500;cursor:pointer;border:1px solid var(--border);font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;text-decoration:none;display:inline-block}
+.cta-sec:hover{border-color:var(--text-muted)}
+
+/* Chart Card */
+.chart-card{background:var(--navy3);border:1px solid var(--border);border-radius:18px;padding:1.75rem;position:relative}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}
+.chart-pair{font-weight:700;font-size:0.95rem}
+.chart-change{color:var(--green);font-size:0.78rem;font-weight:600;background:rgba(34,201,138,0.1);padding:0.25rem 0.65rem;border-radius:4px}
+.chart-price{font-family:'IBM Plex Mono',monospace;font-size:2.25rem;font-weight:600;margin-top:0.25rem;letter-spacing:-1px}
+.chart-sub{color:var(--text-muted);font-size:0.73rem;margin-bottom:1.25rem;margin-top:0.2rem}
+svg.sparkline{width:100%;height:110px}
+.chart-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-top:1rem}
+.cs-item{background:var(--navy2);border-radius:8px;padding:0.65rem 0.8rem}
+.cs-label{color:var(--text-muted);font-size:0.68rem;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:0.5px}
+.cs-val{font-size:0.9rem;font-weight:600}
+.cs-up{color:var(--green)}
+.cs-dn{color:var(--red)}
+
+/* ===== STATS STRIP ===== */
+.stats-strip{background:var(--navy3);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.stats-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.stat-item{text-align:center;padding:2.25rem 1rem;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:'IBM Plex Mono',monospace;font-size:2.25rem;font-weight:700;color:var(--gold)}
+.stat-label{color:var(--text-muted);font-size:0.8rem;margin-top:0.35rem}
+
+/* ===== SECTIONS ===== */
+section{padding:6rem 4rem}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-eye{color:var(--gold);font-size:0.72rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:0.75rem}
+.section-title{font-family:'Syne',sans-serif;font-size:2.25rem;font-weight:800;letter-spacing:-0.75px;margin-bottom:1rem;line-height:1.15}
+.section-desc{color:var(--text-muted);font-size:0.95rem;line-height:1.75;max-width:520px;margin-bottom:3rem}
+
+/* ===== PRODUCTS ===== */
+.products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.prod-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:2rem;transition:all 0.25s;cursor:pointer;position:relative;overflow:hidden;text-decoration:none;display:block;color:inherit}
+.prod-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(212,168,67,0.06),transparent);opacity:0;transition:opacity 0.25s}
+.prod-card:hover{border-color:rgba(212,168,67,0.4);transform:translateY(-4px)}
+.prod-card:hover::after{opacity:1}
+.prod-icon{width:48px;height:48px;border-radius:12px;background:rgba(212,168,67,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;font-size:1.4rem}
+.prod-tag{display:inline-block;background:rgba(34,201,138,0.1);color:var(--green);font-size:0.68rem;font-weight:700;padding:0.2rem 0.65rem;border-radius:4px;margin-bottom:0.75rem;letter-spacing:0.5px;text-transform:uppercase}
+.prod-name{font-weight:700;font-size:1.05rem;margin-bottom:0.6rem}
+.prod-desc{color:var(--text-muted);font-size:0.85rem;line-height:1.65;margin-bottom:1.5rem}
+.prod-link{color:var(--gold);font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:0.4rem}
+
+/* ===== PLATFORMS ===== */
+.platforms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.plat-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:2rem;transition:border-color 0.25s}
+.plat-card:hover{border-color:rgba(212,168,67,0.35)}
+.plat-badge{font-size:0.68rem;font-weight:700;background:rgba(212,168,67,0.15);color:var(--gold);padding:0.25rem 0.75rem;border-radius:4px;display:inline-block;margin-bottom:1rem;letter-spacing:1px;text-transform:uppercase}
+.plat-card.featured{border-color:rgba(212,168,67,0.45)}
+.plat-badge.gold{background:var(--gold);color:#0B1629}
+.plat-name{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:0.5rem}
+.plat-sub{color:var(--text-muted);font-size:0.82rem;margin-bottom:1.5rem;line-height:1.5}
+.plat-feats{list-style:none;display:flex;flex-direction:column;gap:0.6rem}
+.plat-feats li{color:var(--text-light);font-size:0.83rem;display:flex;align-items:flex-start;gap:0.6rem;line-height:1.4}
+.plat-feats li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* ===== WHY US ===== */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.why-card{padding:2rem;border-radius:16px;border:1px solid var(--border);background:var(--navy2)}
+.why-num{font-family:'Syne',sans-serif;font-size:3.5rem;font-weight:800;color:rgba(255,255,255,0.06);line-height:1;margin-bottom:1.25rem}
+.why-title{font-weight:700;font-size:1.05rem;margin-bottom:0.6rem}
+.why-text{color:var(--text-muted);font-size:0.85rem;line-height:1.7}
+
+/* ===== EDUCATION ===== */
+.edu-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem}
+.edu-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.75rem;text-align:center;transition:all 0.25s;cursor:pointer;text-decoration:none;display:block;color:inherit}
+.edu-card:hover{border-color:rgba(212,168,67,0.4);transform:translateY(-3px)}
+.edu-icon{font-size:2rem;margin-bottom:1rem;display:block}
+.edu-name{font-weight:700;font-size:0.92rem;margin-bottom:0.4rem}
+.edu-desc{color:var(--text-muted);font-size:0.8rem;line-height:1.5}
+
+/* ===== ANNOUNCEMENTS ===== */
+.ann-list{display:flex;flex-direction:column}
+.ann-item{display:flex;justify-content:space-between;align-items:center;padding:1.35rem 0;border-bottom:1px solid var(--border);cursor:pointer;transition:all 0.2s;text-decoration:none;color:inherit}
+.ann-item:first-child{border-top:1px solid var(--border)}
+.ann-item:hover .ann-title{color:var(--gold)}
+.ann-title{font-size:0.9rem;font-weight:500;line-height:1.4;flex:1;padding-right:1.5rem}
+.ann-date{color:var(--text-muted);font-size:0.78rem;white-space:nowrap}
+.ann-arrow{color:var(--text-muted);margin-left:1.25rem;transition:transform 0.2s;font-size:1rem}
+.ann-item:hover .ann-arrow{transform:translateX(5px);color:var(--gold)}
+
+/* ===== CTA SECTION ===== */
+.cta-section{background:var(--navy3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:6rem 4rem;text-align:center}
+.cta-section h2{font-family:'Syne',sans-serif;font-size:2.75rem;font-weight:800;letter-spacing:-1.5px;margin-bottom:1rem}
+.cta-section p{color:var(--text-muted);margin-bottom:2.25rem;font-size:0.95rem}
+.cta-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+
+/* ===== FOOTER ===== */
+footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4rem 2.5rem}
+.footer-inner{max-width:1200px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;gap:3.5rem;margin-bottom:3.5rem}
+.footer-brand-name{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--white);text-decoration:none;display:inline-block}
+.footer-brand-name span{color:var(--gold)}
+.footer-brand p{color:var(--text-muted);font-size:0.83rem;line-height:1.7;margin-top:0.85rem;max-width:280px}
+.footer-social{display:flex;gap:0.6rem;margin-top:1.25rem}
+.social-btn{width:34px;height:34px;border-radius:7px;background:rgba(255,255,255,0.04);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.78rem;font-weight:700;cursor:pointer;transition:all 0.2s;text-decoration:none}
+.social-btn:hover{border-color:var(--gold);color:var(--gold)}
+.footer-col h4{font-weight:600;font-size:0.85rem;margin-bottom:1.25rem;color:var(--text-light)}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.7rem}
+.footer-col ul li a{color:var(--text-muted);text-decoration:none;font-size:0.83rem;transition:color 0.2s}
+.footer-col ul li a:hover{color:var(--gold)}
+.disclaimer-box{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:2rem}
+.disclaimer-box p{color:var(--text-muted);font-size:0.75rem;line-height:1.7}
+.footer-bottom{border-top:1px solid var(--border);padding-top:1.75rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-bottom p{color:var(--text-muted);font-size:0.77rem}
+.footer-legal{display:flex;gap:1.75rem}
+.footer-legal a{color:var(--text-muted);font-size:0.77rem;text-decoration:none;transition:color 0.2s}
+.footer-legal a:hover{color:var(--gold)}
+
+/* ===== CONTACT INFO ===== */
+.contact-info{display:flex;gap:2rem;margin-top:1.25rem;flex-wrap:wrap}
+.contact-item{display:flex;align-items:center;gap:0.5rem;color:var(--text-muted);font-size:0.82rem}
+.contact-item a{color:var(--text-light);text-decoration:none}
+.contact-item a:hover{color:var(--gold)}
+
+/* ===== LOGIN MODAL ===== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(5,12,25,0.85);
+  backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;
+}
+.modal-overlay.active{display:flex}
+.modal-box{
+  background:#0F1C32;
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:2.5rem 2rem;
+  width:100%;max-width:380px;
+  position:relative;
+}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  background:transparent;border:none;color:var(--text-muted);
+  font-size:1.3rem;cursor:pointer;line-height:1;
+  transition:color 0.2s;padding:0.25rem 0.5rem;border-radius:4px;
+}
+.modal-close:hover{color:var(--white)}
+.modal-logo{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;text-align:center;margin-bottom:0.4rem}
+.modal-logo span{color:var(--gold)}
+.modal-subtitle{text-align:center;color:var(--text-muted);font-size:0.8rem;margin-bottom:2rem}
+.modal-label{display:block;font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:0.4rem;letter-spacing:0.5px;text-transform:uppercase}
+.modal-input{
+  width:100%;background:#162033;border:1px solid var(--border);
+  border-radius:8px;padding:0.75rem 1rem;
+  color:var(--white);font-size:0.9rem;font-family:'IBM Plex Sans',sans-serif;
+  outline:none;transition:border-color 0.2s;margin-bottom:1.1rem;
+}
+.modal-input:focus{border-color:var(--gold)}
+.modal-input::placeholder{color:#3a5070}
+.modal-pw-wrap{position:relative;margin-bottom:1.1rem}
+.modal-pw-wrap .modal-input{margin-bottom:0}
+.modal-pw-toggle{
+  position:absolute;right:0.9rem;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;color:var(--text-muted);
+  cursor:pointer;font-size:0.8rem;font-family:'IBM Plex Sans',sans-serif;
+  transition:color 0.2s;
+}
+.modal-pw-toggle:hover{color:var(--gold)}
+.modal-forgot{text-align:right;margin-bottom:1.5rem;margin-top:0.4rem}
+.modal-forgot a{color:var(--text-muted);font-size:0.78rem;text-decoration:none;transition:color 0.2s}
+.modal-forgot a:hover{color:var(--gold)}
+.modal-btn{
+  width:100%;background:var(--gold);border:none;color:#0B1629;
+  padding:0.85rem;border-radius:8px;font-size:0.92rem;font-weight:700;
+  cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;
+}
+.modal-btn:hover{background:var(--gold2)}
+.modal-btn:active{transform:scale(0.98)}
+.modal-divider{display:flex;align-items:center;gap:0.75rem;margin:1.35rem 0}
+.modal-divider::before,.modal-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.modal-divider span{color:var(--text-muted);font-size:0.75rem}
+.modal-links{display:flex;justify-content:center;gap:1.5rem}
+.modal-links a{color:var(--text-muted);font-size:0.78rem;text-decoration:none;transition:color 0.2s}
+.modal-links a:hover{color:var(--gold)}
+.modal-disclaimer{
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:8px;padding:0.75rem;margin-top:1.25rem;
+}
+.modal-disclaimer p{color:var(--text-muted);font-size:0.7rem;line-height:1.6;text-align:center}
+.modal-error{
+  background:rgba(255,91,91,0.1);border:1px solid rgba(255,91,91,0.25);
+  border-radius:7px;padding:0.6rem 0.9rem;margin-bottom:1rem;
+  color:#FF8A8A;font-size:0.8rem;display:none;
+}
+.modal-error.show{display:block}
+
+/* ===== HAMBURGER ===== */
+.nav-hamburger{display:none;flex-direction:column;gap:5px;background:transparent;border:none;cursor:pointer;padding:0.4rem}
+.nav-hamburger span{width:22px;height:2px;background:var(--text-light);border-radius:2px;display:block;transition:all 0.3s}
+.mobile-menu{display:none;position:fixed;inset:0;top:68px;background:rgba(11,22,41,0.98);backdrop-filter:blur(10px);z-index:99;flex-direction:column;padding:2rem 1.5rem;gap:0.25rem;border-top:1px solid var(--border)}
+.mobile-menu.open{display:flex}
+.mobile-menu a{color:var(--text-light);text-decoration:none;font-size:1rem;font-weight:500;padding:0.85rem 0;border-bottom:1px solid var(--border);transition:color 0.2s}
+.mobile-menu a:hover{color:var(--gold)}
+.mobile-menu .mobile-ctas{display:flex;flex-direction:column;gap:0.6rem;margin-top:1.5rem}
+.mobile-menu .mobile-ctas button,.mobile-menu .mobile-ctas a{border-radius:8px;padding:0.85rem;text-align:center;font-size:0.92rem;font-weight:700;cursor:pointer;border:none;font-family:'IBM Plex Sans',sans-serif;display:block;text-decoration:none}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:900px){
+  nav{padding:0 1rem;height:60px}
+  .nav-links{display:none !important}
+  .nav-btns{display:none !important}
+  .nav-hamburger{display:flex !important}
+  section{padding:3rem 1rem}
+  .hero{padding:2.5rem 1rem 2rem;min-height:auto;overflow-x:hidden}
+  .hero::before{display:none}
+  .hero-grid{grid-template-columns:1fr;gap:1.5rem}
+  .hero h1{font-size:1.9rem;letter-spacing:-0.5px}
+  .hero-desc{font-size:0.88rem;max-width:100%}
+  .hero-ctas{flex-direction:column;gap:0.75rem}
+  .cta-main,.cta-sec{width:100%;text-align:center;box-sizing:border-box}
+  .chart-card{display:none !important}
+  .products-grid,.platforms-grid,.why-grid{grid-template-columns:1fr}
+  .edu-grid{grid-template-columns:repeat(2,1fr)}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .stat-item{padding:1.25rem 0.75rem}
+  .stat-num{font-size:1.6rem}
+  .footer-top{grid-template-columns:1fr 1fr;gap:1.5rem}
+  .ticker{padding:0.5rem 0;font-size:0.7rem}
+  .ticker-track{padding:0 1rem;gap:1.25rem;animation-duration:30s}
+  .cta-section{padding:3rem 1rem}
+  .cta-section h2{font-size:1.7rem;letter-spacing:-0.5px}
+  footer{padding:2.5rem 1rem 1.5rem}
+  .footer-bottom{flex-direction:column;align-items:flex-start;gap:0.75rem}
+  .footer-legal{flex-wrap:wrap;gap:0.75rem}
+  .section-title{font-size:1.6rem}
+  .section-inner{overflow-x:hidden}
+  .modal-box{margin:1rem;border-radius:16px;padding:2rem 1.25rem}
+  body{overflow-x:hidden}
+}
+@media(max-width:480px){
+  .edu-grid{grid-template-columns:1fr}
+  .stats-inner{grid-template-columns:1fr 1fr}
+  .footer-top{grid-template-columns:1fr}
+  .ann-item{flex-direction:column;align-items:flex-start;gap:0.4rem}
+  .ann-arrow{display:none}
+  .hero-badge{font-size:0.65rem}
+}
+</style>
+</head>
+<body>
+
+
+<!-- ===== NAVIGATION ===== -->
+<nav>
+  <a href="#" class="logo">Trade<span>Nex</span></a>
+  <ul class="nav-links">
+    <li><a href="#about">Tentang Kami</a></li>
+    <li><a href="#products">Produk</a></li>
+    <li><a href="#platforms">Platform</a></li>
+    <li><a href="#education">Pendidikan</a></li>
+    <li><a href="#announcements">Sokongan</a></li>
+    <li><a href="#promotions">Promosi</a></li>
+  </ul>
+  <div class="nav-btns">
+    <a href="/login" class="btn-primary" style="text-decoration:none">Log Masuk</a>
+  </div>
+  <button class="nav-hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#about" onclick="closeMobileMenu()">Tentang Kami</a>
+  <a href="#products" onclick="closeMobileMenu()">Produk</a>
+  <a href="#platforms" onclick="closeMobileMenu()">Platform</a>
+  <a href="#education" onclick="closeMobileMenu()">Pendidikan</a>
+  <a href="#announcements" onclick="closeMobileMenu()">Sokongan</a>
+  <a href="#promotions" onclick="closeMobileMenu()">Promosi</a>
+  <div class="mobile-ctas">
+    <a href="/login" class="btn-primary" style="background:var(--gold);color:#0B1629;text-decoration:none">Log Masuk</a>
+  </div>
+</div>
+
+<!-- ===== TICKER ===== -->
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack">
+  <div class="tick-item"><span class="tick-name">FCPO</span><span class="tick-price" id="fcpoTickPrice">4,218.50</span><span class="tick-up" id="fcpoTickChange">▲ +1.23%</span></div>
+  <div class="tick-item"><span class="tick-name">KLCI</span><span class="tick-price" id="klciTickPrice">1,622.40</span><span class="tick-up" id="klciTickChange">▲ +0.47%</span></div>
+  <div class="tick-item"><span class="tick-name">GOLD</span><span class="tick-price">2,341.80</span><span class="tick-dn">▼ -0.12%</span></div>
+  <div class="tick-item"><span class="tick-name">S&amp;P 500</span><span class="tick-price">5,480.12</span><span class="tick-up">▲ +0.88%</span></div>
+  <div class="tick-item"><span class="tick-name">USD/MYR</span><span class="tick-price">4.6820</span><span class="tick-dn">▼ -0.05%</span></div>
+  <div class="tick-item"><span class="tick-name">BTC/USD</span><span class="tick-price">67,240</span><span class="tick-up">▲ +2.14%</span></div>
+  <div class="tick-item"><span class="tick-name">CRUDE OIL</span><span class="tick-price">78.34</span><span class="tick-dn">▼ -0.33%</span></div>
+  <div class="tick-item"><span class="tick-name">NIKKEI 225</span><span class="tick-price">38,420.10</span><span class="tick-up">▲ +0.62%</span></div>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="home">
+  <div class="hero-grid">
+    <div>
+      <div class="hero-badge">🇲🇾 Broker Bertauliah SC Malaysia</div>
+      <h1>Niaga Pasaran<br>Global dengan<br><span class="accent">Broker Terpercaya</span></h1>
+      <p class="hero-desc">Akses lebih 40 bursa dunia — futures, saham, CFD, dan lebih lagi. Kadar kompetitif, platform canggih, sokongan pakar 24/5.</p>
+      <div class="hero-ctas">
+        <a href="/login" class="cta-main">Log Masuk</a>
+        <a href="#" class="cta-sec">Cuba Demo Platform</a>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-pair">FCPO / MYR</span>
+        <span class="chart-change" id="heroFcpoChange">▲ +1.23%</span>
+      </div>
+      <div class="chart-price" id="heroFcpoPrice">4,218.50</div>
+      <div class="chart-sub" id="heroFcpoUpdatedAt">Crude Palm Oil Futures &middot; Dikemas kini sebentar tadi</div>
+      <svg class="sparkline" viewBox="0 0 320 110" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="gr1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#22C98A" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#22C98A" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,85 L22,80 L44,77 L66,82 L88,68 L110,62 L132,65 L154,55 L176,50 L198,53 L220,42 L242,38 L264,44 L286,32 L308,26 L320,20"
+              fill="none" stroke="#22C98A" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M0,85 L22,80 L44,77 L66,82 L88,68 L110,62 L132,65 L154,55 L176,50 L198,53 L220,42 L242,38 L264,44 L286,32 L308,26 L320,20 L320,110 L0,110 Z"
+              fill="url(#gr1)"/>
+      </svg>
+      <div class="chart-stats">
+        <div class="cs-item">
+          <div class="cs-label">Buka</div>
+          <div class="cs-val">4,167.00</div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-label">Tinggi</div>
+          <div class="cs-val cs-up">4,225.00</div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-label">Rendah</div>
+          <div class="cs-val cs-dn">4,150.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STATS STRIP ===== -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-num">29+</div>
+      <div class="stat-label">Tahun Pengalaman</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">40+</div>
+      <div class="stat-label">Bursa Antarabangsa</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">RM2B+</div>
+      <div class="stat-label">Aset Diurus</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">24/5</div>
+      <div class="stat-label">Sokongan Pelanggan</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PRODUCTS ===== -->
+<section id="products" style="background:var(--navy)">
+  <div class="section-inner">
+    <div class="section-eye">PRODUK KAMI</div>
+    <h2 class="section-title">Pelbagai Produk Pelaburan</h2>
+    <p class="section-desc">Terokai peluang dalam pasaran naik dan turun melalui pelbagai instrumen kewangan yang disediakan oleh TradeNex Capital.</p>
+    <div class="products-grid">
+      <a class="prod-card" href="#">
+        <div class="prod-icon">📈</div>
+        <div class="prod-tag">Paling Popular</div>
+        <div class="prod-name">Futures</div>
+        <p class="prod-desc">Niaga futures komoditi dan indeks global termasuk FCPO, KLCI, Gold, S&amp;P 500 dan lebih lagi melalui bursa utama dunia seperti BMD, CME Group dan HKEX.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+      <a class="prod-card" href="#">
+        <div class="prod-icon">🏦</div>
+        <div class="prod-name">Saham | SW | ETF | IPO</div>
+        <p class="prod-desc">Labur dalam saham Bursa Malaysia, warrant berstruktur, ETF dan IPO dengan kadar komisyen yang kompetitif dan platform yang mudah digunakan.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+      <a class="prod-card" href="#">
+        <div class="prod-icon">💹</div>
+        <div class="prod-name">Contracts for Differences (CFD)</div>
+        <p class="prod-desc">Niaga CFD pada forex, indeks saham global, komoditi dan kripto dengan leverage fleksibel tanpa perlu memiliki aset sebenar.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PLATFORMS ===== -->
+<section id="platforms" style="background:var(--navy3)">
+  <div class="section-inner">
+    <div class="section-eye">PLATFORM NIAGA</div>
+    <h2 class="section-title">Platform Berkuasa untuk Setiap Trader</h2>
+    <p class="section-desc">Pilih platform yang sesuai dengan gaya dan keperluan niaga anda — dari desktop profesional hingga mudah alih.</p>
+    <div class="platforms-grid">
+      <div class="plat-card">
+        <div class="plat-badge">FUTURES &amp; CFD</div>
+        <div class="plat-name">NOVA</div>
+        <div class="plat-sub">Platform niaga canggih dengan carta langsung dan alat teknikal lengkap</div>
+        <ul class="plat-feats">
+          <li>Beli &amp; jual terus dari carta</li>
+          <li>Lebih 90 petunjuk teknikal</li>
+          <li>Paparan sehingga 4 carta serentak</li>
+          <li>Berita pasaran masa nyata</li>
+          <li>Susun atur boleh disesuaikan</li>
+          <li>Tersedia di desktop &amp; mudah alih</li>
+        </ul>
+      </div>
+      <div class="plat-card featured">
+        <div class="plat-badge gold">⭐ PALING POPULAR</div>
+        <div class="plat-name">NOVA × TradingView</div>
+        <div class="plat-sub">Kuasa carta TradingView bertaraf dunia dalam platform TradeNex</div>
+        <ul class="plat-feats">
+          <li>Carta TradingView bertaraf dunia</li>
+          <li>Social trading komuniti global</li>
+          <li>Saringan saham &amp; skriner teknikal</li>
+          <li>Kalendar ekonomi bersepadu</li>
+          <li>Lebih 100 jenis carta &amp; indikator</li>
+          <li>Niaga terus dari antara muka TradingView</li>
+        </ul>
+      </div>
+      <div class="plat-card">
+        <div class="plat-badge">SAHAM GLOBAL</div>
+        <div class="plat-name">POEMS Global MY 3.0</div>
+        <div class="plat-sub">Akses pasaran saham seluruh dunia dalam satu platform</div>
+        <ul class="plat-feats">
+          <li>Akses pasaran global pelbagai negara</li>
+          <li>30 saham teratas pelbagai bursa</li>
+          <li>Workspace boleh disesuaikan</li>
+          <li>Senarai pantau peribadi</li>
+          <li>Analisis daripada pasukan penyelidik</li>
+          <li>Laporan dan data pasaran terkini</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHY US ===== -->
+<section id="about" style="background:var(--navy)">
+  <div class="section-inner">
+    <div class="section-eye">KENAPA PILIH KAMI</div>
+    <h2 class="section-title">Dipercayai Sejak 1995</h2>
+    <p class="section-desc">TradeNex Capital menawarkan pengalaman niaga terbaik dengan sokongan pakar dan infrastruktur bertaraf dunia.</p>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-num">01</div>
+        <div class="why-title">Anda Boleh Percaya Kami</div>
+        <p class="why-text">Dilesenkan oleh Suruhanjaya Sekuriti Malaysia (SC) untuk derivatif, sekuriti dan CFD. Lebih 29 tahun berkhidmat dalam industri kewangan Malaysia dengan rekod prestasi yang terbukti.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-num">02</div>
+        <div class="why-title">Pasaran Global Di Hujung Jari</div>
+        <p class="why-text">Akses ke BMD, CME Group, HKEX, JPX Group, SGX dan lebih 40 bursa melalui rangkaian TradeNex. Peluang niaga tanpa sempadan dalam genggaman anda.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-num">03</div>
+        <div class="why-title">Sokongan Tanpa Henti</div>
+        <p class="why-text">Pasukan sokongan kami sedia membantu 24 jam, 5 hari seminggu. Laporan penyelidik harian, webinar percuma, bimbingan 1-1 dan sumber pendidikan tersedia untuk semua pelanggan.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== EDUCATION ===== -->
+<section id="education" style="background:var(--navy3)">
+  <div class="section-inner">
+    <div class="section-eye">SUMBER PENDIDIKAN</div>
+    <h2 class="section-title">Pelajari Cara Niaga</h2>
+    <p class="section-desc">Tingkatkan kemahiran niaga anda dengan sumber percuma daripada pakar dan penganalisis pasaran kami.</p>
+    <div class="edu-grid">
+      <a class="edu-card" href="#">
+        <span class="edu-icon">🎥</span>
+        <div class="edu-name">Webinar &amp; Seminar</div>
+        <div class="edu-desc">Sesi langsung dengan pakar pasaran kami setiap minggu</div>
+      </a>
+      <a class="edu-card" href="#">
+        <span class="edu-icon">🎯</span>
+        <div class="edu-name">Bimbingan 1-1</div>
+        <div class="edu-desc">Sesi peribadi eksklusif bersama trader berpengalaman</div>
+      </a>
+      <a class="edu-card" href="#">
+        <span class="edu-icon">📚</span>
+        <div class="edu-name">Trading 101</div>
+        <div class="edu-desc">Panduan lengkap untuk pemula yang baru mulai berniaga</div>
+      </a>
+      <a class="edu-card" href="#">
+        <span class="edu-icon">📊</span>
+        <div class="edu-name">Laporan Penyelidikan</div>
+        <div class="edu-desc">Analisis harian &amp; mingguan daripada pakar pasaran kami</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ANNOUNCEMENTS ===== -->
+<section id="announcements" style="background:var(--navy)">
+  <div class="section-inner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="section-eye">PENGUMUMAN</div>
+        <h2 class="section-title" style="margin-bottom:0">Berita &amp; Pengumuman Terkini</h2>
+      </div>
+      <a href="#" style="color:var(--gold);font-size:0.85rem;font-weight:600;text-decoration:none">Lihat semua →</a>
+    </div>
+    <div class="ann-list">
+      <a class="ann-item" href="#">
+        <div class="ann-title">Penutupan Bursa Malaysia sempena Hari Raya Aidiladha, Hari Keputeraan Agong &amp; Wesak 2026</div>
+        <span class="ann-date">14 Mei 2026</span>
+        <span class="ann-arrow">→</span>
+      </a>
+      <a class="ann-item" href="#">
+        <div class="ann-title">Penutupan Bursa Malaysia sempena Hari Pekerja 2026</div>
+        <span class="ann-date">30 Apr 2026</span>
+        <span class="ann-arrow">→</span>
+      </a>
+      <a class="ann-item" href="#">
+        <div class="ann-title">Penyelenggaraan Sistem Platform NOVA &amp; POEMS — 11 April 2026</div>
+        <span class="ann-date">9 Apr 2026</span>
+        <span class="ann-arrow">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA SECTION ===== -->
+<div class="cta-section" id="promotions">
+  <h2>Bersedia Untuk Mula Niaga?</h2>
+  <p>Log masuk ke akaun anda dan pantau portfolio trading anda bersama TradeNex Capital.</p>
+  <div class="cta-btns">
+    <a href="/login" class="cta-main">Log Masuk Sekarang</a>
+    <a href="#" class="cta-sec">Cuba Demo Percuma</a>
+  </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="footer-brand-name" href="#">Trade<span>Nex</span> Capital</a>
+        <p>Platform niaga bertauliah untuk pasaran Malaysia dan global. Akses lebih 40 bursa antarabangsa dengan sokongan pakar 24/5.</p>
+        <div class="contact-info">
+          <div class="contact-item">📞 <a href="tel:+60327830388">03-2783 0388</a></div>
+          <div class="contact-item">✉️ <a href="mailto:enquiry@tradenex.com.my">enquiry@tradenex.com.my</a></div>
+        </div>
+        <div class="footer-social">
+          <a class="social-btn" href="#" title="Facebook">f</a>
+          <a class="social-btn" href="#" title="LinkedIn">in</a>
+          <a class="social-btn" href="#" title="Telegram">t</a>
+          <a class="social-btn" href="#" title="YouTube">▶</a>
+          <a class="social-btn" href="#" title="Instagram">ig</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Produk</h4>
+        <ul>
+          <li><a href="#">Futures</a></li>
+          <li><a href="#">Saham &amp; SW</a></li>
+          <li><a href="#">ETF &amp; IPO</a></li>
+          <li><a href="#">CFD</a></li>
+          <li><a href="#">DLC</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="#">NOVA Desktop</a></li>
+          <li><a href="#">NOVA Mobile</a></li>
+          <li><a href="#">NOVA × TradingView</a></li>
+          <li><a href="#">POEMS Global MY</a></li>
+          <li><a href="#">CQG</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Sokongan</h4>
+        <ul>
+          <li><a href="#">Hubungi Kami</a></li>
+          <li><a href="#">Borang &amp; Muat Turun</a></li>
+          <li><a href="#">Deposit &amp; Pengeluaran</a></li>
+          <li><a href="#">Jadual Cuti Pasaran</a></li>
+          <li><a href="#">Soalan Lazim</a></li>
+          <li><a href="#">Pengumuman</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding:1.5rem 0;display:flex;align-items:center;gap:2rem;flex-wrap:wrap;margin-top:0">
+      <div style="display:flex;align-items:center;gap:0.5rem;color:var(--text-muted);font-size:0.72rem">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div><strong style="color:#8fa3bf">SC Malaysia</strong> — Broker Bertauliah</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;color:var(--text-muted);font-size:0.72rem">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+        <div><strong style="color:#8fa3bf">Bursa Malaysia</strong> — Ahli Bertauliah</div>
+      </div>
+      <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:#435a75;text-align:right;line-height:1.8">
+        Lesen SC: CMSL/A0189/2007 | Lesen Derivatif: DAD/A009/2007
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 TradeNex Capital Sdn Bhd. Hak Cipta Terpelihara.</p>
+      <div class="footer-legal">
+        <a href="#">Dasar Privasi</a>
+        <a href="#">Pendedahan Risiko</a>
+        <a href="#">Penafian</a>
+        <a href="#">Nota Penting</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ===== LOGIN MODAL ===== -->
+<div class="modal-overlay" id="loginModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('loginModal').classList.remove('active')">&times;</button>
+    <div class="modal-logo">Trade<span>Nex</span></div>
+    <div class="modal-subtitle">NOVA Trading Platform</div>
+
+    <div class="modal-error" id="loginError">ID atau kata laluan tidak sah. Sila cuba semula.</div>
+
+    <label class="modal-label" for="novaId">NOVA ID</label>
+    <input class="modal-input" type="text" id="novaId" placeholder="Masukkan NOVA ID anda" autocomplete="username">
+
+    <label class="modal-label" for="novaPw">Kata Laluan</label>
+    <div class="modal-pw-wrap">
+      <input class="modal-input" type="password" id="novaPw" placeholder="Masukkan kata laluan" autocomplete="current-password">
+      <button class="modal-pw-toggle" type="button" onclick="togglePw()">Tunjuk</button>
+    </div>
+
+    <div class="modal-forgot"><a href="#">Lupa Kata Laluan?</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#">Tukar Kata Laluan</a></div>
+
+    <button class="modal-btn" onclick="handleLogin()">LOG MASUK</button>
+
+    <div class="modal-divider"><span>atau</span></div>
+    <div class="modal-links">
+      <span style="color:var(--text-muted);font-size:0.78rem">Hubungi admin untuk dapatkan akaun demo</span>
+    </div>
+
+    <div class="modal-disclaimer">
+      <p>Dengan log masuk, anda bersetuju dengan <a href="#" style="color:var(--gold);text-decoration:none">Terma &amp; Syarat</a> dan <a href="#" style="color:var(--gold);text-decoration:none">Dasar Privasi</a> kami.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function initLandingMarketFeed(){
+  var market = {
+    fcpo: {open: 4218.50, price: 4218.50, drift: 0.0006, vol: 0.0030},
+    klci: {open: 1622.40, price: 1622.40, drift: 0.0003, vol: 0.0018}
+  };
+
+  function fmtPrice(symbol, value){
+    var decimals = symbol === 'klci' ? 2 : 2;
+    return value.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+  }
+
+  function fmtPct(value){
+    var sign = value >= 0 ? '+' : '';
+    return sign + value.toFixed(2) + '%';
+  }
+
+  function updateChangeEl(el, pct){
+    if(!el) return;
+    var isUp = pct >= 0;
+    el.textContent = (isUp ? '▲ ' : '▼ ') + fmtPct(pct);
+    el.classList.remove('tick-up', 'tick-dn');
+    el.classList.add(isUp ? 'tick-up' : 'tick-dn');
+  }
+
+  function applyMarketToUi(symbol){
+    var state = market[symbol];
+    var pct = ((state.price - state.open) / state.open) * 100;
+
+    if(symbol === 'fcpo'){
+      var fcpoPrice = document.getElementById('fcpoTickPrice');
+      var fcpoChange = document.getElementById('fcpoTickChange');
+      var heroPrice = document.getElementById('heroFcpoPrice');
+      var heroChange = document.getElementById('heroFcpoChange');
+      var heroUpdatedAt = document.getElementById('heroFcpoUpdatedAt');
+
+      if(fcpoPrice) fcpoPrice.textContent = fmtPrice('fcpo', state.price);
+      if(heroPrice) heroPrice.textContent = fmtPrice('fcpo', state.price);
+      updateChangeEl(fcpoChange, pct);
+
+      if(heroChange){
+        var isUp = pct >= 0;
+        heroChange.textContent = (isUp ? '▲ ' : '▼ ') + fmtPct(pct);
+        heroChange.style.color = isUp ? 'var(--green)' : 'var(--red)';
+        heroChange.style.background = isUp ? 'rgba(34,201,138,0.1)' : 'rgba(255,91,91,0.1)';
+      }
+
+      if(heroUpdatedAt){
+        heroUpdatedAt.textContent = 'Crude Palm Oil Futures · Dikemas kini ' + new Date().toLocaleTimeString('ms-MY', {hour:'2-digit', minute:'2-digit'});
+      }
+      return;
+    }
+
+    if(symbol === 'klci'){
+      var klciPrice = document.getElementById('klciTickPrice');
+      var klciChange = document.getElementById('klciTickChange');
+      if(klciPrice) klciPrice.textContent = fmtPrice('klci', state.price);
+      updateChangeEl(klciChange, pct);
+    }
+  }
+
+  function step(symbol){
+    var state = market[symbol];
+    var noise = (Math.random() - 0.5) * state.vol;
+    var next = state.price * (1 + state.drift + noise);
+    state.price = Math.max(1, next);
+  }
+
+  function tick(){
+    step('fcpo');
+    step('klci');
+    applyMarketToUi('fcpo');
+    applyMarketToUi('klci');
+  }
+
+  tick();
+  setInterval(tick, 4000);
+}
+
+function initTickerMarquee(){
+  var track = document.getElementById('tickerTrack');
+  if(!track) return;
+
+  var items = Array.prototype.slice.call(track.children);
+  for(var i=0;i<items.length;i++){
+    var clone = items[i].cloneNode(true);
+    var dupIds = clone.querySelectorAll('[id]');
+    for(var j=0;j<dupIds.length;j++) dupIds[j].removeAttribute('id');
+    track.appendChild(clone);
+  }
+}
+
+initTickerMarquee();
+initLandingMarketFeed();
+
+function togglePw(){
+  var inp=document.getElementById('novaPw');
+  var btn=event.target;
+  if(inp.type==='password'){inp.type='text';btn.textContent='Sembunyikan';}
+  else{inp.type='password';btn.textContent='Tunjuk';}
+}
+function handleLogin(){
+  var id=document.getElementById('novaId').value.trim();
+  var pw=document.getElementById('novaPw').value;
+  var err=document.getElementById('loginError');
+  if(!id||!pw){err.textContent='Sila isi NOVA ID dan kata laluan.';err.classList.add('show');return;}
+  err.classList.remove('show');
+  var btn=document.querySelector('.modal-btn');
+  btn.textContent='Sedang log masuk...';btn.disabled=true;
+
+  fetch('/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nova_id:id,password:pw})
+  })
+  .then(function(res){return res.json().then(function(data){return {status:res.status,data:data};});})
+  .then(function(result){
+    btn.textContent='LOG MASUK';btn.disabled=false;
+    if(result.data.ok){
+      window.location.href=result.data.redirect;
+    } else {
+      err.textContent=result.data.message||'ID atau kata laluan tidak sah.';
+      err.classList.add('show');
+    }
+  })
+  .catch(function(){
+    btn.textContent='LOG MASUK';btn.disabled=false;
+    err.textContent='Ralat sambungan. Sila cuba semula.';
+    err.classList.add('show');
+  });
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')document.getElementById('loginModal').classList.remove('active');
+  if(e.key==='Enter'&&document.getElementById('loginModal').classList.contains('active'))handleLogin();
+});
+function toggleMobileMenu(){
+  var menu=document.getElementById('mobileMenu');
+  var btn=document.getElementById('hamburgerBtn');
+  menu.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+function closeMobileMenu(){
+  document.getElementById('mobileMenu').classList.remove('open');
+  document.getElementById('hamburgerBtn').classList.remove('open');
+}
+</script>
+
+</body>
+</html>
