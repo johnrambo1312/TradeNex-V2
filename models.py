@@ -88,8 +88,15 @@ class User(db.Model):
 
     @property
     def withdraw_live_balance(self):
-        """Selepas Close, gunakan baki akaun rasmi, bukan snapshot live lama."""
+        """Selepas Close, gunakan nilai Close terakhir sebagai baki rasmi sesi."""
         if self.is_trade_closed:
+            closed_entries = [
+                entry for entry in self.entries
+                if (entry.note or "").startswith("[Close]")
+            ]
+            if closed_entries:
+                latest_close = max(closed_entries, key=lambda entry: entry.entry_date)
+                return float(latest_close.value)
             return float(self.balance)
         if self.live_balance_snapshot:
             return float(self.live_balance_snapshot.value)
