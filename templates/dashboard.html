@@ -585,7 +585,8 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 (function(){
   var anchorValues    = {{ chart_values|tojson }};
   var anchorTimes     = {{ chart_timestamps|tojson }};
-  var startingBalance = {{ user.balance }};
+  // Modal awal sentiasa nilai Entry pertama, bukan baki akaun selepas Close.
+  var startingBalance = anchorValues[0];
   var SEED_BASE       = {{ user.id }};
   var sessionStart    = anchorTimes[0];
   // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
