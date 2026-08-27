@@ -232,6 +232,9 @@ def api_user_snapshot_balance():
     else:
         snap.value = value
 
+    if user.is_trade_closed:
+        user.balance = value
+
     db.session.commit()
     return jsonify({"ok": True})
 
