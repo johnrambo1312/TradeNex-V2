@@ -26,8 +26,10 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_DEBUG", "0") != "1"
 csrf = CSRFProtect(app)
 limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[])
 
-# Railway bagi DATABASE_URL untuk Postgres; kalau tiada, fallback ke SQLite local (untuk dev/demo)
-db_url = os.environ.get("DATABASE_URL", "sqlite:///tradenex_demo.db")
+# Railway bagi DATABASE_URL untuk Postgres; kalau tiada atau kosong, fallback ke SQLite local (untuk dev/demo)
+db_url = (os.environ.get("DATABASE_URL") or "").strip()
+if not db_url:
+    db_url = "sqlite:///tradenex_demo.db"
 if db_url.startswith("postgres://"):
     # SQLAlchemy versi baru perlukan "postgresql://" bukan "postgres://"
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -35,6 +37,14 @@ app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
+@app.context_processor
+def inject_contact_settings():
+    whatsapp_number = "".join(
+        character for character in os.environ.get("WHATSAPP_NUMBER", "60312345678")
+        if character.isdigit()
+    )
+    return {"whatsapp_number": whatsapp_number}
 
 # MYT = UTC+8 — semua masa dalam DB disimpan sebagai naive MYT
 MYT = timezone(timedelta(hours=8))
@@ -123,6 +133,18 @@ def init_database_on_first_request():
 @app.route("/")
 def home():
     return render_template("index.html")
+
+
+@app.route("/demo")
+def demo():
+    """Halaman demo platform — showcase fitur tanpa perlu login."""
+    return render_template("demo.html")
+
+
+@app.route("/demo-account")
+def demo_account():
+    """Akaun demo hidup dengan grafik bergerak selama 10 minit."""
+    return render_template("demo_account.html")
 
 
 # ---------------------------------------------------------------------------

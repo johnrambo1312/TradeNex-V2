@@ -158,6 +158,7 @@ git push
    - `SECRET_KEY` = string rawak panjang
    - `DEFAULT_ADMIN_PASSWORD` = password admin pilihan anda
    - `DATABASE_URL` = URL PostgreSQL (guna add-on PostgreSQL Northflank, atau external DB)
+   - `WHATSAPP_NUMBER` = nombor WhatsApp pegawai dalam format antarabangsa tanpa `+` atau ruang, contoh `60123456789`
 
 4. Networking/Port:
    - Exposed HTTP port: `5000` (app juga sokong `PORT` env dari platform)

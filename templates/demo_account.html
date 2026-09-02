@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Demo Akaun — TradeNex Capital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
+  --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
+  --text-muted:#8FA3BF;--text-light:#C8D8EE;--border:#1E3050;
+  --green:#22C98A;--red:#FF5B5B;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.num{font-family:'IBM Plex Mono',monospace}
+
+nav{background:rgba(11,22,41,0.97);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;color:var(--white);text-decoration:none}
+.logo span{color:var(--gold)}
+.nav-right{display:flex;align-items:center;gap:0.75rem;min-width:0}
+.nav-user{color:var(--text-light);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:0.45rem 0.9rem;border-radius:6px;font-size:0.78rem;cursor:pointer;text-decoration:none;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;flex-shrink:0}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+
+.wrap{max-width:1100px;margin:0 auto;padding:2.5rem 1.5rem}
+
+@media(max-width:768px){
+  .wrap{padding:1.5rem 1rem}
+}
+
+@media(max-width:480px){
+  .wrap{padding:1rem 0.75rem}
+}
+
+h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:0.3rem;line-height:1.2}
+.sub{color:var(--text-muted);font-size:0.88rem;margin-bottom:2rem}
+
+@media(max-width:768px){
+  h1{font-size:1.3rem}
+  .sub{font-size:0.8rem;margin-bottom:1.5rem}
+}
+
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-bottom:2rem}
+
+@media(max-width:768px){
+  .cards{grid-template-columns:1fr;gap:1rem}
+}
+
+.card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.5rem}
+
+@media(max-width:480px){
+  .card{padding:1.25rem}
+}
+
+.card-label{color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem}
+.card-val{font-family:'IBM Plex Mono',monospace;font-size:1.8rem;font-weight:600;transition:color 0.3s;letter-spacing:-0.5px}
+
+@media(max-width:480px){
+  .card-val{font-size:1.5rem}
+}
+
+.card-sub{font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem}
+.pl-pos{color:var(--green)}
+.pl-neg{color:var(--red)}
+
+.chart-wrap{background:#FFFFFF;border:1px solid #E3E8EF;border-radius:16px;margin-bottom:2rem;overflow:hidden;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+
+@media(max-width:768px){
+  .chart-wrap{border-radius:12px;margin-bottom:1.5rem}
+}
+
+.chart-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1rem;border-bottom:1px solid #F0F3F7;gap:1rem;flex-wrap:wrap}
+
+@media(max-width:768px){
+  .chart-header{padding:0.75rem;gap:0.5rem}
+}
+
+.chart-pair{font-weight:600;color:#1A2236;font-size:0.95rem;flex-shrink:0}
+
+@media(max-width:480px){
+  .chart-pair{font-size:0.85rem}
+}
+
+.chart-ohlc{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8C99AD;display:flex;gap:0.75rem;flex-wrap:wrap}
+
+@media(max-width:768px){
+  .chart-ohlc{font-size:0.65rem;gap:0.5rem}
+}
+
+@media(max-width:480px){
+  .chart-ohlc{font-size:0.6rem;gap:0.4rem}
+}
+
+.chart-ohlc span{white-space:nowrap}
+.ohlc-o{color:#8C99AD}.ohlc-h{color:#26a69a}.ohlc-l{color:#ef5350}.ohlc-c{color:#1A2236;font-weight:600}
+.chart-status-badge{font-size:0.68rem;font-weight:700;padding:0.25rem 0.75rem;border-radius:20px;letter-spacing:0.5px;flex-shrink:0}
+
+@media(max-width:768px){
+  .chart-status-badge{font-size:0.6rem;padding:0.2rem 0.6rem}
+}
+
+.badge-live{background:rgba(38,166,154,0.1);color:#26a69a}
+.badge-live::before{content:'●';margin-right:0.35rem;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+
+.chart-body{position:relative;background:#FFFFFF;width:100%;height:290px;min-height:290px}
+#tradingChart,#tradingVolume{display:block;width:100%}
+#tradingChart{height:220px}
+#tradingVolume{height:70px;border-top:1px solid #F0F3F7}
+
+@media(max-width:768px){
+  .chart-body{height:270px;min-height:270px}
+  #tradingChart{height:220px}
+}
+
+@media(max-width:480px){
+  .chart-body{height:220px;min-height:220px}
+  #tradingChart{height:170px}
+}
+
+.disclaimer-box{background:rgba(255,91,91,0.08);border:1px solid rgba(255,91,91,0.25);border-radius:12px;padding:1.25rem;margin-bottom:2rem}
+
+@media(max-width:768px){
+  .disclaimer-box{padding:1rem;margin-bottom:1.5rem}
+}
+
+@media(max-width:480px){
+  .disclaimer-box{padding:0.75rem;margin-bottom:1rem}
+}
+
+.disclaimer-box h3{color:var(--gold);font-size:0.95rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+
+@media(max-width:480px){
+  .disclaimer-box h3{font-size:0.85rem}
+}
+
+.disclaimer-box p{color:var(--text-light);font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem;word-break:break-word}
+
+@media(max-width:480px){
+  .disclaimer-box p{font-size:0.75rem;margin-bottom:0.5rem}
+}
+
+.disclaimer-box p:last-child{margin-bottom:0}
+.disclaimer-highlight{color:var(--gold);font-weight:600}
+.whatsapp-float{position:fixed;right:1.25rem;bottom:1.25rem;z-index:120;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#25D366;color:#FFFFFF;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,0.28);transition:transform 0.2s,box-shadow 0.2s}
+.whatsapp-float:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,0.34)}
+.whatsapp-float svg{width:30px;height:30px;fill:currentColor}
+.whatsapp-link{color:#168A4B;font-weight:600;text-decoration:none}
+.whatsapp-link:hover{text-decoration:underline}
+
+@media(max-width:768px){
+  .cards{grid-template-columns:1fr}
+  .wrap{padding:1.5rem 1rem}
+  h1{font-size:1.3rem}
+  nav{padding:0 1rem}
+}
+
+@media(max-width:480px){
+  nav{padding:0 0.75rem;height:50px}
+  .logo{font-size:1rem}
+  .nav-user{font-size:0.7rem;max-width:120px}
+  .btn-logout{font-size:0.7rem;padding:0.35rem 0.75rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+  <a href="/" class="logo">Trade<span>Nex</span></a>
+  <div class="nav-right">
+    <span class="nav-user">Demo Akaun</span>
+    <a href="/" class="btn-logout">← Keluar</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="wrap">
+
+<h1>📊 Akaun Demo TradeNex</h1>
+<p class="sub">Rasai platform kami secara real-time — graf bergerak selama 10 minit</p>
+
+<!-- CARDS -->
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Modal Awal</div>
+    <div class="card-val">RM <span id="initialBalance">500.00</span></div>
+    <div class="card-sub">Digunakan untuk demo</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Baki Semasa</div>
+    <div class="card-val" id="currentBalance">RM 500.00</div>
+    <div class="card-sub" id="profitLoss">▲ +0.00%</div>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-wrap">
+  <div class="chart-header">
+    <span style="font-weight:600;color:#1A2236">FCPO / MYR</span>
+    <div style="display:flex;gap:1rem;align-items:center">
+      <div class="chart-ohlc">
+        <span><strong class="ohlc-o">O:</strong> <span id="priceO">4200.00</span></span>
+        <span><strong class="ohlc-h">H:</strong> <span id="priceH">4200.00</span></span>
+        <span><strong class="ohlc-l">L:</strong> <span id="priceL">4200.00</span></span>
+        <span><strong class="ohlc-c">C:</strong> <span id="priceC">4200.00</span></span>
+      </div>
+      <span class="chart-status-badge badge-live">● HIDUP</span>
+    </div>
+  </div>
+  <div class="chart-body">
+    <canvas id="tradingChart"></canvas>
+    <canvas id="tradingVolume"></canvas>
+  </div>
+</div>
+
+<!-- DISCLAIMER -->
+<div class="disclaimer-box">
+  <h3>⚠️ Pemberitahuan Akaun Demo</h3>
+  <p>
+    <span class="disclaimer-highlight">Ini ialah akaun DEMO sahaja.</span> Untuk pendaftaran akaun sebenar dan mula berdagang dengan modal sebenar, sila hubungi pegawai kami.
+  </p>
+  <p style="margin-bottom:1rem">
+    <strong>📱 Hubungi Kami:</strong> <a class="whatsapp-link" href="https://wa.me/{{ whatsapp_number }}?text=Assalamualaikum%2C%20saya%20ingin%20bertanya%20tentang%20akaun%20TradeNex." target="_blank" rel="noopener">Sila tekan butang WhatsApp untuk hubungi pegawai kami</a> | Email: support@tradenex.my
+  </p>
+  <p style="background:rgba(212,168,67,0.08);border-left:3px solid var(--gold);padding:0.75rem;border-radius:4px">
+    <strong>🤖 Trading Automatik:</strong> Semua aktiviti trading klien kami dijalankan oleh sistem AI yang berkuasa tinggi dengan algoritma pembelajaran mendalam. Platform kami menggunakan machine learning terkini untuk menganalisis pasaran dan membuat keputusan trading yang optimal.
+  </p>
+  <p style="background:rgba(34,201,138,0.08);border-left:3px solid var(--green);padding:0.75rem;border-radius:4px;margin-top:0.75rem">
+    <strong>✅ Risiko Terkawal:</strong> Dengan sistem pengurusan risiko canggih kami, risiko kehilangan modal dihadkan hanya pada <span class="disclaimer-highlight">3.37% setiap hari</span>. Semua dagangan dilindungi dengan stop-loss automatik dan limit keuntungan.
+  </p>
+</div>
+
+</div>
+
+<a class="whatsapp-float" href="https://wa.me/{{ whatsapp_number }}?text=Assalamualaikum%2C%20saya%20ingin%20bertanya%20tentang%20akaun%20TradeNex." target="_blank" rel="noopener" aria-label="Hubungi pegawai melalui WhatsApp" title="Hubungi pegawai melalui WhatsApp">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 12.08 0C5.55 0 .24 5.3.24 11.83c0 2.08.54 4.1 1.56 5.88L.14 24l6.43-1.64a11.83 11.83 0 0 0 5.51 1.36h.01c6.52 0 11.83-5.31 11.83-11.83 0-3.16-1.23-6.13-3.42-8.39ZM12.09 21.7h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.81.97 1.02-3.72-.23-.38a9.82 9.82 0 1 1 8.41 4.71Zm5.39-7.36c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.28-.47-2.44-1.5-.9-.8-1.5-1.78-1.68-2.08-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.49 1.7.63.72.23 1.38.2 1.9.12.58-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>
+</a>
+
+<script>
+const INITIAL_BALANCE = 500;
+const initialPrice = 4200;
+let allCandles = [];
+
+function generateCandlestickData(startPrice) {
+  const candles = 120;
+  const data = [];
+  let currentPrice = startPrice;
+
+  for (let i = 0; i < candles; i++) {
+    const open = currentPrice;
+    const volatility = Math.random() * 26;
+    const direction = Math.random() > 0.46 ? 1 : -1;
+    const change = direction * volatility;
+    const close = Math.max(4100, Math.min(4300, currentPrice + change));
+    const high = Math.max(open, close) + Math.random() * 10;
+    const low = Math.min(open, close) - Math.random() * 10;
+
+    data.push({
+      time: i,
+      open: Number(open.toFixed(2)),
+      high: Number(high.toFixed(2)),
+      low: Number(low.toFixed(2)),
+      close: Number(close.toFixed(2))
+    });
+
+    currentPrice = close;
+  }
+
+  return data;
+}
+
+function updateUI(currentPrice, openPrice, highPrice, lowPrice) {
+  document.getElementById('priceO').textContent = openPrice.toFixed(2);
+  document.getElementById('priceH').textContent = highPrice.toFixed(2);
+  document.getElementById('priceL').textContent = lowPrice.toFixed(2);
+  document.getElementById('priceC').textContent = currentPrice.toFixed(2);
+
+  const priceChange = currentPrice - initialPrice;
+  const percentChange = (priceChange / initialPrice) * 100;
+  const newBalance = INITIAL_BALANCE + (INITIAL_BALANCE * percentChange / 100);
+
+  document.getElementById('currentBalance').textContent = 'RM ' + newBalance.toFixed(2);
+
+  const profitLossEl = document.getElementById('profitLoss');
+  const isPositive = newBalance >= INITIAL_BALANCE;
+  profitLossEl.textContent = `${isPositive ? '▲ +' : '▼ '}${Math.abs(percentChange).toFixed(2)}%`;
+  profitLossEl.className = 'card-sub ' + (isPositive ? 'pl-pos' : 'pl-neg');
+
+}
+
+window.addEventListener('load', function() {
+  const candleCanvas = document.getElementById('tradingChart');
+  const volumeCanvas = document.getElementById('tradingVolume');
+  if (!candleCanvas || !volumeCanvas) return;
+
+  const candleCtx = candleCanvas.getContext('2d');
+  const volumeCtx = volumeCanvas.getContext('2d');
+  const BULL = '#26a69a';
+  const BEAR = '#ef5350';
+  const SLOT_WIDTH = 10;
+  const BODY_WIDTH = 7;
+  const CANDLE_SECONDS = 5;
+  let priceScale = 1.8;
+  let panOffset = 0;
+  let userPanned = false;
+  let liveCandle = null;
+
+  allCandles = generateCandlestickData(initialPrice);
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const width = candleCanvas.clientWidth;
+    const candleHeight = window.innerWidth < 600 ? 170 : 220;
+    const volumeHeight = window.innerWidth < 600 ? 50 : 70;
+    candleCanvas.width = width * dpr;
+    candleCanvas.height = candleHeight * dpr;
+    volumeCanvas.width = width * dpr;
+    volumeCanvas.height = volumeHeight * dpr;
+    candleCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    volumeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    candleCanvas.style.height = candleHeight + 'px';
+    volumeCanvas.style.height = volumeHeight + 'px';
+  }
+
+  function niceStep(range, count) {
+    const raw = range / count;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const normalized = raw / magnitude;
+    return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const width = candleCanvas.clientWidth;
+    const height = candleCanvas.height / dpr;
+    const volumeHeight = volumeCanvas.height / dpr;
+    const shown = liveCandle ? allCandles.concat([liveCandle]) : allCandles;
+    if (!shown.length || !width) return;
+
+    const mobile = window.innerWidth < 600;
+    const rightPad = mobile ? 64 : 76;
+    const topPad = 8;
+    const bottomPad = 24;
+    const plotWidth = width - rightPad;
+    const plotHeight = height - topPad - bottomPad;
+    const perScreen = Math.max(1, Math.floor(plotWidth / SLOT_WIDTH));
+    const total = shown.length;
+    if (!userPanned) panOffset = Math.max(0, total - perScreen);
+    panOffset = Math.max(0, Math.min(panOffset, Math.max(0, total - 1)));
+    const start = Math.floor(panOffset);
+    const end = Math.min(total - 1, start + perScreen + 1);
+    const current = shown[shown.length - 1].close;
+    const halfRange = (plotHeight / 2) * priceScale;
+    const minPrice = current - halfRange;
+    const maxPrice = current + halfRange;
+    const priceY = value => topPad + plotHeight - ((value - minPrice) / (maxPrice - minPrice)) * plotHeight;
+    const xPos = index => (Math.max(0, perScreen - total) + index - panOffset + 0.5) * SLOT_WIDTH;
+
+    candleCtx.clearRect(0, 0, width, height);
+    candleCtx.fillStyle = '#FFFFFF';
+    candleCtx.fillRect(0, 0, width, height);
+    candleCtx.font = '500 11px IBM Plex Mono, monospace';
+    candleCtx.textAlign = 'right';
+    const step = niceStep(maxPrice - minPrice, 6);
+    for (let value = Math.ceil(minPrice / step) * step; value <= maxPrice; value += step) {
+      const y = priceY(value);
+      if (y < topPad || y > topPad + plotHeight) continue;
+      candleCtx.strokeStyle = '#F0F3F7';
+      candleCtx.beginPath();
+      candleCtx.moveTo(0, y);
+      candleCtx.lineTo(plotWidth, y);
+      candleCtx.stroke();
+      candleCtx.fillStyle = '#9AA5B4';
+      candleCtx.fillText(value.toFixed(2), width - 4, y + 4);
+    }
+    candleCtx.strokeStyle = '#E3E8EF';
+    candleCtx.beginPath();
+    candleCtx.moveTo(plotWidth, topPad);
+    candleCtx.lineTo(plotWidth, topPad + plotHeight);
+    candleCtx.stroke();
+
+    const currentY = priceY(current);
+    const currentColor = current >= initialPrice ? BULL : BEAR;
+    candleCtx.setLineDash([3, 3]);
+    candleCtx.strokeStyle = currentColor;
+    candleCtx.beginPath();
+    candleCtx.moveTo(0, currentY);
+    candleCtx.lineTo(plotWidth, currentY);
+    candleCtx.stroke();
+    candleCtx.setLineDash([]);
+    candleCtx.fillStyle = currentColor;
+    candleCtx.fillRect(plotWidth, currentY - 9, rightPad - 2, 18);
+    candleCtx.fillStyle = '#FFFFFF';
+    candleCtx.font = '600 11px IBM Plex Mono, monospace';
+    candleCtx.fillText(current.toFixed(2), width - 4, currentY + 4);
+
+    for (let index = start; index <= end; index++) {
+      const candle = shown[index];
+      const x = xPos(index);
+      if (x < 0 || x > plotWidth) continue;
+      const color = candle.close >= candle.open ? BULL : BEAR;
+      candleCtx.strokeStyle = color;
+      candleCtx.lineWidth = 1;
+      candleCtx.beginPath();
+      candleCtx.moveTo(Math.round(x), priceY(candle.high));
+      candleCtx.lineTo(Math.round(x), priceY(candle.low));
+      candleCtx.stroke();
+      const bodyTop = Math.min(priceY(candle.open), priceY(candle.close));
+      const bodyHeight = Math.max(2, Math.abs(priceY(candle.close) - priceY(candle.open)));
+      candleCtx.fillStyle = color;
+      candleCtx.fillRect(Math.round(x - BODY_WIDTH / 2), bodyTop, BODY_WIDTH, bodyHeight);
+    }
+
+    candleCtx.fillStyle = '#9AA5B4';
+    candleCtx.font = '11px IBM Plex Mono, monospace';
+    candleCtx.textAlign = 'center';
+    for (let index = start; index <= end; index += Math.max(1, Math.round(60 / CANDLE_SECONDS))) {
+      const x = xPos(index);
+      if (x < 20 || x > plotWidth - 20) continue;
+      candleCtx.fillText(`${String(Math.floor(index * CANDLE_SECONDS / 60)).padStart(2, '0')}:${String(index * CANDLE_SECONDS % 60).padStart(2, '0')}`, x, height - 6);
+    }
+
+    volumeCtx.clearRect(0, 0, width, volumeHeight);
+    volumeCtx.fillStyle = '#FFFFFF';
+    volumeCtx.fillRect(0, 0, width, volumeHeight);
+    const maxVolume = Math.max(...shown.slice(start, end + 1).map(candle => candle.volume || Math.abs(candle.close - candle.open) * 30 + 20), 1);
+    for (let index = start; index <= end; index++) {
+      const candle = shown[index];
+      const x = xPos(index);
+      const volume = candle.volume || Math.abs(candle.close - candle.open) * 30 + 20;
+      const barHeight = Math.max(1, volume / maxVolume * (volumeHeight - 8));
+      volumeCtx.fillStyle = candle.close >= candle.open ? 'rgba(38,166,154,0.55)' : 'rgba(239,83,80,0.55)';
+      volumeCtx.fillRect(Math.round(x - BODY_WIDTH / 2), volumeHeight - barHeight, BODY_WIDTH, barHeight);
+    }
+  }
+
+  function updateLiveCandle() {
+    const previous = allCandles[allCandles.length - 1];
+    const drift = (Math.random() - 0.48) * 7;
+    const close = Math.max(4100, Math.min(4300, liveCandle ? liveCandle.close + drift : previous.close + drift));
+    const open = liveCandle ? liveCandle.open : previous.close;
+    liveCandle = { open, close, high: Math.max(liveCandle ? liveCandle.high : open, close) + Math.random() * 2, low: Math.min(liveCandle ? liveCandle.low : open, close) - Math.random() * 2, volume: Math.abs(close - open) * 30 + 20 };
+    updateUI(close, allCandles[0].open, Math.max(...allCandles.slice(-30).map(candle => candle.high), liveCandle.high), Math.min(...allCandles.slice(-30).map(candle => candle.low), liveCandle.low));
+    draw();
+  }
+
+  let dragging = false;
+  let dragStart = 0;
+  let panStart = 0;
+  candleCanvas.addEventListener('mousedown', event => { dragging = true; dragStart = event.clientX; panStart = panOffset; });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('mousemove', event => { if (dragging) { panOffset = panStart - (event.clientX - dragStart) / SLOT_WIDTH; userPanned = true; draw(); } });
+  candleCanvas.addEventListener('wheel', event => { event.preventDefault(); priceScale = Math.max(0.2, Math.min(50, priceScale * (event.deltaY > 0 ? 1.12 : 0.89))); draw(); }, { passive: false });
+  window.addEventListener('resize', () => { resize(); draw(); });
+
+  resize();
+  draw();
+  updateLiveCandle();
+  setInterval(updateLiveCandle, 700);
+});
+</script>
+
+</body>
+</html>
