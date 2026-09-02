@@ -123,6 +123,7 @@ git push -u origin main
 5. **Set Environment Variables** (tab *Variables* dalam service app):
    - `SECRET_KEY` = rentetan rawak panjang
    - `DEFAULT_ADMIN_PASSWORD` = password admin pilihan anda
+   - `WHATSAPP_NUMBER` = nombor WhatsApp pegawai dalam format antarabangsa tanpa `+` atau ruang, contoh `60123456789`
 6. **Jalankan migration/init-db sekali** selepas deploy pertama:
    - Buka tab **Settings → Deploy**, atau guna Railway CLI:
      ```bash
