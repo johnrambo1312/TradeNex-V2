@@ -36,7 +36,12 @@ if db_url.startswith("postgres://"):
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-db.init_app(app)
+try:
+    db.init_app(app)
+except Exception as exc:
+    print(f"[Warning] PostgreSQL driver unavailable, falling back to SQLite: {exc}")
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///tradenex_demo.db"
+    db.init_app(app)
 
 @app.context_processor
 def inject_contact_settings():
