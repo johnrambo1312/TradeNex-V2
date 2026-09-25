@@ -13,7 +13,12 @@ from models import db, User, AdminUser, TradeEntry, UserLiveBalance
 
 load_dotenv()
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_port=1)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "ubah-rahsia-ini-dalam-env")
