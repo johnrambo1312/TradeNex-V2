@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: tradenex-v2
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: sh start.sh
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tradenex-postgres
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false
+      - key: WHATSAPP_NUMBER
+        sync: false
+      - key: FLASK_DEBUG
+        value: "0"
+
+databases:
+  - name: tradenex-postgres
+    databaseName: tradenex
+    user: tradenex
+    plan: basic-1gb
+    region: singapore
+    postgresMajorVersion: "16"
