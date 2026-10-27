@@ -100,14 +100,12 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .genealogy-overlay.open{display:flex}
 .genealogy-modal{position:relative;width:min(100%,620px);max-height:calc(100vh - 2rem);overflow-y:auto;padding:1.5rem;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,0.45)}
 .genealogy-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:0.35rem}
-.genealogy-subtitle{color:var(--text-muted);font-size:0.8rem;line-height:1.5;margin-bottom:1.1rem}
 .genealogy-level{margin-top:1rem}
 .genealogy-level-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.55rem;color:var(--gold2);font-size:0.76rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
 .genealogy-member{padding:0.75rem 0.85rem;margin-top:0.45rem;background:#0F1C32;border:1px solid var(--border);border-radius:8px}
 .genealogy-member-heading{display:flex;justify-content:space-between;align-items:center;gap:0.75rem}
 .genealogy-member-name{font-size:0.84rem;font-weight:600;overflow-wrap:anywhere}
 .genealogy-member-id{color:var(--text-muted);font:0.75rem 'IBM Plex Mono',monospace;white-space:nowrap}
-.genealogy-parent{margin-top:0.35rem;color:var(--text-muted);font-size:0.73rem}
 .genealogy-empty{padding:0.8rem;border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem}
 .genealogy-controls{display:grid;grid-template-columns:minmax(0,1fr) 150px 150px;gap:0.55rem;margin:0.8rem 0}
 .genealogy-controls input,.genealogy-controls select{min-width:0;padding:0.6rem 0.7rem;border:1px solid var(--border);border-radius:7px;background:#0F1C32;color:var(--white);font:0.78rem 'IBM Plex Sans',sans-serif}
@@ -363,16 +361,14 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   <section class="genealogy-modal" role="dialog" aria-modal="true" aria-labelledby="genealogyTitle">
     <button class="profile-close" type="button" onclick="closeGenealogyModal()" aria-label="Tutup">&times;</button>
     <h2 class="genealogy-title" id="genealogyTitle">Genealogi</h2>
-    <p class="genealogy-subtitle">Akaun yang mendaftar menggunakan referral anda, sehingga dua level di bawah.</p>
     <div class="genealogy-level">
       <div class="genealogy-level-title"><span>Komisen Referral</span></div>
       <div class="genealogy-member">
         <div class="genealogy-member-heading"><span class="genealogy-member-name">Sudah dikreditkan</span><span class="genealogy-member-id">RM {{ '%.2f'|format(user.paid_referral_commission) }}</span></div>
       </div>
       <div class="genealogy-member">
-        <div class="genealogy-member-heading"><span class="genealogy-member-name">Menunggu / ditahan</span><span class="genealogy-member-id">RM {{ '%.2f'|format(user.pending_referral_commission) }}</span></div>
+        <div class="genealogy-member-heading"><span class="genealogy-member-name">Menunggu</span><span class="genealogy-member-id">RM {{ '%.2f'|format(user.pending_referral_commission) }}</span></div>
       </div>
-      <div class="genealogy-parent">Komisen sekali bagi setiap akaun yang diterima: Level 1 RM30, Level 2 RM15. Kredit pada 30hb (hari terakhir Februari jika tiada 30hb) jika akaun penerima dan referral aktif. Akaun lama tidak menerima backfill.</div>
     </div>
     <div class="genealogy-controls" aria-label="Carian dan penapis genealogi">
       <input id="genealogySearch" type="search" placeholder="Cari nama, NOVA ID atau kod" aria-label="Cari ahli genealogi" oninput="filterGenealogyMembers()">
@@ -387,7 +383,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <option value="inactive">Tidak aktif</option>
       </select>
     </div>
-    <div class="genealogy-parent" id="genealogyFilterCount" aria-live="polite"></div>
     <div class="genealogy-level">
       <div class="genealogy-level-title"><span>Level 1</span><span>{{ level_one_referrals|length }} akaun</span></div>
       {% if level_one_referrals %}
@@ -401,19 +396,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
             <span class="genealogy-status {{ 'genealogy-status-active' if referral.is_active else 'genealogy-status-inactive' }}">{{ 'Akaun aktif' if referral.is_active else 'Akaun tidak aktif' }}</span>
             {% if commission %}
               <div class="genealogy-commission">Komisen: RM {{ '%.2f'|format(commission.amount) }} · Level 1</div>
-              {% if commission.status == 'paid' %}
-                <div class="genealogy-parent">Dikreditkan pada {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '—' }}.</div>
-              {% elif not referral.is_active %}
-                <div class="genealogy-parent">Komisen ditahan kerana akaun referral tidak aktif.</div>
-              {% elif not user.is_active %}
-                <div class="genealogy-parent">Komisen ditahan kerana akaun penerima tidak aktif.</div>
-              {% elif commission.payable_at > now_myt %}
-                <div class="genealogy-parent">Menunggu tarikh bayaran {{ commission.payable_at.strftime('%d/%m/%Y') }}.</div>
-              {% else %}
-                <div class="genealogy-parent">Tarikh bayaran telah tiba; menunggu pemprosesan payout.</div>
-              {% endif %}
-            {% else %}
-              <div class="genealogy-parent">Tiada rekod komisen untuk referral ini.</div>
+              <span class="genealogy-status">{{ 'Dibayar' if commission.status == 'paid' else 'Menunggu' }}</span>
             {% endif %}
           </div>
         {% endfor %}
@@ -431,23 +414,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
               <span class="genealogy-member-name">{{ referral.full_name }}</span>
               <span class="genealogy-member-id">{{ referral.nova_id }}</span>
             </div>
-            <div class="genealogy-parent">Di bawah {{ referral.referred_by.full_name }} ({{ referral.referred_by.nova_id }})</div>
             <span class="genealogy-status {{ 'genealogy-status-active' if referral.is_active else 'genealogy-status-inactive' }}">{{ 'Akaun aktif' if referral.is_active else 'Akaun tidak aktif' }}</span>
             {% if commission %}
               <div class="genealogy-commission">Komisen: RM {{ '%.2f'|format(commission.amount) }} · Level 2</div>
-              {% if commission.status == 'paid' %}
-                <div class="genealogy-parent">Dikreditkan pada {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '—' }}.</div>
-              {% elif not referral.is_active %}
-                <div class="genealogy-parent">Komisen ditahan kerana akaun referral tidak aktif.</div>
-              {% elif not user.is_active %}
-                <div class="genealogy-parent">Komisen ditahan kerana akaun penerima tidak aktif.</div>
-              {% elif commission.payable_at > now_myt %}
-                <div class="genealogy-parent">Menunggu tarikh bayaran {{ commission.payable_at.strftime('%d/%m/%Y') }}.</div>
-              {% else %}
-                <div class="genealogy-parent">Tarikh bayaran telah tiba; menunggu pemprosesan payout.</div>
-              {% endif %}
-            {% else %}
-              <div class="genealogy-parent">Tiada rekod komisen untuk referral ini.</div>
+              <span class="genealogy-status">{{ 'Dibayar' if commission.status == 'paid' else 'Menunggu' }}</span>
             {% endif %}
           </div>
         {% endfor %}
@@ -495,18 +465,20 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
     </div>
     <div class="card" style="margin-top:1rem">
-      {% if user.is_trade_closed and user.withdrawable_amount > 0 and bank_registration %}
-        <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
-      {% else %}
-        <div class="card-label">Pengeluaran</div>
-      {% endif %}
+      <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
       <div class="card-val num" id="withdrawableVal" style="font-size:1.35rem">RM {{ "%.2f"|format(user.withdrawable_amount) }}</div>
     </div>
-    {% if user.is_trade_closed and user.withdrawable_amount > 0 and bank_registration %}
       <div class="withdraw-modal-overlay" id="withdrawalModal" onclick="if(event.target===this)closeWithdrawalModal()">
         <section class="withdraw-modal" role="dialog" aria-modal="true" aria-labelledby="withdrawalModalTitle">
           <button class="withdraw-modal-close" type="button" onclick="closeWithdrawalModal()" aria-label="Tutup">&times;</button>
-          <h2 class="withdraw-modal-title" id="withdrawalModalTitle">Sahkan Pengeluaran</h2>
+          <h2 class="withdraw-modal-title" id="withdrawalModalTitle">Pengeluaran</h2>
+          {% if not user.is_trade_closed %}
+            <p class="withdraw-modal-sub">Permohonan pengeluaran boleh dibuat selepas sesi dagangan anda ditutup.</p>
+          {% elif user.withdrawable_amount <= 0 %}
+            <p class="withdraw-modal-sub">Buat masa ini tiada baki yang boleh dikeluarkan.</p>
+          {% elif not bank_registration %}
+            <p class="withdraw-modal-sub">Akaun bank belum dipautkan kepada rekod pendaftaran yang sah. Sila hubungi admin untuk bantuan.</p>
+          {% else %}
           <p class="withdraw-modal-sub">Semak jumlah dan pastikan butiran penerima betul. Baki akan ditolak sebaik sahaja anda mengesahkan permohonan.</p>
           <form method="POST" action="{{ url_for('user_withdrawal_request') }}" onsubmit="return confirm('Sahkan permohonan ini? Jumlah akan ditolak daripada baki anda.');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -525,9 +497,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
               <button class="withdraw-confirm" type="submit">Sahkan Pengeluaran</button>
             </div>
           </form>
+          {% endif %}
         </section>
       </div>
-    {% endif %}
     {% if withdrawal_requests %}
       <div class="withdrawal-history">
         <div class="withdrawal-history-title">Sejarah Permohonan Pengeluaran</div>
@@ -1957,20 +1929,16 @@ function filterGenealogyMembers(){
   var search=document.getElementById('genealogySearch');
   var levelFilter=document.getElementById('genealogyLevelFilter');
   var statusFilter=document.getElementById('genealogyStatusFilter');
-  var count=document.getElementById('genealogyFilterCount');
   var members=document.querySelectorAll('[data-genealogy-member]');
-  if(!search||!levelFilter||!statusFilter||!count) return;
+  if(!search||!levelFilter||!statusFilter) return;
   var term=search.value.trim().toLowerCase();
-  var shown=0;
   members.forEach(function(member){
     var matchesSearch=(member.getAttribute('data-search')||'').indexOf(term)!==-1;
     var matchesLevel=levelFilter.value==='all'||member.getAttribute('data-level')===levelFilter.value;
     var matchesStatus=statusFilter.value==='all'||member.getAttribute('data-status')===statusFilter.value;
     var visible=matchesSearch&&matchesLevel&&matchesStatus;
     member.hidden=!visible;
-    if(visible) shown++;
   });
-  count.textContent=shown+' daripada '+members.length+' akaun dipaparkan.';
 }
 
 function copyReferralCode(){

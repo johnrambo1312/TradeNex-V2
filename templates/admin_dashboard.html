@@ -472,6 +472,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Clear</button>
               </form>
+              <button type="button" class="btn btn-outline" onclick="selectUser({{ u.id }}, true)">Urus Chart</button>
               {% if not u.is_matured %}
                 <form method="POST" action="{{ url_for('admin_mark_user_mature', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Tandakan akaun {{ u.nova_id }} sebagai matang dan benarkan pengeluaran modal?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -667,7 +668,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </div>
 
       <!-- Kanan: Tambah entry graf -->
-      <div>
+      <div id="chartManagement-{{ u.id }}">
         <div class="detail-section-title">Tambah Entry Graf</div>
         <form method="POST" action="{{ url_for('admin_add_entry', user_id=u.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -852,10 +853,19 @@ function toggleCreate(){
 }
 
 /* ── DETAIL PANEL ── */
-function selectUser(id){
+function selectUser(id, focusChart){
   document.querySelectorAll('.detail-overlay').forEach(function(el){ el.classList.remove('active'); });
   var overlay = document.getElementById('detailOverlay-'+id);
-  if(overlay){ overlay.classList.add('active'); document.body.style.overflow='hidden'; }
+  if(overlay){
+    overlay.classList.add('active');
+    document.body.style.overflow='hidden';
+    if(focusChart){
+      window.setTimeout(function(){
+        var chartSection=document.getElementById('chartManagement-'+id);
+        if(chartSection) chartSection.scrollIntoView({behavior:'smooth',block:'start'});
+      },50);
+    }
+  }
 }
 function closeUser(id){
   var overlay = document.getElementById('detailOverlay-'+id);
