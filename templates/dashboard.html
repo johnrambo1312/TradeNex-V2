@@ -293,43 +293,27 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
       <div>
         <h2 class="wallet-title" id="walletTitle">Wallet</h2>
-        <p class="wallet-caption">Ringkasan modal, untung/rugi dan jumlah baki akaun</p>
       </div>
     </div>
     <div class="cards wallet-cards">
       <div class="card">
         <div class="card-label">Modal Akaun</div>
         <div class="card-val num" id="modalVal">RM {{ "%.2f"|format(user.balance) }}</div>
-        <div class="card-sub">Kekal mengikut nilai yang ditetapkan oleh admin</div>
       </div>
       <div class="card">
         <div class="card-label">Untung / Rugi Semasa</div>
         <div class="card-val num" id="plVal">RM {{ "%+.2f"|format(user.current_profit_loss) }}</div>
-        <div class="card-sub">Dikira daripada Entry/Close yang ditetapkan admin</div>
       </div>
       <div class="card wallet-total">
         <div class="card-label">Baki</div>
-        <div class="card-val num" id="balanceVal">RM {{ "%.2f"|format(user.withdraw_live_balance) }}</div>
-        <div class="card-sub">Modal + untung/rugi − pengeluaran</div>
+        <div class="card-val num" id="balanceVal">RM {{ "%.2f"|format(wallet_balance_before_session if chart_values|length > 0 and not user.is_trade_closed else user.withdraw_live_balance) }}</div>
       </div>
     </div>
     <div class="card" style="margin-top:1rem">
-      <div class="card-label">Pengeluaran Tersedia</div>
-      <div class="card-val num" style="font-size:1.35rem">RM {{ "%.2f"|format(user.withdrawable_amount) }}</div>
-      {% if user.is_matured %}
-        <div class="card-sub">Akaun matang — modal dan keuntungan boleh dimohon untuk dikeluarkan.</div>
-      {% else %}
-        <div class="card-sub">Akaun belum matang — hanya keuntungan boleh dimohon untuk dikeluarkan.</div>
-      {% endif %}
+      <div class="card-label">Pengeluaran</div>
+      <div class="card-val num" id="withdrawableVal" style="font-size:1.35rem">RM {{ "%.2f"|format(user.withdrawable_amount) }}</div>
       {% if user.is_trade_closed and user.withdrawable_amount > 0 and bank_registration %}
         <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Mohon Pengeluaran</button>
-        <p class="wallet-request-note">Semak jumlah dan maklumat bank dalam popup sebelum mengesahkan. Jumlah akan ditolak daripada baki selepas anda sahkan.</p>
-      {% elif user.is_trade_closed and user.withdrawable_amount > 0 %}
-        <p class="wallet-request-note">Akaun belum dipautkan kepada rekod pendaftaran yang tepat. Sila hubungi admin untuk semakan sebelum membuat pengeluaran.</p>
-      {% elif not user.is_trade_closed %}
-        <p class="wallet-request-note">Permohonan pengeluaran boleh dibuat selepas sesi dagangan ditutup.</p>
-      {% else %}
-        <p class="wallet-request-note">Tiada jumlah yang boleh dikeluarkan buat masa ini.</p>
       {% endif %}
     </div>
     {% if user.is_trade_closed and user.withdrawable_amount > 0 and bank_registration %}
@@ -730,6 +714,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   // Modal awal sentiasa nilai Entry pertama, bukan baki akaun selepas Close.
   var startingBalance = anchorValues[0];
   var SEED_BASE       = {{ user.id }};
+  var walletModal     = {{ (user.balance or 0)|tojson }};
+  var walletWithdrawn = {{ (user.withdrawn_total or 0)|tojson }};
+  var walletRealizedPL = {{ (user.realized_profit_loss or 0)|tojson }};
+  var walletMatured   = {{ user.is_matured|tojson }};
   var sessionStart    = anchorTimes[0];
   // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
   var entryTime       = anchorTimes[0];
@@ -1156,6 +1144,21 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 
     // Current price
     var effClose = live ? live.c : shown[shown.length-1].c;
+    var liveProfitLoss = effClose - startingBalance;
+    var liveBalance = Math.max(0, walletModal - walletWithdrawn + walletRealizedPL + liveProfitLoss);
+    var liveWithdrawable = walletMatured
+      ? liveBalance
+      : Math.max(0, walletRealizedPL + liveProfitLoss - walletWithdrawn);
+    var plEl = document.getElementById('plVal');
+    var balanceEl = document.getElementById('balanceVal');
+    var withdrawableEl = document.getElementById('withdrawableVal');
+    if(plEl){
+      plEl.textContent = 'RM ' + (liveProfitLoss >= 0 ? '+' : '') + liveProfitLoss.toFixed(2);
+      plEl.classList.toggle('pl-pos', liveProfitLoss >= 0);
+      plEl.classList.toggle('pl-neg', liveProfitLoss < 0);
+    }
+    if(balanceEl && Date.now()/1000 >= sessionEnd) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
+    if(withdrawableEl) withdrawableEl.textContent = 'RM ' + liveWithdrawable.toFixed(2);
 
     // ── Y AXIS: fixed scale, pan-able ─────────────────────────────────
     var centerPrice = effClose + yPanOffset;

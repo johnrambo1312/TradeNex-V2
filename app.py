@@ -429,6 +429,12 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user=user,
+        wallet_balance_before_session=max(
+            0.0,
+            float(user.balance or 0)
+            - float(user.withdrawn_total or 0)
+            + float(user.realized_profit_loss or 0),
+        ),
         chart_labels=chart_labels,
         chart_values=chart_values,
         chart_timestamps=chart_timestamps,
