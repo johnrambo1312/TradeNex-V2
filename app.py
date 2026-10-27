@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import secrets
@@ -13,7 +14,7 @@ from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from models import db, User, AdminUser, RegistrationRequest, TradeEntry, UserLiveBalance
+from models import db, User, AdminUser, RegistrationRequest, TradeEntry, UserLiveBalance, WithdrawalRequest
 
 load_dotenv()
 
@@ -25,32 +26,34 @@ app = Flask(
 )
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_port=1)
 
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "ubah-rahsia-ini-dalam-env")
+APP_ENV = os.environ.get("APP_ENV", "").strip().lower()
+IS_PRODUCTION = APP_ENV == "production" or bool(os.environ.get("RENDER"))
+secret_key = os.environ.get("SECRET_KEY", "").strip()
+if IS_PRODUCTION and not secret_key:
+    raise RuntimeError("SECRET_KEY mesti ditetapkan untuk production.")
+app.config["SECRET_KEY"] = secret_key or "ubah-rahsia-ini-dalam-env"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_DEBUG", "0") != "1"
+app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION or os.environ.get("FLASK_DEBUG", "0") != "1"
 
 csrf = CSRFProtect(app)
 limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[])
 
-# Railway bagi DATABASE_URL untuk Postgres; kalau tiada atau kosong, fallback ke SQLite local (untuk dev/demo)
+# SQLite hanya digunakan untuk development setempat.
 db_url = (os.environ.get("DATABASE_URL") or "").strip()
 if not db_url:
+    if IS_PRODUCTION:
+        raise RuntimeError("DATABASE_URL PostgreSQL mesti ditetapkan untuk production.")
     db_url = "sqlite:///tradenex_demo.db"
 if db_url.startswith("postgres://"):
-    # SQLAlchemy versi baru perlukan "postgresql://" bukan "postgres://"
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+if IS_PRODUCTION and not db_url.startswith(("postgresql://", "postgresql+")):
+    raise RuntimeError("DATABASE_URL production mesti menggunakan PostgreSQL, bukan SQLite.")
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-try:
-    db.init_app(app)
-except Exception as exc:
-    print(f"[Warning] PostgreSQL driver unavailable, falling back to SQLite: {exc}")
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///tradenex_demo.db"
-    db.init_app(app)
+db.init_app(app)
 
 @app.context_processor
 def inject_contact_settings():
@@ -76,20 +79,86 @@ def now_myt():
     return datetime.now(MYT).replace(tzinfo=None)
 
 
-def ensure_database_ready():
-    """Pastikan jadual asas wujud bila app start di Railway/gunicorn."""
-    try:
-        db.create_all()
-        ensure_registration_request_schema()
+def registration_for_user(user):
+    return user.registration_request
 
-        if not AdminUser.query.filter_by(username="admin").first():
-            default_admin = AdminUser(username="admin")
-            default_admin.set_password(os.environ.get("DEFAULT_ADMIN_PASSWORD", "admin123"))
-            db.session.add(default_admin)
-            db.session.commit()
-    except Exception as e:
-        # Database tidak available semasa build — skip, akan run di startup nanti
-        print(f"[Warning] Database initialization skipped during build: {type(e).__name__}")
+
+def ensure_database_ready():
+    """Pastikan jadual dan akaun admin tersedia sebelum aplikasi menerima trafik."""
+    db.create_all()
+    ensure_registration_request_schema()
+    ensure_user_schema()
+    ensure_withdrawal_request_schema()
+
+    if not AdminUser.query.filter_by(username="admin").first():
+        admin_password = os.environ.get("DEFAULT_ADMIN_PASSWORD", "").strip()
+        if not admin_password:
+            if IS_PRODUCTION:
+                raise RuntimeError(
+                    "Tetapkan DEFAULT_ADMIN_PASSWORD untuk mencipta admin pertama di production."
+                )
+            admin_password = "admin123"
+        elif IS_PRODUCTION and len(admin_password) < 12:
+            raise RuntimeError(
+                "DEFAULT_ADMIN_PASSWORD mesti sekurang-kurangnya 12 aksara untuk admin pertama di production."
+            )
+        default_admin = AdminUser(username="admin")
+        default_admin.set_password(admin_password)
+        db.session.add(default_admin)
+        db.session.commit()
+
+
+def ensure_user_schema():
+    """Tambah medan baki Wallet pada pangkalan data user sedia ada."""
+    inspector = sqlalchemy_inspect(db.engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    missing_columns = {
+        "withdrawn_total": "FLOAT NOT NULL DEFAULT 0",
+        "realized_profit_loss": "FLOAT NOT NULL DEFAULT 0",
+        "is_matured": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "registration_request_id": (
+            "INTEGER REFERENCES registration_requests(id) ON DELETE RESTRICT"
+        ),
+    }
+    with db.engine.begin() as connection:
+        for column_name, column_definition in missing_columns.items():
+            if column_name not in existing_columns:
+                connection.exec_driver_sql(
+                    f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
+                )
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_registration_request_id "
+            "ON users (registration_request_id)"
+        )
+
+
+def ensure_withdrawal_request_schema():
+    """Tambah snapshot maklumat bank pada permohonan pengeluaran sedia ada."""
+    inspector = sqlalchemy_inspect(db.engine)
+    if "withdrawal_requests" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("withdrawal_requests")
+    }
+    missing_columns = {
+        "account_holder_name": "VARCHAR(120)",
+        "bank_name": "VARCHAR(100)",
+        "bank_account_number": "VARCHAR(34)",
+        "payment_reference": "VARCHAR(120)",
+        "registration_request_id": (
+            "INTEGER REFERENCES registration_requests(id) ON DELETE RESTRICT"
+        ),
+    }
+    with db.engine.begin() as connection:
+        for column_name, column_definition in missing_columns.items():
+            if column_name not in existing_columns:
+                connection.exec_driver_sql(
+                    f"ALTER TABLE withdrawal_requests ADD COLUMN {column_name} {column_definition}"
+                )
 
 
 def ensure_registration_request_schema():
@@ -136,11 +205,7 @@ def ensure_registration_request_schema():
 
 
 with app.app_context():
-    try:
-        ensure_database_ready()
-    except Exception:
-        # Biarkan je kalau gagal semasa build, akan try lagi semasa runtime
-        pass
+    ensure_database_ready()
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +215,13 @@ with app.app_context():
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if "user_id" not in session:
+        user_id = session.get("user_id")
+        if user_id is None:
+            return redirect(url_for("login_page"))
+        user = db.session.get(User, user_id)
+        if not user or not user.is_active:
+            session.pop("user_id", None)
+            flash("Akaun anda telah dinyahaktifkan. Sila hubungi admin.", "error")
             return redirect(url_for("login_page"))
         return f(*args, **kwargs)
     return wrapper
@@ -181,20 +252,6 @@ def generate_nova_id():
 # ---------------------------------------------------------------------------
 # Laman utama (index.html sedia ada)
 # ---------------------------------------------------------------------------
-
-_db_initialized = False
-
-@app.before_request
-def init_database_on_first_request():
-    """Ensure database is ready on first request."""
-    global _db_initialized
-    if not _db_initialized:
-        with app.app_context():
-            try:
-                ensure_database_ready()
-                _db_initialized = True
-            except Exception:
-                pass  # Will retry on next request
 
 @app.route("/")
 def home():
@@ -293,9 +350,14 @@ def api_registration():
 @app.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute")
 def api_login():
-    data = request.get_json(silent=True) or request.form
-    nova_id = (data.get("nova_id") or "").strip()
-    password = data.get("password") or ""
+    data = request.get_json(silent=True) if request.is_json else request.form
+    if request.is_json and not isinstance(data, dict):
+        return jsonify({"ok": False, "message": "Format permintaan log masuk tidak sah."}), 400
+    nova_id = data.get("nova_id", "")
+    password = data.get("password", "")
+    if not isinstance(nova_id, str) or not isinstance(password, str):
+        return jsonify({"ok": False, "message": "ID atau kata laluan tidak sah."}), 400
+    nova_id = nova_id.strip()
 
     user = User.query.filter_by(nova_id=nova_id).first()
 
@@ -309,7 +371,7 @@ def api_login():
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
     session.pop("user_id", None)
     return redirect(url_for("login_page"))
@@ -324,6 +386,10 @@ def dashboard():
         return redirect(url_for("login_page"))
 
     entries = TradeEntry.query.filter_by(user_id=user.id).order_by(TradeEntry.entry_date).all()
+    withdrawal_requests = WithdrawalRequest.query.filter_by(user_id=user.id).order_by(
+        WithdrawalRequest.created_at.desc()
+    ).all()
+    bank_registration = registration_for_user(user)
 
     def to_utc_ts(dt):
         # Semua datetime dalam DB adalah naive MYT (UTC+8).
@@ -358,41 +424,9 @@ def dashboard():
         chart_values=chart_values,
         chart_timestamps=chart_timestamps,
         show_chart=show_chart,
+        withdrawal_requests=withdrawal_requests,
+        bank_registration=bank_registration,
     )
-
-
-@app.route("/api/user/snapshot_balance", methods=["POST"])
-@csrf.exempt
-@login_required
-def api_user_snapshot_balance():
-    """Simpan nilai candle semasa yang dipaparkan di dashboard user (tanpa kiraan backend)."""
-    user = db.session.get(User, session["user_id"])
-    if not user:
-        return jsonify({"ok": False, "message": "User tidak ditemui."}), 404
-
-    data = request.get_json(silent=True) or {}
-    raw_value = data.get("value")
-
-    try:
-        value = round(float(raw_value), 2)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "message": "Nilai tidak sah."}), 400
-
-    if value < 0:
-        value = 0.0
-
-    snap = user.live_balance_snapshot
-    if not snap:
-        snap = UserLiveBalance(user_id=user.id, value=value)
-        db.session.add(snap)
-    else:
-        snap.value = value
-
-    if user.is_trade_closed:
-        user.balance = value
-
-    db.session.commit()
-    return jsonify({"ok": True})
 
 
 # ---------------------------------------------------------------------------
@@ -407,19 +441,50 @@ def admin_login_page():
 @app.route("/admin/api/login", methods=["POST"])
 @limiter.limit("5 per minute")
 def admin_api_login():
-    data = request.get_json(silent=True) or request.form
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
+    data = request.get_json(silent=True) if request.is_json else request.form
+    if request.is_json and not isinstance(data, dict):
+        return jsonify({"ok": False, "message": "Format permintaan log masuk tidak sah."}), 400
+    username = data.get("username", "")
+    password = data.get("password", "")
+    if not isinstance(username, str) or not isinstance(password, str):
+        return jsonify({"ok": False, "message": "Username atau password admin tidak sah."}), 400
+    username = username.strip()
 
     admin = AdminUser.query.filter_by(username=username).first()
     if not admin or not admin.check_password(password):
         return jsonify({"ok": False, "message": "Username atau password admin tidak sah."}), 401
 
     session["admin_id"] = admin.id
+    if admin.check_password("admin123"):
+        flash("Password admin masih menggunakan password lalai. Sila tukar segera.", "error")
     return jsonify({"ok": True, "redirect": url_for("admin_dashboard")})
 
 
-@app.route("/admin/logout")
+@app.route("/admin/change-password", methods=["POST"])
+@admin_required
+def admin_change_password():
+    admin = db.session.get(AdminUser, session["admin_id"])
+    if not admin:
+        session.pop("admin_id", None)
+        return redirect(url_for("admin_login_page"))
+
+    current_password = request.form.get("current_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    if not admin.check_password(current_password):
+        flash("Password semasa tidak betul.", "error")
+    elif len(new_password) < 12:
+        flash("Password baharu mesti sekurang-kurangnya 12 aksara.", "error")
+    elif new_password != confirm_password:
+        flash("Pengesahan password baharu tidak sepadan.", "error")
+    else:
+        admin.set_password(new_password)
+        db.session.commit()
+        flash("Password admin berjaya ditukar.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_id", None)
     return redirect(url_for("admin_login_page"))
@@ -434,10 +499,23 @@ def admin_logout():
 def admin_dashboard():
     users = User.query.order_by(User.created_at.asc()).all()
     registration_requests = RegistrationRequest.query.order_by(RegistrationRequest.created_at.desc()).all()
+    withdrawal_requests = WithdrawalRequest.query.order_by(
+        WithdrawalRequest.created_at.desc()
+    ).all()
+    linked_registration_ids = {
+        user.registration_request_id for user in users if user.registration_request_id
+    }
+    protected_registration_ids = linked_registration_ids | {
+        withdrawal.registration_request_id
+        for withdrawal in withdrawal_requests
+        if withdrawal.registration_request_id
+    }
     return render_template(
         "admin_dashboard.html",
         users=users,
         registration_requests=registration_requests,
+        withdrawal_requests=withdrawal_requests,
+        protected_registration_ids=protected_registration_ids,
     )
 
 
@@ -445,6 +523,11 @@ def admin_dashboard():
 @admin_required
 def admin_delete_registration(registration_id):
     registration = db.get_or_404(RegistrationRequest, registration_id)
+    if registration.user or WithdrawalRequest.query.filter_by(
+        registration_request_id=registration.id
+    ).first():
+        flash("Rekod pendaftaran yang mempunyai pautan akaun atau sejarah pengeluaran tidak boleh dipadam.", "error")
+        return redirect(url_for("admin_dashboard"))
     db.session.delete(registration)
     db.session.commit()
     flash("Permohonan pendaftaran berjaya dipadam.", "success")
@@ -457,6 +540,7 @@ def admin_create_user():
     password = request.form.get("password", "")
     full_name = request.form.get("full_name", "").strip()
     balance = request.form.get("balance", "0") or "0"
+    registration_id = request.form.get("registration_request_id", "").strip()
 
     if not password or not full_name:
         flash("Sila isi Nama dan Password.", "error")
@@ -464,12 +548,29 @@ def admin_create_user():
 
     try:
         balance_float = float(balance)
+        if not math.isfinite(balance_float):
+            flash("Modal awal mesti nombor yang sah.", "error")
+            return redirect(url_for("admin_dashboard"))
         if balance_float < 0:
-            flash("Baki awal tidak boleh negatif.", "error")
+            flash("Modal awal tidak boleh negatif.", "error")
             return redirect(url_for("admin_dashboard"))
     except ValueError:
         flash("Format baki tidak sah (mesti angka).", "error")
         return redirect(url_for("admin_dashboard"))
+
+    registration = None
+    if registration_id:
+        try:
+            registration = db.session.get(RegistrationRequest, int(registration_id))
+        except ValueError:
+            registration = None
+        if not registration:
+            flash("Rekod pendaftaran yang dipilih tidak sah.", "error")
+            return redirect(url_for("admin_dashboard"))
+        if registration.user:
+            flash("Rekod pendaftaran itu sudah dipautkan kepada akaun lain.", "error")
+            return redirect(url_for("admin_dashboard"))
+        full_name = registration.full_name
 
     nova_id = generate_nova_id()
 
@@ -477,6 +578,7 @@ def admin_create_user():
         nova_id=nova_id,
         full_name=full_name,
         balance=balance_float,
+        registration_request=registration,
     )
     user.set_password(password)
     db.session.add(user)
@@ -494,6 +596,8 @@ def admin_update_user(user_id):
     balance = request.form.get("balance")
     new_password = request.form.get("new_password", "").strip()
     is_active = request.form.get("is_active") == "on"
+    is_matured = request.form.get("is_matured") == "on"
+    registration_id = request.form.get("registration_request_id", "").strip()
 
     if full_name:
         user.full_name = full_name
@@ -502,8 +606,11 @@ def admin_update_user(user_id):
     if balance not in (None, ""):
         try:
             balance_float = float(balance)
+            if not math.isfinite(balance_float):
+                flash("Modal mesti nombor yang sah.", "error")
+                return redirect(url_for("admin_dashboard"))
             if balance_float < 0:
-                flash("Baki tidak boleh negatif.", "error")
+                flash("Modal tidak boleh negatif.", "error")
                 return redirect(url_for("admin_dashboard"))
             user.balance = balance_float
         except ValueError:
@@ -512,20 +619,132 @@ def admin_update_user(user_id):
     
     if new_password:
         user.set_password(new_password)
+    if registration_id:
+        try:
+            registration = db.session.get(RegistrationRequest, int(registration_id))
+        except ValueError:
+            registration = None
+        if not registration:
+            flash("Rekod pendaftaran yang dipilih tidak sah.", "error")
+            return redirect(url_for("admin_dashboard"))
+        if registration.user and registration.user.id != user.id:
+            flash("Rekod pendaftaran itu sudah dipautkan kepada akaun lain.", "error")
+            return redirect(url_for("admin_dashboard"))
+        user.registration_request = registration
+        user.full_name = registration.full_name
+    else:
+        user.registration_request = None
     user.is_active = is_active
+    user.is_matured = is_matured
 
     db.session.commit()
     flash(f"Akaun '{user.nova_id}' berjaya dikemaskini.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/user/<int:user_id>/delete", methods=["POST"])
-@admin_required
-def admin_delete_user(user_id):
-    user = db.get_or_404(User, user_id)
-    db.session.delete(user)
+@app.route("/withdrawal/request", methods=["POST"])
+@login_required
+@limiter.limit("5 per hour")
+def user_withdrawal_request():
+    user = User.query.filter_by(id=session["user_id"]).with_for_update().first()
+    if not user:
+        session.pop("user_id", None)
+        return redirect(url_for("login_page"))
+
+    if not user.is_trade_closed:
+        flash("Permohonan pengeluaran hanya boleh dibuat selepas sesi dagangan ditutup.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        amount = round(float(request.form.get("amount", "")), 2)
+    except (TypeError, ValueError):
+        flash("Sila masukkan jumlah pengeluaran yang sah.", "error")
+        return redirect(url_for("dashboard"))
+
+    if not math.isfinite(amount) or amount <= 0:
+        flash("Jumlah pengeluaran mesti melebihi RM 0.00.", "error")
+        return redirect(url_for("dashboard"))
+
+    available = round(user.withdrawable_amount, 2)
+    if amount > available:
+        if user.is_matured:
+            message = f"Jumlah melebihi baki yang boleh dikeluarkan (RM {available:,.2f})."
+        else:
+            message = f"Sebelum akaun matang, pengeluaran terhad kepada keuntungan (RM {available:,.2f})."
+        flash(message, "error")
+        return redirect(url_for("dashboard"))
+
+    bank_registration = registration_for_user(user)
+    if not bank_registration:
+        flash("Akaun belum dipautkan kepada rekod pendaftaran yang tepat. Sila hubungi admin untuk semakan.", "error")
+        return redirect(url_for("dashboard"))
+
+    user.withdrawn_total = round(float(user.withdrawn_total or 0) + amount, 2)
+    user.realized_profit_loss = round(
+        float(user.realized_profit_loss or 0) + user.current_profit_loss,
+        2,
+    )
+    db.session.add(WithdrawalRequest(
+        user_id=user.id,
+        registration_request_id=bank_registration.id,
+        amount=amount,
+        account_holder_name=bank_registration.full_name,
+        bank_name=bank_registration.bank_name,
+        bank_account_number=bank_registration.bank_account_number,
+    ))
+    TradeEntry.query.filter_by(user_id=user.id).delete()
+    if user.live_balance_snapshot:
+        db.session.delete(user.live_balance_snapshot)
+
     db.session.commit()
-    flash(f"Akaun '{user.nova_id}' telah dipadam.", "success")
+    flash("Permohonan pengeluaran berjaya dihantar kepada admin untuk semakan.", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/withdrawal/<int:withdrawal_id>/<action>", methods=["POST"])
+@admin_required
+def admin_update_withdrawal(withdrawal_id, action):
+    withdrawal = WithdrawalRequest.query.filter_by(id=withdrawal_id).with_for_update().first_or_404()
+    if withdrawal.status != "pending":
+        flash("Permohonan ini telah diproses sebelum ini.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    if action not in {"processed", "rejected"}:
+        return "Tindakan tidak sah.", 400
+
+    user = User.query.filter_by(id=withdrawal.user_id).with_for_update().first()
+    if not user:
+        flash("Akaun user untuk permohonan ini tidak ditemui.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    if action == "rejected":
+        user.withdrawn_total = max(
+            0.0,
+            round(float(user.withdrawn_total or 0) - withdrawal.amount, 2),
+        )
+        withdrawal.status = "rejected"
+        flash(f"Permohonan {user.nova_id} ditolak dan RM {withdrawal.amount:,.2f} dipulangkan ke baki.", "success")
+    else:
+        payment_reference = request.form.get("payment_reference", "").strip()
+        if not payment_reference or len(payment_reference) > 120:
+            flash("Masukkan nombor rujukan transaksi bayaran (maksimum 120 aksara).", "error")
+            return redirect(url_for("admin_dashboard"))
+        withdrawal.payment_reference = payment_reference
+        withdrawal.status = "processed"
+        flash(f"Permohonan {user.nova_id} ditandakan selesai. Rujukan bayaran: {payment_reference}.", "success")
+
+    withdrawal.processed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.commit()
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/user/<int:user_id>/archive", methods=["POST"])
+@admin_required
+def admin_archive_user(user_id):
+    user = db.get_or_404(User, user_id)
+    user.is_active = False
+    db.session.commit()
+    flash(f"Akaun '{user.nova_id}' dinyahaktifkan. Rekod akaun dan sejarah transaksi dikekalkan.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
@@ -539,6 +758,10 @@ def admin_add_entry(user_id):
 
     entry_type = request.form.get("entry_type", "entry").strip()  # "entry" atau "close"
 
+    if entry_type not in {"entry", "close"}:
+        flash("Jenis entry tidak sah.", "error")
+        return redirect(url_for("admin_dashboard"))
+
     if not value:
         flash("Sila masukkan nilai untuk entry graf.", "error")
         return redirect(url_for("admin_dashboard"))
@@ -546,6 +769,9 @@ def admin_add_entry(user_id):
     # Validasi & parse value (float)
     try:
         value_float = float(value)
+        if not math.isfinite(value_float):
+            flash("Nilai entry mesti nombor yang sah.", "error")
+            return redirect(url_for("admin_dashboard"))
         if value_float < 0:
             flash("Nilai entry tidak boleh negatif.", "error")
             return redirect(url_for("admin_dashboard"))
@@ -594,8 +820,6 @@ def admin_add_entry(user_id):
     db.session.add(entry)
 
     if entry_type == "close":
-        # Nilai Close menjadi baki rasmi akaun selepas sesi tamat.
-        user.balance = round(value_float, 2)
         if user.live_balance_snapshot:
             db.session.delete(user.live_balance_snapshot)
 
@@ -610,9 +834,20 @@ def admin_add_entry(user_id):
 @admin_required
 def admin_delete_entry(entry_id):
     entry = db.get_or_404(TradeEntry, entry_id)
-    db.session.delete(entry)
+    user = db.get_or_404(User, entry.user_id)
+    profit_loss_before = user.current_profit_loss
+    user.entries.remove(entry)
+    db.session.flush()
+    user.realized_profit_loss = round(
+        float(user.realized_profit_loss or 0)
+        + profit_loss_before
+        - user.current_profit_loss,
+        2,
+    )
+    if user.live_balance_snapshot:
+        db.session.delete(user.live_balance_snapshot)
     db.session.commit()
-    flash("Entry graf dipadam.", "success")
+    flash("Entry dipadam. Pelarasan dibuat supaya baki Wallet kekal konsisten.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
@@ -620,46 +855,15 @@ def admin_delete_entry(entry_id):
 @admin_required
 def admin_clear_history(user_id):
     user = db.get_or_404(User, user_id)
-    TradeEntry.query.filter_by(user_id=user.id).delete()
-    db.session.commit()
-    flash(f"History entry untuk '{user.nova_id}' berjaya dipadam.", "success")
-    return redirect(url_for("admin_dashboard"))
-
-
-@app.route("/admin/user/<int:user_id>/withdraw", methods=["POST"])
-@admin_required
-def admin_withdraw(user_id):
-    user = db.get_or_404(User, user_id)
-
-    if not user.is_trade_closed:
-        flash("Withdraw hanya boleh dilakukan bila sesi trade Selesai.", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    try:
-        amount = round(float(request.form.get("withdraw_amount", 0)), 2)
-    except (ValueError, TypeError):
-        flash("Jumlah withdraw tidak sah.", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    if amount <= 0:
-        flash("Jumlah withdraw mesti lebih dari RM 0.", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    current = user.withdraw_live_balance
-    if amount > current:
-        flash(f"Jumlah melebihi baki semasa (RM {current:,.2f}).", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    new_balance = round(current - amount, 2)
-    user.balance = new_balance
-
-    # Auto buang semua history entry selepas withdraw
+    user.realized_profit_loss = round(
+        float(user.realized_profit_loss or 0) + user.current_profit_loss,
+        2,
+    )
     TradeEntry.query.filter_by(user_id=user.id).delete()
     if user.live_balance_snapshot:
         db.session.delete(user.live_balance_snapshot)
     db.session.commit()
-
-    flash(f"Withdraw RM {amount:,.2f} berjaya untuk '{user.nova_id}'. Baki baru: RM {new_balance:,.2f}.", "success")
+    flash(f"History entry untuk '{user.nova_id}' berjaya dipadam.", "success")
     return redirect(url_for("admin_dashboard"))
 
 

@@ -10,10 +10,12 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 - Sistem **login user** — user log masuk dengan ID & password yang **admin** bagi (tiada daftar sendiri)
 - **Dashboard user** — papar baki akaun, untung/rugi, dan graf trading berdasarkan entry yang admin masukkan
 - **Panel admin** (`/admin`) — admin login sendiri, boleh:
-  - Cipta / kemaskini / padam akaun user
+  - Cipta / kemaskini / nyahaktifkan akaun user sambil mengekalkan sejarah kewangan
+  - Pautkan akaun kepada rekod pendaftaran dan maklumat bank yang tepat
+  - Semak permohonan pengeluaran serta simpan nombor rujukan transaksi bayaran
   - Tetapkan baki & untung-rugi setiap user
   - Tambah/padam "entry" data untuk graf trading setiap user
-- Database **SQLite** (local) / **PostgreSQL** (di Railway)
+- Database **SQLite** (local) / **PostgreSQL** (Render)
 
 ## Struktur Fail
 
@@ -65,7 +67,11 @@ flask init-db
 
 Ini akan cipta semua jadual database, dan satu akaun admin lalai:
 - **Username:** `admin`
-- **Password:** (ikut nilai `DEFAULT_ADMIN_PASSWORD` dalam `.env`, default `admin123`)
+- **Password development setempat:** ikut nilai `DEFAULT_ADMIN_PASSWORD` dalam `.env` (default lama `admin123`; tukar sebelum login).
+
+Production tidak mempunyai password fallback: `SECRET_KEY`, PostgreSQL `DATABASE_URL`
+dan `DEFAULT_ADMIN_PASSWORD` perlu ditetapkan. Password admin pertama mesti sekurang-
+kurangnya 12 aksara. Tukar melalui panel admin selepas login pertama jika perlu.
 
 ### d) Jalankan server
 
@@ -89,7 +95,7 @@ Buka browser:
    - Klik **"Urus"** pada mana-mana user untuk:
      - Kemaskini nama, baki, untung/rugi, tukar password, aktif/non-aktifkan akaun
      - **Tambah Entry Graf** — setiap entry (tarikh + nilai) akan muncul sebagai titik dalam graf trading user tersebut
-     - Padam entry atau padam akaun terus
+     - Padam entry atau nyahaktifkan akaun tanpa memadam sejarah kewangan
 
 Bila user log masuk di `/login` dengan ID & password yang anda bagi, mereka akan
 nampak dashboard dengan baki, untung/rugi, dan graf yang anda set.
@@ -177,21 +183,39 @@ flask init-db
 ```
 
 Nota:
-- Kalau `DATABASE_URL` tiada, app fallback ke SQLite dalam container (data tidak kekal jika redeploy/restart).
-- Untuk penggunaan stabil, wajib guna PostgreSQL di Northflank.
+- SQLite hanya digunakan untuk development setempat.
+- Dalam production, aplikasi gagal startup jika `DATABASE_URL` PostgreSQL atau `SECRET_KEY` tiada; tiada fallback SQLite.
+- `DEFAULT_ADMIN_PASSWORD` diperlukan untuk mencipta admin pertama. Jika admin sudah wujud, tukar password melalui panel admin.
 
 ---
 
 ## 6. Nota Keselamatan (Penting untuk Projek Sekolah)
 
 - Ini **demo/latihan** — *jangan* gunakan untuk data kewangan sebenar atau letak akaun ini secara terbuka untuk orang awam guna sebagai produk sebenar.
-- Tukar `DEFAULT_ADMIN_PASSWORD` dan `SECRET_KEY` — jangan kekalkan nilai default.
+- Production wajib mempunyai `DEFAULT_ADMIN_PASSWORD`, `SECRET_KEY` dan `DATABASE_URL`; jangan gunakan nilai development.
 - Semua password user/admin disimpan dalam bentuk **hash** (bukan plain text) menggunakan `werkzeug.security`.
-- Tiada had kadar (rate limiting) pada login — untuk projek sekolah ini cukup, tapi untuk production sebenar perlu ditambah.
+- Login user/admin dan pendaftaran mempunyai had kadar; storan rate limiter lalai dalam memori tidak dikongsi antara worker. Untuk deployment berbilang worker, konfigurasi storan bersama seperti Redis.
+- Pendaftaran demo menyimpan maklumat peribadi dan bank yang dihantar. Gunakan data rekaan sahaja sehingga notis privasi, asas pemprosesan, kawalan akses dan tempoh penyimpanan sebenar ditetapkan.
 
 ---
 
-## 7. Troubleshooting
+## 7. Render: Pangkalan Data dan Sandaran
+
+Blueprint `render.yaml` memautkan `DATABASE_URL` Web Service kepada pangkalan data PostgreSQL `tradenex-postgres`. Selepas deploy, semak di Render Dashboard bahawa:
+
+- Web Service menggunakan `DATABASE_URL` daripada pangkalan data yang betul, bukan SQLite fallback.
+- Pangkalan data dan Web Service berada di region yang sama supaya sambungan dalaman digunakan.
+- Status pangkalan data tersedia dan migration berjaya dijalankan pada startup.
+
+Sandaran PostgreSQL perlu diurus berasingan daripada kod aplikasi. Semak bahagian **Backups** pada halaman pangkalan data Render dan pastikan pelan anda menyediakan jadual sandaran/pemulihan yang sesuai. Untuk salinan tambahan, jalankan `pg_dump` dari persekitaran dipercayai yang mempunyai `DATABASE_URL`:
+
+```powershell
+pg_dump $env:DATABASE_URL --format=custom --file=tradenex-backup.dump
+```
+
+Simpan fail sandaran di storan sulit yang berasingan daripada repository dan uji pemulihan secara berkala pada pangkalan data ujian. Jangan masukkan `DATABASE_URL`, sandaran, atau maklumat pelanggan ke Git.
+
+## 8. Troubleshooting
 
 | Masalah | Penyelesaian |
 |---|---|

@@ -34,23 +34,38 @@ class AdminUser(db.Model):
 class User(db.Model):
     """Akaun user (client demo). Dicipta oleh admin sahaja - tiada self-register."""
     __tablename__ = "users"
+    __table_args__ = (
+        db.Index("uq_users_registration_request_id", "registration_request_id", unique=True),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     nova_id = db.Column(db.String(50), unique=True, nullable=False)  # ID login
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
 
-    # Nilai akaun ringkas (admin set terus)
+    # Modal yang ditetapkan admin; sistem tidak mengubahnya semasa trade atau withdraw.
     balance = db.Column(db.Float, default=0.0)
+    withdrawn_total = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
+    realized_profit_loss = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
+    is_matured = db.Column(db.Boolean, default=False, nullable=False, server_default="false")
+    registration_request_id = db.Column(
+        db.Integer,
+        db.ForeignKey("registration_requests.id", ondelete="RESTRICT"),
+    )
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=utcnow)
 
+    registration_request = db.relationship("RegistrationRequest", back_populates="user", uselist=False)
     entries = db.relationship(
         "TradeEntry", backref="user", lazy=True,
         order_by="TradeEntry.entry_date", cascade="all, delete-orphan"
     )
     live_balance_snapshot = db.relationship(
         "UserLiveBalance", backref="user", uselist=False, cascade="all, delete-orphan"
+    )
+    withdrawal_requests = db.relationship(
+        "WithdrawalRequest", backref="user", lazy=True,
+        order_by="WithdrawalRequest.created_at.desc()"
     )
 
     @property
@@ -87,13 +102,38 @@ class User(db.Model):
         return anchor_past.value + (anchor_future.value - anchor_past.value) * frac
 
     @property
+    def current_profit_loss(self):
+        if not self.entries:
+            return 0.0
+
+        sorted_entries = sorted(self.entries, key=lambda e: e.entry_date)
+        if sorted_entries[0].entry_date > _now_myt():
+            return 0.0
+        starting_value = sorted_entries[0].value
+        return self.current_balance - starting_value
+
+    @property
     def withdraw_live_balance(self):
-        """Selepas Close, gunakan baki rasmi yang diselaraskan dari paparan user."""
-        if self.is_trade_closed:
-            return float(self.balance)
-        if self.live_balance_snapshot:
-            return float(self.live_balance_snapshot.value)
-        return self.current_balance
+        """Baki boleh dikeluarkan: modal, untung/rugi, dan jumlah pengeluaran."""
+        return max(
+            0.0,
+            float(self.balance or 0)
+            - float(self.withdrawn_total or 0)
+            + float(self.realized_profit_loss or 0)
+            + self.current_profit_loss,
+        )
+
+    @property
+    def withdrawable_amount(self):
+        """Keuntungan sahaja sebelum matang; keseluruhan baki selepas matang."""
+        if self.is_matured:
+            return self.withdraw_live_balance
+        return max(
+            0.0,
+            float(self.realized_profit_loss or 0)
+            + self.current_profit_loss
+            - float(self.withdrawn_total or 0),
+        )
 
     @property
     def is_trade_closed(self):
@@ -132,6 +172,7 @@ class RegistrationRequest(db.Model):
     plan_name = db.Column(db.String(20), nullable=False, default="basic", server_default="basic")
     plan_price = db.Column(db.Integer, nullable=False, default=488, server_default="488")
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    user = db.relationship("User", back_populates="registration_request", uselist=False)
 
 
 class TradeEntry(db.Model):
@@ -160,3 +201,23 @@ class UserLiveBalance(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False)
     value = db.Column(db.Float, nullable=False, default=0.0)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class WithdrawalRequest(db.Model):
+    """Permohonan pengeluaran untuk semakan dan pemprosesan admin."""
+    __tablename__ = "withdrawal_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    registration_request_id = db.Column(
+        db.Integer,
+        db.ForeignKey("registration_requests.id", ondelete="RESTRICT"),
+    )
+    amount = db.Column(db.Float, nullable=False)
+    account_holder_name = db.Column(db.String(120))
+    bank_name = db.Column(db.String(100))
+    bank_account_number = db.Column(db.String(34))
+    payment_reference = db.Column(db.String(120))
+    status = db.Column(db.String(20), nullable=False, default="pending", server_default="pending")
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    processed_at = db.Column(db.DateTime)

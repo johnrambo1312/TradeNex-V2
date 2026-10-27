@@ -126,9 +126,9 @@ section{padding:6rem 4rem}
 /* ===== PRODUCTS ===== */
 .products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .prod-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:2rem;transition:all 0.25s;cursor:pointer;position:relative;overflow:hidden;text-decoration:none;display:block;color:inherit}
-.prod-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(212,168,67,0.06),transparent);opacity:0;transition:opacity 0.25s}
 .prod-card:hover{border-color:rgba(212,168,67,0.4);transform:translateY(-4px)}
 .prod-card:hover::after{opacity:1}
+.prod-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(212,168,67,0.06),transparent);opacity:0;transition:opacity 0.25s}
 .prod-icon{width:48px;height:48px;border-radius:12px;background:rgba(212,168,67,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;font-size:1.4rem}
 .prod-tag{display:inline-block;background:rgba(34,201,138,0.1);color:var(--green);font-size:0.68rem;font-weight:700;padding:0.2rem 0.65rem;border-radius:4px;margin-bottom:0.75rem;letter-spacing:0.5px;text-transform:uppercase}
 .prod-name{font-weight:700;font-size:1.05rem;margin-bottom:0.6rem}
@@ -163,6 +163,29 @@ section{padding:6rem 4rem}
 .referral-unit{color:var(--text-muted);font-size:0.75rem;margin-top:0.25rem}
 .referral-copy{color:var(--text-muted);font-size:0.9rem;line-height:1.7}
 .referral-highlight{color:var(--gold2);font-weight:600}
+
+/* ===== INVESTMENT PACKAGES ===== */
+.investment-intro{color:var(--text-muted);font-size:0.95rem;line-height:1.7;margin-bottom:2.5rem}
+.investment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem}
+.investment-card{
+  --package-accent:#C8D0DC;
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:260px;padding:2rem;border:1px solid color-mix(in srgb,var(--package-accent) 28%,var(--border));
+  border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,0.09),rgba(255,255,255,0.015) 55%),var(--navy2);
+  box-shadow:0 16px 40px rgba(0,0,0,0.16);transition:transform 0.25s,border-color 0.25s,box-shadow 0.25s
+}
+.investment-card::before{
+  content:'';position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--package-accent) 24%,transparent),transparent 56%)
+}
+.investment-card:hover{transform:translateY(-6px);border-color:color-mix(in srgb,var(--package-accent) 65%,var(--border));box-shadow:0 22px 48px rgba(0,0,0,0.28)}
+.investment-card.silver{--package-accent:#D5E2F2;background:radial-gradient(ellipse at 100% 0%,rgba(180,204,235,0.22),transparent 58%),linear-gradient(135deg,#24364E,#111E35 72%)}
+.investment-card.gold{--package-accent:var(--gold2);background:radial-gradient(ellipse at 100% 0%,rgba(240,185,75,0.24),transparent 58%),linear-gradient(135deg,#46351F,#1B2230 72%)}
+.investment-card.platinum{--package-accent:#C5C9FF;background:radial-gradient(ellipse at 100% 0%,rgba(154,137,255,0.25),transparent 58%),linear-gradient(135deg,#302B50,#141F38 72%)}
+.investment-name{color:var(--text-light);font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:0.3px}
+.investment-price-label{color:var(--text-muted);font-size:0.78rem;margin-top:2.5rem}
+.investment-price{margin-top:0.35rem;color:var(--package-accent);font-family:'IBM Plex Mono',monospace;font-size:clamp(1.55rem,2.4vw,2rem);font-weight:700;letter-spacing:-1px;white-space:nowrap}
+.investment-divider{height:1px;margin-top:1.5rem;background:linear-gradient(90deg,color-mix(in srgb,var(--package-accent) 45%,transparent),transparent)}
 
 /* ===== EDUCATION ===== */
 .edu-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem}
@@ -315,6 +338,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   .chart-card{display:none !important}
   .products-grid,.platforms-grid,.why-grid{grid-template-columns:1fr}
   .referral-grid{grid-template-columns:repeat(2,1fr)}
+  .investment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .edu-grid{grid-template-columns:repeat(2,1fr)}
   .stats-inner{grid-template-columns:repeat(2,1fr)}
   .stat-item{padding:1.25rem 0.75rem}
@@ -334,6 +358,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 }
 @media(max-width:480px){
   .referral-grid{grid-template-columns:1fr}
+  .investment-grid{grid-template-columns:1fr}
   .edu-grid{grid-template-columns:1fr}
   .stats-inner{grid-template-columns:1fr 1fr}
   .footer-top{grid-template-columns:1fr}
@@ -467,6 +492,65 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   </div>
 </div>
 
+<!-- ===== INVESTMENT PACKAGES ===== -->
+<section id="investment-packages" style="background:var(--navy)">
+  <div class="section-inner">
+    <div class="section-eye">PAKEJ PELABURAN</div>
+    <h2 class="section-title">Pakej Pelaburan</h2>
+    <p class="investment-intro">Pilih pakej yang sesuai dengan keperluan anda.</p>
+    <div class="investment-grid">
+      <div class="investment-card silver">
+        <div class="investment-name">Silver</div>
+        <div class="investment-price-label">Harga pakej</div>
+        <div class="investment-price">RM508</div>
+        <div class="investment-divider"></div>
+      </div>
+      <div class="investment-card gold">
+        <div class="investment-name">Gold</div>
+        <div class="investment-price-label">Harga pakej</div>
+        <div class="investment-price">RM4,908</div>
+        <div class="investment-divider"></div>
+      </div>
+      <div class="investment-card platinum">
+        <div class="investment-name">Platinum</div>
+        <div class="investment-price-label">Harga pakej</div>
+        <div class="investment-price">RM48,908</div>
+        <div class="investment-divider"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRODUCTS ===== -->
+<section id="products" style="background:var(--navy)">
+  <div class="section-inner">
+    <div class="section-eye">PRODUK KAMI</div>
+    <h2 class="section-title">Pelbagai Produk Pelaburan</h2>
+    <p class="section-desc">Terokai peluang dalam pasaran naik dan turun melalui pelbagai instrumen kewangan yang disediakan oleh TradeNex Capital.</p>
+    <div class="products-grid">
+      <a class="prod-card" href="#">
+        <div class="prod-icon">📈</div>
+        <div class="prod-tag">Paling Popular</div>
+        <div class="prod-name">Futures</div>
+        <p class="prod-desc">Niaga futures komoditi dan indeks global termasuk FCPO, KLCI, Gold, S&amp;P 500 dan lebih lagi melalui bursa utama dunia seperti BMD, CME Group dan HKEX.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+      <a class="prod-card" href="#">
+        <div class="prod-icon">🏦</div>
+        <div class="prod-name">Saham | SW | ETF | IPO</div>
+        <p class="prod-desc">Labur dalam saham Bursa Malaysia, warrant berstruktur, ETF dan IPO dengan kadar komisyen yang kompetitif dan platform yang mudah digunakan.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+      <a class="prod-card" href="#">
+        <div class="prod-icon">💹</div>
+        <div class="prod-name">Contracts for Differences (CFD)</div>
+        <p class="prod-desc">Niaga CFD pada forex, indeks saham global, komoditi dan kripto dengan leverage fleksibel tanpa perlu memiliki aset sebenar.</p>
+        <div class="prod-link">Ketahui lebih lanjut →</div>
+      </a>
+    </div>
+  </div>
+</section>
+
 <!-- ===== AFFILIATE PROGRAM ===== -->
 <section id="affiliate" style="background:var(--navy3)">
   <div class="section-inner">
@@ -498,36 +582,6 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     <p class="referral-copy">🚀 Kongsi kod affiliate anda, kembangkan rangkaian dan jana komisen bagi setiap referral yang layak.</p>
     <p class="referral-copy referral-highlight" style="margin-top:0.6rem">💰 Lagi banyak referral, lagi tinggi potensi komisen!</p>
     <p class="referral-copy" style="margin-top:0.6rem">Bina rangkaian anda. Tingkatkan peluang anda. Jana bersama! 🔥</p>
-  </div>
-</section>
-
-<!-- ===== PRODUCTS ===== -->
-<section id="products" style="background:var(--navy)">
-  <div class="section-inner">
-    <div class="section-eye">PRODUK KAMI</div>
-    <h2 class="section-title">Pelbagai Produk Pelaburan</h2>
-    <p class="section-desc">Terokai peluang dalam pasaran naik dan turun melalui pelbagai instrumen kewangan yang disediakan oleh TradeNex Capital.</p>
-    <div class="products-grid">
-      <a class="prod-card" href="#">
-        <div class="prod-icon">📈</div>
-        <div class="prod-tag">Paling Popular</div>
-        <div class="prod-name">Futures</div>
-        <p class="prod-desc">Niaga futures komoditi dan indeks global termasuk FCPO, KLCI, Gold, S&amp;P 500 dan lebih lagi melalui bursa utama dunia seperti BMD, CME Group dan HKEX.</p>
-        <div class="prod-link">Ketahui lebih lanjut →</div>
-      </a>
-      <a class="prod-card" href="#">
-        <div class="prod-icon">🏦</div>
-        <div class="prod-name">Saham | SW | ETF | IPO</div>
-        <p class="prod-desc">Labur dalam saham Bursa Malaysia, warrant berstruktur, ETF dan IPO dengan kadar komisyen yang kompetitif dan platform yang mudah digunakan.</p>
-        <div class="prod-link">Ketahui lebih lanjut →</div>
-      </a>
-      <a class="prod-card" href="#">
-        <div class="prod-icon">💹</div>
-        <div class="prod-name">Contracts for Differences (CFD)</div>
-        <p class="prod-desc">Niaga CFD pada forex, indeks saham global, komoditi dan kripto dengan leverage fleksibel tanpa perlu memiliki aset sebenar.</p>
-        <div class="prod-link">Ketahui lebih lanjut →</div>
-      </a>
-    </div>
   </div>
 </section>
 
@@ -754,6 +808,11 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     </div>
   </div>
 </footer>
+<div class="footer-disclaimer">
+  <div class="footer-disclaimer-inner">
+    <p>Pelaburan melibatkan risiko. Nilai pelaburan boleh naik dan turun. Prestasi lepas bukan jaminan hasil masa hadapan. Maklumat di laman web ini adalah untuk tujuan umum sahaja dan bukan nasihat pelaburan. Sila baca Pendedahan Risiko sebelum membuat sebarang keputusan pelaburan. TradeNex Capital Sdn Bhd dilesenkan oleh Suruhanjaya Sekuriti Malaysia.</p>
+  </div>
+</div>
 
 <!-- ===== LOGIN MODAL ===== -->
 <div class="modal-overlay" id="loginModal" onclick="if(event.target===this)this.classList.remove('active')">
@@ -897,7 +956,10 @@ function handleLogin(){
 
   fetch('/api/login',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken':document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    },
     body:JSON.stringify({nova_id:id,password:pw})
   })
   .then(function(res){return res.json().then(function(data){return {status:res.status,data:data};});})

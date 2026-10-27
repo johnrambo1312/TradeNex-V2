@@ -128,9 +128,9 @@ function submitRegistration(event){
     if(result.ok&&result.data.ok){
       var receipt=document.getElementById('registrationReceipt');
       var receiptPlan=document.getElementById('registrationReceiptPlan');
-      var whatsapp=document.getElementById('registrationWhatsapp');
       document.getElementById('registrationReceiptCode').textContent=result.data.request_code;
       receiptPlan.textContent=result.data.plan_name+' — RM'+Number(result.data.plan_price).toLocaleString('en-MY');
+      var whatsapp=document.getElementById('registrationWhatsapp');
       whatsapp.href='https://wa.me/{{ whatsapp_number }}?text='+encodeURIComponent(
         'Assalamualaikum, saya telah menghantar permohonan akaun TradeNex. ID permohonan: '+
         result.data.request_code+'. Pakej: '+result.data.plan_name+'. Saya sertakan screenshot pengesahan.'
