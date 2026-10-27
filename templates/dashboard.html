@@ -52,7 +52,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-request-field label{font-size:0.72rem;color:var(--text-muted)}
 .wallet-request-field input{width:100%;padding:0.65rem 0.75rem;border:1px solid var(--border);border-radius:7px;background:#0F1C32;color:var(--white);font:500 0.9rem 'IBM Plex Mono',monospace}
 .wallet-request-field input:focus{outline:none;border-color:var(--gold)}
-.wallet-request-button{padding:0.7rem 1rem;border:0;border-radius:7px;background:var(--gold);color:var(--navy);font:700 0.82rem 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap}
+.wallet-request-button{margin-top:1rem;padding:0.7rem 1rem;border:0;border-radius:7px;background:var(--gold);color:var(--navy);font:700 0.82rem 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap}
 .wallet-request-button:hover{background:var(--gold2)}
 .wallet-request-note{font-size:0.76rem;color:var(--text-muted);line-height:1.55;margin-top:0.65rem}
 .withdraw-modal-overlay{display:none;position:fixed;inset:0;z-index:250;background:rgba(3,9,20,0.78);padding:1rem;align-items:center;justify-content:center}
@@ -464,10 +464,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <div class="card-val num" id="balanceVal">RM {{ "%.2f"|format(wallet_balance_before_session if chart_values|length > 0 and not user.is_trade_closed else user.withdraw_live_balance) }}</div>
       </div>
     </div>
-    <div class="card" style="margin-top:1rem">
-      <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
-      <div class="card-val num" id="withdrawableVal" style="font-size:1.35rem">RM {{ "%.2f"|format(user.withdrawable_amount) }}</div>
-    </div>
+    <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
       <div class="withdraw-modal-overlay" id="withdrawalModal" onclick="if(event.target===this)closeWithdrawalModal()">
         <section class="withdraw-modal" role="dialog" aria-modal="true" aria-labelledby="withdrawalModalTitle">
           <button class="withdraw-modal-close" type="button" onclick="closeWithdrawalModal()" aria-label="Tutup">&times;</button>
@@ -1332,14 +1329,12 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       : Math.max(0, walletRealizedPL + walletReferralCommission + liveProfitLoss - walletWithdrawn);
     var plEl = document.getElementById('plVal');
     var balanceEl = document.getElementById('balanceVal');
-    var withdrawableEl = document.getElementById('withdrawableVal');
     if(plEl){
       plEl.textContent = 'RM ' + (liveProfitLoss >= 0 ? '+' : '') + liveProfitLoss.toFixed(2);
       plEl.classList.toggle('pl-pos', liveProfitLoss >= 0);
       plEl.classList.toggle('pl-neg', liveProfitLoss < 0);
     }
     if(balanceEl && Date.now()/1000 >= sessionEnd) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
-    if(withdrawableEl) withdrawableEl.textContent = 'RM ' + liveWithdrawable.toFixed(2);
 
     // ── Y AXIS: fixed scale, pan-able ─────────────────────────────────
     var centerPrice = effClose + yPanOffset;
