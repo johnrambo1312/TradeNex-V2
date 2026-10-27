@@ -257,7 +257,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         <table>
           <thead>
             <tr>
-              <th>ID Permohonan</th>
+              <th>NOVA ID</th>
               <th>Tarikh</th>
               <th>Nama</th>
               <th>Emel</th>
@@ -266,7 +266,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               <th>Modal (RM)</th>
               <th>Bank</th>
               <th>No. Akaun Bank</th>
-              <th></th>
+              <th>Tindakan</th>
             </tr>
           </thead>
           <tbody>
@@ -282,14 +282,27 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                 <td>{{ registration.bank_name }}</td>
                 <td>{{ registration.bank_account_number }}</td>
                 <td>
-                  {% if registration.id in protected_registration_ids %}
-                    {% if registration.user %}
-                    Dipautkan kepada {{ registration.user.nova_id }}
-                    {% else %}
-                    Digunakan dalam sejarah pengeluaran
-                    {% endif %}
+                  {% if registration.user %}
+                    <span class="badge badge-processed">Diterima</span><br>
+                    <span class="col-id">{{ registration.user.nova_id }}</span><br>
+                    <button class="btn btn-outline" type="button" onclick="selectUser({{ registration.user.id }})">Urus Akaun</button>
+                  {% elif registration.id in protected_registration_ids %}
+                    <span style="color:var(--muted)">Digunakan dalam sejarah pengeluaran</span>
                   {% else %}
-                    <form method="POST" action="{{ url_for('admin_delete_registration', registration_id=registration.id) }}" onsubmit="return confirm('Padam permohonan pendaftaran ini?');">
+                    <form method="POST" action="{{ url_for('admin_accept_registration', registration_id=registration.id) }}" onsubmit="return confirm('Terima permohonan ini dan cipta akaun user?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <div class="form-row" style="min-width:190px;margin-bottom:0.5rem">
+                        <label class="form-label" for="registration-password-{{ registration.id }}">Tetapkan password user</label>
+                        <input class="form-input" id="registration-password-{{ registration.id }}" type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+                      </div>
+                      <div class="form-row" style="min-width:190px;margin-bottom:0.5rem">
+                        <label class="form-label" for="registration-confirm-{{ registration.id }}">Sahkan password</label>
+                        <input class="form-input" id="registration-confirm-{{ registration.id }}" type="password" name="confirm_password" minlength="12" maxlength="128" autocomplete="new-password" required>
+                      </div>
+                      <button class="btn btn-gold" type="submit">Terima &amp; Cipta Akaun</button>
+                    </form>
+                    <small style="display:block;color:var(--muted);max-width:210px;margin-top:0.5rem">Akaun menggunakan NOVA ID pendaftaran dan modal pakej {{ registration.plan_name }} (RM{{ '{:,.2f}'.format(registration.plan_price) }}). Simpan password sebelum dihantar.</small>
+                    <form method="POST" action="{{ url_for('admin_delete_registration', registration_id=registration.id) }}" style="margin-top:0.6rem" onsubmit="return confirm('Padam permohonan pendaftaran ini?');">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button class="btn btn-danger" type="submit">Padam</button>
                     </form>

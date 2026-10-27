@@ -322,11 +322,16 @@ def api_registration():
         plan_name=plan_name,
         plan_price=plan_price,
     )
+    registration_saved = False
     for attempt in range(100):
-        registration.request_code = f"TN{secrets.randbelow(10000):04d}"
+        request_code = f"TN{secrets.randbelow(10000):04d}"
+        if User.query.filter_by(nova_id=request_code).first():
+            continue
+        registration.request_code = request_code
         db.session.add(registration)
         try:
             db.session.commit()
+            registration_saved = True
             break
         except IntegrityError:
             db.session.rollback()
@@ -337,6 +342,10 @@ def api_registration():
             db.session.rollback()
             app.logger.exception("Failed to save registration request")
             return jsonify({"ok": False, "message": "Permohonan tidak dapat disimpan. Sila cuba lagi."}), 500
+
+    if not registration_saved:
+        app.logger.error("Failed to generate an unused registration NOVA ID after 100 attempts")
+        return jsonify({"ok": False, "message": "NOVA ID yang unik tidak dapat dijana. Sila cuba lagi."}), 500
 
     return jsonify({
         "ok": True,
@@ -531,6 +540,76 @@ def admin_delete_registration(registration_id):
     db.session.delete(registration)
     db.session.commit()
     flash("Permohonan pendaftaran berjaya dipadam.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/registration/<int:registration_id>/accept", methods=["POST"])
+@admin_required
+def admin_accept_registration(registration_id):
+    registration = RegistrationRequest.query.filter_by(id=registration_id).with_for_update().first_or_404()
+    if registration.user:
+        flash(f"Permohonan ini sudah diterima. NOVA ID: {registration.user.nova_id}.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if not registration.request_code:
+        flash("Permohonan ini tiada NOVA ID yang sah dan tidak dapat diterima. Sila hubungi sokongan teknikal.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if User.query.filter_by(nova_id=registration.request_code).first():
+        flash(
+            "NOVA ID permohonan ini sudah digunakan oleh akaun lain. "
+            "Akaun tidak dicipta untuk mengelakkan ID login bertindih.",
+            "error",
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    if len(password) < 12:
+        flash("Password user mesti sekurang-kurangnya 12 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if len(password) > 128:
+        flash("Password user tidak boleh melebihi 128 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if password != confirm_password:
+        flash("Pengesahan password user tidak sepadan.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    user = User(
+        nova_id=registration.request_code,
+        full_name=registration.full_name,
+        balance=registration.plan_price,
+        registration_request=registration,
+    )
+    user.set_password(password)
+    db.session.add(user)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        registration = db.session.get(RegistrationRequest, registration_id)
+        if registration and registration.user:
+            flash(f"Permohonan ini sudah diterima. NOVA ID: {registration.user.nova_id}.", "error")
+        elif registration and User.query.filter_by(nova_id=registration.request_code).first():
+            flash(
+                "NOVA ID permohonan ini sudah digunakan oleh akaun lain. "
+                "Akaun tidak dicipta untuk mengelakkan ID login bertindih.",
+                "error",
+            )
+        else:
+            app.logger.exception("Failed to create a user account from registration request %s", registration_id)
+            flash("Akaun tidak dapat dicipta kerana ID bertindih. Sila cuba terima permohonan sekali lagi.", "error")
+        return redirect(url_for("admin_dashboard"))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Failed to accept registration request %s", registration_id)
+        flash("Akaun tidak dapat dicipta kerana ralat pangkalan data. Sila cuba lagi.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    flash(
+        f"Permohonan diterima. Akaun {user.full_name} dicipta dengan NOVA ID {user.nova_id}. "
+        f"Modal akaun ditetapkan mengikut pakej {registration.plan_name} (RM{registration.plan_price:,.2f}). "
+        "Sampaikan NOVA ID serta password kepada user dengan selamat.",
+        "success",
+    )
     return redirect(url_for("admin_dashboard"))
 
 
