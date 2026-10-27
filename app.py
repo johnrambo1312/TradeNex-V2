@@ -11,7 +11,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from sqlalchemy import inspect as sqlalchemy_inspect, text, update
+from sqlalchemy import inspect as sqlalchemy_inspect, or_, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -1010,13 +1010,57 @@ def admin_update_withdrawal(withdrawal_id, action):
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/user/<int:user_id>/archive", methods=["POST"])
+@app.route("/admin/user/<int:user_id>/delete", methods=["POST"])
 @admin_required
-def admin_archive_user(user_id):
+def admin_delete_user(user_id):
     user = db.get_or_404(User, user_id)
-    user.is_active = False
-    db.session.commit()
-    flash(f"Akaun '{user.nova_id}' dinyahaktifkan. Rekod akaun dan sejarah transaksi dikekalkan.", "success")
+    user_id = user.id
+    nova_id = user.nova_id
+    registration_id = user.registration_request_id
+
+    try:
+        User.query.filter_by(referred_by_id=user_id).update(
+            {User.referred_by_id: None},
+            synchronize_session=False,
+        )
+        ReferralCommission.query.filter(
+            or_(
+                ReferralCommission.beneficiary_user_id == user_id,
+                ReferralCommission.referred_user_id == user_id,
+            )
+        ).delete(synchronize_session=False)
+        WithdrawalRequest.query.filter_by(user_id=user_id).delete(
+            synchronize_session=False
+        )
+        TradeEntry.query.filter_by(user_id=user_id).delete(
+            synchronize_session=False
+        )
+        UserLiveBalance.query.filter_by(user_id=user_id).delete(
+            synchronize_session=False
+        )
+        if registration_id:
+            WithdrawalRequest.query.filter_by(
+                registration_request_id=registration_id
+            ).update(
+                {WithdrawalRequest.registration_request_id: None},
+                synchronize_session=False,
+            )
+        db.session.delete(user)
+        if registration_id:
+            registration = db.session.get(RegistrationRequest, registration_id)
+            if registration:
+                db.session.delete(registration)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Failed to permanently delete user %s", user_id)
+        flash("Akaun tidak dapat dipadam kerana ralat pangkalan data. Sila cuba lagi.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    flash(
+        f"Akaun '{nova_id}' dan semua sejarah kewangan, pengeluaran, komisen serta maklumat pendaftarannya telah dipadam kekal. Akaun referral di bawahnya dikekalkan tanpa pautan kepada akaun ini.",
+        "success",
+    )
     return redirect(url_for("admin_dashboard"))
 
 

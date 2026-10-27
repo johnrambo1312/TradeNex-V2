@@ -273,11 +273,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               <th>NOVA ID</th>
               <th>Tarikh</th>
               <th>Nama</th>
-              <th>Emel</th>
               <th>No. Telefon</th>
               <th>Kod Referral</th>
               <th>Pakej</th>
-              <th>Modal (RM)</th>
               <th>Bank</th>
               <th>No. Akaun Bank</th>
               <th>Tindakan</th>
@@ -289,11 +287,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                 <td class="col-id">{{ registration.request_code }}</td>
                 <td>{{ registration.created_at.strftime('%d/%m/%Y %H:%M') if registration.created_at else '—' }}</td>
                 <td>{{ registration.full_name }}</td>
-                <td>{{ registration.email }}</td>
                 <td>{{ registration.phone }}</td>
                 <td>{{ registration.referral_code or '—' }}</td>
                 <td>{{ registration.plan_name }}</td>
-                <td class="col-modal">{{ '{:,.0f}'.format(registration.plan_price) }}</td>
                 <td>{{ registration.bank_name }}</td>
                 <td>{{ registration.bank_account_number }}</td>
                 <td>
@@ -315,7 +311,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                       </div>
                       <button class="btn btn-gold" type="submit">Terima &amp; Cipta Akaun</button>
                     </form>
-                    <small style="display:block;color:var(--muted);max-width:210px;margin-top:0.5rem">Akaun menggunakan NOVA ID pendaftaran dan modal pakej {{ registration.plan_name }} (RM{{ '{:,.2f}'.format(registration.plan_price) }}). Simpan password sebelum dihantar.</small>
+                    <small style="display:block;color:var(--muted);max-width:210px;margin-top:0.5rem">Akaun menggunakan NOVA ID dan pakej {{ registration.plan_name }}. Simpan password sebelum dihantar.</small>
                     <form method="POST" action="{{ url_for('admin_delete_registration', registration_id=registration.id) }}" style="margin-top:0.6rem" onsubmit="return confirm('Padam permohonan pendaftaran ini?');">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button class="btn btn-danger" type="submit">Padam</button>
@@ -482,12 +478,10 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                   <button type="submit" class="btn btn-gold">Matang</button>
                 </form>
               {% endif %}
-              {% if u.is_active %}
-                <form method="POST" action="{{ url_for('admin_archive_user', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Padam akaun {{ u.nova_id }} daripada akses aktif? Akaun akan dinyahaktifkan tetapi semua rekod kewangan dan referral dikekalkan.');">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn btn-danger">Padam</button>
-                </form>
-              {% endif %}
+              <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('AMARAN: Padam kekal akaun {{ u.nova_id }} bersama sejarah kewangan, pengeluaran, komisen dan maklumat pendaftaran? Akaun referral di bawahnya akan dikekalkan tetapi pautannya diputuskan. Tindakan ini tidak boleh dibatalkan.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">Padam</button>
+              </form>
             </div>
           </td>
         </tr>

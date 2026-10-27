@@ -14,7 +14,7 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 - Dashboard memaparkan komisen setiap referral, status akaun dan sebab komisen masih tertangguh, serta sejarah kredit Wallet. Popup admin menunjukkan laluan referral dan status payout untuk semakan.
 - Render Cron menjalankan `flask --app app process-referral-commissions` setiap hari pada 16:05 UTC (00:05 MYT) dan mengejar bayaran tertunggak jika satu jadual terlepas.
 - **Panel admin** (`/admin`) — admin login sendiri, boleh:
-  - Cipta / kemaskini / nyahaktifkan akaun user sambil mengekalkan sejarah kewangan
+  - Cipta / kemaskini / nyahaktifkan akaun user; butang Padam memadam akaun dan sejarah berkait secara kekal
   - Pautkan akaun kepada rekod pendaftaran dan maklumat bank yang tepat
   - Semak permohonan pengeluaran serta simpan nombor rujukan transaksi bayaran
   - Tetapkan baki & untung-rugi setiap user
