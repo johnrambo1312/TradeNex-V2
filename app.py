@@ -11,7 +11,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from sqlalchemy import inspect as sqlalchemy_inspect, update
+from sqlalchemy import inspect as sqlalchemy_inspect, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -229,16 +229,10 @@ def ensure_user_schema():
                 raise RuntimeError(
                     "Referral code unik tidak dapat dijana untuk akaun sedia ada."
                 )
-            if db.engine.dialect.name == "sqlite":
-                connection.exec_driver_sql(
-                    "UPDATE users SET referral_code = ? WHERE id = ?",
-                    (referral_code, row[0]),
-                )
-            else:
-                connection.exec_driver_sql(
-                    "UPDATE users SET referral_code = :code WHERE id = :id",
-                    {"code": referral_code, "id": row[0]},
-                )
+            connection.execute(
+                text("UPDATE users SET referral_code = :code WHERE id = :id"),
+                {"code": referral_code, "id": row[0]},
+            )
         connection.exec_driver_sql(
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_registration_request_id "
             "ON users (registration_request_id)"
@@ -305,16 +299,10 @@ def ensure_registration_request_schema():
         ).fetchall()
         for row in rows_without_code:
             request_code = f"TN-{secrets.token_hex(5).upper()}"
-            if db.engine.dialect.name == "sqlite":
-                connection.exec_driver_sql(
-                    "UPDATE registration_requests SET request_code = ? WHERE id = ?",
-                    (request_code, row[0]),
-                )
-            else:
-                connection.exec_driver_sql(
-                    "UPDATE registration_requests SET request_code = :code WHERE id = :id",
-                    {"code": request_code, "id": row[0]},
-                )
+            connection.execute(
+                text("UPDATE registration_requests SET request_code = :code WHERE id = :id"),
+                {"code": request_code, "id": row[0]},
+            )
 
         connection.exec_driver_sql(
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_registration_requests_request_code "
