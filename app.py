@@ -1,4 +1,6 @@
 import os
+import re
+import secrets
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -7,9 +9,11 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from sqlalchemy import inspect as sqlalchemy_inspect
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from models import db, User, AdminUser, TradeEntry, UserLiveBalance
+from models import db, User, AdminUser, RegistrationRequest, TradeEntry, UserLiveBalance
 
 load_dotenv()
 
@@ -59,6 +63,14 @@ def inject_contact_settings():
 # MYT = UTC+8 — semua masa dalam DB disimpan sebagai naive MYT
 MYT = timezone(timedelta(hours=8))
 
+REGISTRATION_PLANS = {
+    "basic": ("Basic", 488),
+    "advance": ("Advance", 1888),
+    "gold": ("Gold", 3888),
+    "platinum": ("Platinum", 6888),
+}
+
+
 def now_myt():
     """Masa sekarang dalam MYT (betul untuk Railway yang run UTC)."""
     return datetime.now(MYT).replace(tzinfo=None)
@@ -68,6 +80,7 @@ def ensure_database_ready():
     """Pastikan jadual asas wujud bila app start di Railway/gunicorn."""
     try:
         db.create_all()
+        ensure_registration_request_schema()
 
         if not AdminUser.query.filter_by(username="admin").first():
             default_admin = AdminUser(username="admin")
@@ -77,6 +90,49 @@ def ensure_database_ready():
     except Exception as e:
         # Database tidak available semasa build — skip, akan run di startup nanti
         print(f"[Warning] Database initialization skipped during build: {type(e).__name__}")
+
+
+def ensure_registration_request_schema():
+    """Tambah medan permohonan baharu ke pangkalan data sedia ada dengan selamat."""
+    inspector = sqlalchemy_inspect(db.engine)
+    if "registration_requests" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("registration_requests")}
+    with db.engine.begin() as connection:
+        if "request_code" not in existing_columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE registration_requests ADD COLUMN request_code VARCHAR(16)"
+            )
+        if "plan_name" not in existing_columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE registration_requests ADD COLUMN plan_name VARCHAR(20) NOT NULL DEFAULT 'basic'"
+            )
+        if "plan_price" not in existing_columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE registration_requests ADD COLUMN plan_price INTEGER NOT NULL DEFAULT 488"
+            )
+
+        rows_without_code = connection.exec_driver_sql(
+            "SELECT id FROM registration_requests WHERE request_code IS NULL"
+        ).fetchall()
+        for row in rows_without_code:
+            request_code = f"TN-{secrets.token_hex(5).upper()}"
+            if db.engine.dialect.name == "sqlite":
+                connection.exec_driver_sql(
+                    "UPDATE registration_requests SET request_code = ? WHERE id = ?",
+                    (request_code, row[0]),
+                )
+            else:
+                connection.exec_driver_sql(
+                    "UPDATE registration_requests SET request_code = :code WHERE id = :id",
+                    {"code": request_code, "id": row[0]},
+                )
+
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_registration_requests_request_code "
+            "ON registration_requests (request_code)"
+        )
 
 
 with app.app_context():
@@ -145,18 +201,6 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/demo")
-def demo():
-    """Halaman demo platform — showcase fitur tanpa perlu login."""
-    return render_template("demo.html")
-
-
-@app.route("/demo-account")
-def demo_account():
-    """Akaun demo hidup dengan grafik bergerak selama 10 minit."""
-    return render_template("demo_account.html")
-
-
 # ---------------------------------------------------------------------------
 # USER: Login & Dashboard
 # ---------------------------------------------------------------------------
@@ -164,6 +208,86 @@ def demo_account():
 @app.route("/login", methods=["GET"])
 def login_page():
     return render_template("login.html")
+
+
+@app.route("/api/registration", methods=["POST"])
+@limiter.limit("10 per minute")
+def api_registration():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "message": "Format permohonan tidak sah."}), 400
+
+    fields = {
+        "full_name": data.get("full_name"),
+        "email": data.get("email"),
+        "phone": data.get("phone"),
+        "bank_name": data.get("bank_name"),
+        "bank_account_number": data.get("bank_account_number"),
+        "plan": data.get("plan"),
+    }
+    if not all(isinstance(value, str) for value in fields.values()):
+        return jsonify({"ok": False, "message": "Sila lengkapkan semua maklumat dengan format yang betul."}), 400
+
+    full_name = fields["full_name"].strip()
+    email = fields["email"].strip().lower()
+    phone = fields["phone"].strip()
+    bank_name = fields["bank_name"].strip()
+    bank_account_number = fields["bank_account_number"].strip()
+    plan = fields["plan"].strip()
+    phone_digits = re.sub(r"\D", "", phone)
+    account_compact = re.sub(r"[\s-]", "", bank_account_number)
+
+    if not all((full_name, email, phone, bank_name, bank_account_number)):
+        return jsonify({"ok": False, "message": "Sila lengkapkan semua maklumat."}), 400
+    if data.get("consent") is not True:
+        return jsonify({"ok": False, "message": "Persetujuan penyimpanan maklumat diperlukan."}), 400
+    if len(full_name) > 120 or len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return jsonify({"ok": False, "message": "Nama atau alamat e-mel tidak sah."}), 400
+    if len(phone) > 30 or not 7 <= len(phone_digits) <= 15:
+        return jsonify({"ok": False, "message": "Nombor telefon tidak sah."}), 400
+    invalid_account = (
+        len(bank_account_number) > 34
+        or not 5 <= len(account_compact) <= 34
+        or not re.fullmatch(r"[A-Za-z0-9]+", account_compact)
+    )
+    if len(bank_name) > 100 or invalid_account:
+        return jsonify({"ok": False, "message": "Maklumat bank atau nombor akaun tidak sah."}), 400
+    if plan not in REGISTRATION_PLANS:
+        return jsonify({"ok": False, "message": "Sila pilih pakej akaun yang sah."}), 400
+
+    plan_name, plan_price = REGISTRATION_PLANS[plan]
+    registration = RegistrationRequest(
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        bank_name=bank_name,
+        bank_account_number=bank_account_number,
+        plan_name=plan_name,
+        plan_price=plan_price,
+    )
+    for attempt in range(100):
+        registration.request_code = f"TN{secrets.randbelow(10000):04d}"
+        db.session.add(registration)
+        try:
+            db.session.commit()
+            break
+        except IntegrityError:
+            db.session.rollback()
+            if attempt == 99:
+                app.logger.exception("Failed to generate a unique registration request ID")
+                return jsonify({"ok": False, "message": "ID empat digit yang unik tidak dapat dijana. Sila cuba lagi."}), 500
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.logger.exception("Failed to save registration request")
+            return jsonify({"ok": False, "message": "Permohonan tidak dapat disimpan. Sila cuba lagi."}), 500
+
+    return jsonify({
+        "ok": True,
+        "message": "Permohonan berjaya dihantar.",
+        "request_code": registration.request_code,
+        "plan_name": registration.plan_name,
+        "plan_price": registration.plan_price,
+    }), 201
 
 
 @app.route("/api/login", methods=["POST"])
@@ -309,7 +433,22 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     users = User.query.order_by(User.created_at.asc()).all()
-    return render_template("admin_dashboard.html", users=users)
+    registration_requests = RegistrationRequest.query.order_by(RegistrationRequest.created_at.desc()).all()
+    return render_template(
+        "admin_dashboard.html",
+        users=users,
+        registration_requests=registration_requests,
+    )
+
+
+@app.route("/admin/registration/<int:registration_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_registration(registration_id):
+    registration = db.get_or_404(RegistrationRequest, registration_id)
+    db.session.delete(registration)
+    db.session.commit()
+    flash("Permohonan pendaftaran berjaya dipadam.", "success")
+    return redirect(url_for("admin_dashboard"))
 
 
 @app.route("/admin/user/create", methods=["POST"])

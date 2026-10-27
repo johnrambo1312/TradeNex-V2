@@ -1,0 +1,157 @@
+<style>
+.registration-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(5,12,25,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem}
+.registration-overlay.active{display:flex}
+.registration-box{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 2rem);overflow-y:auto;background:#0F1C32;border:1px solid #1E3050;border-radius:16px;padding:2rem}
+.registration-close{position:absolute;top:0.75rem;right:0.9rem;background:none;border:0;color:#8FA3BF;font-size:1.5rem;cursor:pointer}
+.registration-title{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:0.4rem}
+.registration-description{color:#8FA3BF;font-size:0.82rem;line-height:1.5;margin:0 1.5rem 1.25rem 0}
+.registration-label{display:block;color:#8FA3BF;font-size:0.72rem;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:0.35rem}
+.registration-input{width:100%;background:#162033;border:1px solid #1E3050;border-radius:7px;padding:0.7rem 0.85rem;color:#fff;font:inherit;font-size:0.9rem;outline:none;margin-bottom:0.85rem}
+.registration-input:focus{border-color:#D4A843}
+.registration-consent{display:flex;align-items:flex-start;gap:0.55rem;color:#C8D8EE;font-size:0.76rem;line-height:1.45;margin:0.25rem 0 1rem}
+.registration-consent input{margin-top:0.18rem;accent-color:#D4A843}
+.registration-submit{width:100%;padding:0.8rem;border:0;border-radius:7px;background:#D4A843;color:#0B1629;font:inherit;font-weight:700;cursor:pointer}
+.registration-submit:hover{background:#F0C96A}
+.registration-submit:disabled{opacity:0.65;cursor:wait}
+.registration-message{display:none;border-radius:7px;padding:0.65rem 0.8rem;margin-bottom:0.9rem;font-size:0.82rem}
+.registration-message.show{display:block}
+.registration-message.success{background:rgba(34,201,138,0.1);border:1px solid rgba(34,201,138,0.3);color:#22C98A}
+.registration-message.error{background:rgba(255,91,91,0.1);border:1px solid rgba(255,91,91,0.3);color:#FF8A8A}
+.registration-receipt{display:none}
+.registration-receipt.show{display:block}
+.registration-receipt-card{background:#111E35;border:1px solid #1E3050;border-radius:10px;padding:1rem;margin:1rem 0}
+.registration-receipt-label{color:#8FA3BF;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px}
+.registration-receipt-code{color:#F0C96A;font-family:'IBM Plex Mono',monospace;font-size:1.55rem;font-weight:700;margin:0.25rem 0 0.8rem}
+.registration-receipt-plan{color:#fff;font-size:0.95rem;font-weight:600}
+.registration-receipt-help{color:#C8D8EE;font-size:0.83rem;line-height:1.6;margin:0.75rem 0 1rem}
+.registration-whatsapp{display:block;background:#22C98A;color:#0B1629;border-radius:7px;padding:0.8rem;text-align:center;text-decoration:none;font-size:0.86rem;font-weight:700}
+.registration-whatsapp:hover{background:#4DDBA6}
+@media(max-width:480px){.registration-box{padding:1.5rem 1.1rem;border-radius:12px}}
+</style>
+
+<div class="registration-overlay" id="registrationModal" onclick="if(event.target===this)closeRegistrationModal()">
+  <section class="registration-box" role="dialog" aria-modal="true" aria-labelledby="registrationTitle">
+    <button class="registration-close" type="button" onclick="closeRegistrationModal()" aria-label="Tutup">&times;</button>
+    <h2 class="registration-title" id="registrationTitle">Pendaftaran Akaun</h2>
+    <p class="registration-description">Isi maklumat berikut untuk dihantar kepada admin bagi semakan permohonan anda.</p>
+    <div class="registration-message" id="registrationMessage" role="status" aria-live="polite"></div>
+    <form id="registrationForm" onsubmit="submitRegistration(event)">
+      <label class="registration-label" for="registrationName">Nama penuh</label>
+      <input class="registration-input" id="registrationName" name="full_name" type="text" maxlength="120" autocomplete="name" required>
+
+      <label class="registration-label" for="registrationEmail">Emel</label>
+      <input class="registration-input" id="registrationEmail" name="email" type="email" maxlength="254" autocomplete="email" required>
+
+      <label class="registration-label" for="registrationPhone">No. telefon</label>
+      <input class="registration-input" id="registrationPhone" name="phone" type="tel" maxlength="30" autocomplete="tel" required>
+
+      <label class="registration-label" for="registrationPlan">Pilihan modal akaun</label>
+      <select class="registration-input" id="registrationPlan" name="plan" required>
+        <option value="" selected disabled>Pilih pakej</option>
+        <option value="basic">Basic — RM488</option>
+        <option value="advance">Advance — RM1,888</option>
+        <option value="gold">Gold — RM3,888</option>
+        <option value="platinum">Platinum — RM6,888</option>
+      </select>
+
+      <label class="registration-label" for="registrationBank">Jenis / nama bank</label>
+      <input class="registration-input" id="registrationBank" name="bank_name" type="text" maxlength="100" autocomplete="off" required>
+
+      <label class="registration-label" for="registrationAccount">No. akaun bank</label>
+      <input class="registration-input" id="registrationAccount" name="bank_account_number" type="text" maxlength="34" autocomplete="off" required>
+
+      <label class="registration-consent">
+        <input type="checkbox" name="consent" required>
+        <span>Saya bersetuju maklumat ini disimpan dan digunakan oleh admin untuk memproses permohonan pendaftaran akaun.</span>
+      </label>
+      <button class="registration-submit" id="registrationSubmit" type="submit">HANTAR PERMOHONAN</button>
+    </form>
+    <div class="registration-receipt" id="registrationReceipt" aria-live="polite">
+      <div class="registration-message success show">Permohonan anda berjaya direkodkan.</div>
+      <p class="registration-label">ID permohonan unik</p>
+      <div class="registration-receipt-card">
+        <div class="registration-receipt-code" id="registrationReceiptCode"></div>
+        <div class="registration-receipt-label">Pakej dipilih</div>
+        <div class="registration-receipt-plan" id="registrationReceiptPlan"></div>
+      </div>
+      <p class="registration-receipt-help">Sila tangkap layar paparan ini, kemudian tekan butang WhatsApp dan hantar screenshot tersebut kepada admin untuk rujukan permohonan.</p>
+      <a class="registration-whatsapp" id="registrationWhatsapp" href="#" target="_blank" rel="noopener">TANGKAP LAYAR &amp; HANTAR KE WHATSAPP ADMIN</a>
+    </div>
+  </section>
+</div>
+
+<script>
+function openRegistrationModal(event){
+  if(event) event.preventDefault();
+  if(typeof closeMobileMenu==='function') closeMobileMenu();
+  var modal=document.getElementById('registrationModal');
+  var message=document.getElementById('registrationMessage');
+  message.className='registration-message';
+  message.textContent='';
+  document.getElementById('registrationForm').style.display='';
+  document.getElementById('registrationReceipt').classList.remove('show');
+  modal.classList.add('active');
+  document.getElementById('registrationName').focus();
+}
+function closeRegistrationModal(){
+  document.getElementById('registrationModal').classList.remove('active');
+}
+function submitRegistration(event){
+  event.preventDefault();
+  var form=document.getElementById('registrationForm');
+  var button=document.getElementById('registrationSubmit');
+  var message=document.getElementById('registrationMessage');
+  var values=new FormData(form);
+  button.disabled=true;
+  button.textContent='SEDANG MENGHANTAR...';
+  message.className='registration-message';
+  fetch('/api/registration',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken':document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    },
+    body:JSON.stringify({
+      full_name:values.get('full_name'),
+      email:values.get('email'),
+      phone:values.get('phone'),
+      plan:values.get('plan'),
+      bank_name:values.get('bank_name'),
+      bank_account_number:values.get('bank_account_number'),
+      consent:values.get('consent')==='on'
+    })
+  })
+  .then(function(response){
+    return response.json().then(function(data){return {ok:response.ok,data:data};});
+  })
+  .then(function(result){
+    if(result.ok&&result.data.ok){
+      var receipt=document.getElementById('registrationReceipt');
+      var receiptPlan=document.getElementById('registrationReceiptPlan');
+      var whatsapp=document.getElementById('registrationWhatsapp');
+      document.getElementById('registrationReceiptCode').textContent=result.data.request_code;
+      receiptPlan.textContent=result.data.plan_name+' — RM'+Number(result.data.plan_price).toLocaleString('en-MY');
+      whatsapp.href='https://wa.me/{{ whatsapp_number }}?text='+encodeURIComponent(
+        'Assalamualaikum, saya telah menghantar permohonan akaun TradeNex. ID permohonan: '+
+        result.data.request_code+'. Pakej: '+result.data.plan_name+'. Saya sertakan screenshot pengesahan.'
+      );
+      form.style.display='none';
+      receipt.classList.add('show');
+    }else{
+      message.textContent=result.data.message||'Permohonan tidak dapat dihantar.';
+      message.className='registration-message show error';
+    }
+  })
+  .catch(function(){
+    message.textContent='Ralat sambungan. Permohonan tidak dapat dihantar. Sila cuba lagi.';
+    message.className='registration-message show error';
+  })
+  .then(function(){
+    button.disabled=false;
+    button.textContent='HANTAR PERMOHONAN';
+  });
+}
+document.addEventListener('keydown',function(event){
+  if(event.key==='Escape') closeRegistrationModal();
+});
+</script>

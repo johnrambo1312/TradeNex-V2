@@ -55,6 +55,7 @@ nav{
 
 /* TABLE */
 table{width:100%;border-collapse:collapse;font-size:0.83rem}
+.table-scroll{overflow-x:auto}
 th{text-align:left;color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;padding:0.5rem 0.75rem;border-bottom:1px solid var(--border)}
 td{padding:0.65rem 0.75rem;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
@@ -225,6 +226,56 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </div>
     {% endif %}
   {% endwith %}
+
+  <!-- ===== PERMOHONAN PENDAFTARAN ===== -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Permohonan Pendaftaran <span style="color:var(--muted);font-weight:400">({{ registration_requests|length }})</span></span>
+    </div>
+    {% if registration_requests %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Permohonan</th>
+              <th>Tarikh</th>
+              <th>Nama</th>
+              <th>Emel</th>
+              <th>No. Telefon</th>
+              <th>Pakej</th>
+              <th>Modal (RM)</th>
+              <th>Bank</th>
+              <th>No. Akaun Bank</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for registration in registration_requests %}
+              <tr>
+                <td class="col-id">{{ registration.request_code }}</td>
+                <td>{{ registration.created_at.strftime('%d/%m/%Y %H:%M') if registration.created_at else '—' }}</td>
+                <td>{{ registration.full_name }}</td>
+                <td>{{ registration.email }}</td>
+                <td>{{ registration.phone }}</td>
+                <td>{{ registration.plan_name }}</td>
+                <td class="col-modal">{{ '{:,.0f}'.format(registration.plan_price) }}</td>
+                <td>{{ registration.bank_name }}</td>
+                <td>{{ registration.bank_account_number }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('admin_delete_registration', registration_id=registration.id) }}" onsubmit="return confirm('Padam permohonan pendaftaran ini?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger" type="submit">Padam</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color:var(--muted);font-size:0.82rem">Tiada permohonan pendaftaran buat masa ini.</p>
+    {% endif %}
+  </div>
 
   <!-- ===== CIPTA USER BARU ===== -->
   <div class="panel" id="createPanel">

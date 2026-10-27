@@ -25,6 +25,8 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 .input:focus{border-color:var(--gold)}
 .btn{width:100%;background:var(--gold);border:none;color:#0B1629;padding:0.9rem;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;min-height:48px}
 .btn:hover{background:var(--gold2)}
+.btn-register{display:block;width:100%;margin-top:0.75rem;padding:0.82rem;border:1px solid var(--gold);border-radius:8px;background:transparent;color:var(--gold);font-size:0.9rem;font-weight:700;text-align:center;text-decoration:none;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s}
+.btn-register:hover{background:rgba(212,168,67,0.1);color:var(--gold2)}
 .error{background:rgba(255,91,91,0.1);border:1px solid rgba(255,91,91,0.25);border-radius:7px;padding:0.6rem 0.9rem;margin-bottom:1rem;color:#FF8A8A;font-size:0.8rem;display:none}
 .error.show{display:block}
 .back{display:block;text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.8rem;text-decoration:none}
@@ -49,8 +51,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
   <input class="input" type="password" id="novaPw" placeholder="Masukkan kata laluan" autocomplete="current-password">
 
   <button class="btn" onclick="handleLogin()">LOG MASUK</button>
+  <button class="btn-register" type="button" onclick="openRegistrationModal(event)">DAFTAR AKAUN</button>
   <a href="/" class="back">← Balik ke laman utama</a>
 </div>
+
+{% include "_registration_modal.html" %}
 
 <script>
 function handleLogin(){
@@ -78,7 +83,9 @@ function handleLogin(){
     err.textContent='Ralat sambungan. Sila cuba semula.';err.classList.add('show');
   });
 }
-document.addEventListener('keydown',function(e){ if(e.key==='Enter') handleLogin(); });
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!document.getElementById('registrationModal').classList.contains('active')) handleLogin();
+});
 </script>
 </body>
 </html>

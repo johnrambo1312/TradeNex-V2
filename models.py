@@ -118,6 +118,22 @@ class User(db.Model):
         return check_password_hash(self.password_hash, raw_password)
 
 
+class RegistrationRequest(db.Model):
+    """Maklumat permohonan akaun yang hanya boleh diakses oleh admin."""
+    __tablename__ = "registration_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_code = db.Column(db.String(16), unique=True, nullable=True)
+    full_name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(254), nullable=False)
+    phone = db.Column(db.String(30), nullable=False)
+    bank_name = db.Column(db.String(100), nullable=False)
+    bank_account_number = db.Column(db.String(34), nullable=False)
+    plan_name = db.Column(db.String(20), nullable=False, default="basic", server_default="basic")
+    plan_price = db.Column(db.Integer, nullable=False, default=488, server_default="488")
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+
 class TradeEntry(db.Model):
     """
     Satu titik data dalam graf trading user.

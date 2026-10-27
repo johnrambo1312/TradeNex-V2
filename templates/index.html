@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png') }}">
 <title>TradeNex Capital — Platform Niaga Malaysia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,6 +155,15 @@ section{padding:6rem 4rem}
 .why-title{font-weight:700;font-size:1.05rem;margin-bottom:0.6rem}
 .why-text{color:var(--text-muted);font-size:0.85rem;line-height:1.7}
 
+/* ===== REFERRAL PROGRAM ===== */
+.referral-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin:2rem 0}
+.referral-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;text-align:center}
+.referral-tier{color:var(--text-light);font-size:0.82rem;font-weight:600;line-height:1.4;min-height:2.3rem}
+.referral-commission{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:1.65rem;font-weight:700;margin-top:0.65rem}
+.referral-unit{color:var(--text-muted);font-size:0.75rem;margin-top:0.25rem}
+.referral-copy{color:var(--text-muted);font-size:0.9rem;line-height:1.7}
+.referral-highlight{color:var(--gold2);font-weight:600}
+
 /* ===== EDUCATION ===== */
 .edu-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem}
 .edu-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.75rem;text-align:center;transition:all 0.25s;cursor:pointer;text-decoration:none;display:block;color:inherit}
@@ -304,6 +314,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   .cta-main,.cta-sec{width:100%;text-align:center;box-sizing:border-box}
   .chart-card{display:none !important}
   .products-grid,.platforms-grid,.why-grid{grid-template-columns:1fr}
+  .referral-grid{grid-template-columns:repeat(2,1fr)}
   .edu-grid{grid-template-columns:repeat(2,1fr)}
   .stats-inner{grid-template-columns:repeat(2,1fr)}
   .stat-item{padding:1.25rem 0.75rem}
@@ -322,6 +333,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   body{overflow-x:hidden}
 }
 @media(max-width:480px){
+  .referral-grid{grid-template-columns:1fr}
   .edu-grid{grid-template-columns:1fr}
   .stats-inner{grid-template-columns:1fr 1fr}
   .footer-top{grid-template-columns:1fr}
@@ -338,6 +350,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 <nav>
   <a href="#" class="logo">Trade<span>Nex</span></a>
   <ul class="nav-links">
+    <li><a href="#affiliate">Affiliate</a></li>
     <li><a href="#about">Tentang Kami</a></li>
     <li><a href="#products">Produk</a></li>
     <li><a href="#platforms">Platform</a></li>
@@ -346,6 +359,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     <li><a href="#promotions">Promosi</a></li>
   </ul>
   <div class="nav-btns">
+    <a href="#daftar-akaun" class="btn-ghost" style="text-decoration:none" onclick="openRegistrationModal(event)">Daftar Akaun</a>
     <a href="/login" class="btn-primary" style="text-decoration:none">Log Masuk</a>
   </div>
   <button class="nav-hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
@@ -355,6 +369,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 
 <!-- Mobile Menu -->
 <div class="mobile-menu" id="mobileMenu">
+  <a href="#affiliate" onclick="closeMobileMenu()">Program Affiliate</a>
   <a href="#about" onclick="closeMobileMenu()">Tentang Kami</a>
   <a href="#products" onclick="closeMobileMenu()">Produk</a>
   <a href="#platforms" onclick="closeMobileMenu()">Platform</a>
@@ -362,6 +377,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   <a href="#announcements" onclick="closeMobileMenu()">Sokongan</a>
   <a href="#promotions" onclick="closeMobileMenu()">Promosi</a>
   <div class="mobile-ctas">
+    <a href="#daftar-akaun" class="btn-ghost" style="text-decoration:none" onclick="openRegistrationModal(event)">Daftar Akaun</a>
     <a href="/login" class="btn-primary" style="background:var(--gold);color:#0B1629;text-decoration:none">Log Masuk</a>
   </div>
 </div>
@@ -389,7 +405,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
       <p class="hero-desc">Akses lebih 40 bursa dunia — futures, saham, CFD, dan lebih lagi. Kadar kompetitif, platform canggih, sokongan pakar 24/5.</p>
       <div class="hero-ctas">
         <a href="/login" class="cta-main">Log Masuk</a>
-        <a href="/demo" class="cta-sec">Cuba Demo Platform</a>
+        <a href="#daftar-akaun" class="cta-sec" onclick="openRegistrationModal(event)">Daftar Akaun</a>
       </div>
     </div>
     <div class="chart-card">
@@ -450,6 +466,40 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     </div>
   </div>
 </div>
+
+<!-- ===== AFFILIATE PROGRAM ===== -->
+<section id="affiliate" style="background:var(--navy3)">
+  <div class="section-inner">
+    <div class="section-eye">PROGRAM AFFILIATE</div>
+    <h2 class="section-title">🔥 Jana Komisen dengan Affiliate! 💰</h2>
+    <p class="section-desc">Peluang menjana pendapatan melalui program affiliate dengan kadar komisen mengikut tahap keahlian anda.</p>
+    <div class="referral-grid">
+      <div class="referral-card">
+        <div class="referral-tier">Elite Member</div>
+        <div class="referral-commission">RM50</div>
+        <div class="referral-unit">/ referral</div>
+      </div>
+      <div class="referral-card">
+        <div class="referral-tier">Ambassador Member</div>
+        <div class="referral-commission">RM80</div>
+        <div class="referral-unit">/ referral</div>
+      </div>
+      <div class="referral-card">
+        <div class="referral-tier">Senior Ambassador</div>
+        <div class="referral-commission">RM100</div>
+        <div class="referral-unit">/ referral</div>
+      </div>
+      <div class="referral-card">
+        <div class="referral-tier">Territory Partner</div>
+        <div class="referral-commission">RM150</div>
+        <div class="referral-unit">/ referral</div>
+      </div>
+    </div>
+    <p class="referral-copy">🚀 Kongsi kod affiliate anda, kembangkan rangkaian dan jana komisen bagi setiap referral yang layak.</p>
+    <p class="referral-copy referral-highlight" style="margin-top:0.6rem">💰 Lagi banyak referral, lagi tinggi potensi komisen!</p>
+    <p class="referral-copy" style="margin-top:0.6rem">Bina rangkaian anda. Tingkatkan peluang anda. Jana bersama! 🔥</p>
+  </div>
+</section>
 
 <!-- ===== PRODUCTS ===== -->
 <section id="products" style="background:var(--navy)">
@@ -624,7 +674,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   <p>Log masuk ke akaun anda dan pantau portfolio trading anda bersama TradeNex Capital.</p>
   <div class="cta-btns">
     <a href="/login" class="cta-main">Log Masuk Sekarang</a>
-    <a href="#" class="cta-sec">Cuba Demo Percuma</a>
+    <a href="#daftar-akaun" class="cta-sec" onclick="openRegistrationModal(event)">Daftar Akaun</a>
   </div>
 </div>
 
@@ -727,16 +777,13 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 
     <button class="modal-btn" onclick="handleLogin()">LOG MASUK</button>
 
-    <div class="modal-divider"><span>atau</span></div>
-    <div class="modal-links">
-      <span style="color:var(--text-muted);font-size:0.78rem">Hubungi admin untuk dapatkan akaun demo</span>
-    </div>
-
     <div class="modal-disclaimer">
       <p>Dengan log masuk, anda bersetuju dengan <a href="#" style="color:var(--gold);text-decoration:none">Terma &amp; Syarat</a> dan <a href="#" style="color:var(--gold);text-decoration:none">Dasar Privasi</a> kami.</p>
     </div>
   </div>
 </div>
+
+{% include "_registration_modal.html" %}
 
 <script>
 function initLandingMarketFeed(){
