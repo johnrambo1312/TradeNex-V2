@@ -8,7 +8,11 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 
 - `index.html` (dalam `templates/`) — laman utama (landing page) asal anda
 - Sistem **login user** — user log masuk dengan ID & password yang **admin** bagi (tiada daftar sendiri)
-- **Dashboard user** — papar baki akaun, untung/rugi, dan graf trading berdasarkan entry yang admin masukkan
+- **Dashboard user** — papar baki akaun, untung/rugi, graf trading, profil dengan kod referral unik berformat `E-` diikuti tujuh digit, dan genealogi referral dua level dengan carian serta penapis
+- Borang pendaftaran menerima kod referral pilihan; kod yang dimasukkan mesti milik akaun aktif
+- Komisen referral sekali bagi setiap akaun yang diterima selepas ciri ini dipasang: RM30 untuk Level 1 dan RM15 untuk Level 2. Komisen dijadual pada 30hb (hari terakhir Februari); akaun penerima dan akaun referral mesti aktif ketika kredit dibuat. Komisen berstatus dibayar masuk ke Wallet, tidak mengubah modal akaun. Akaun referral lama tidak menerima backfill.
+- Dashboard memaparkan komisen setiap referral, status akaun dan sebab komisen masih tertangguh, serta sejarah kredit Wallet. Popup admin menunjukkan laluan referral dan status payout untuk semakan.
+- Render Cron menjalankan `flask --app app process-referral-commissions` setiap hari pada 16:05 UTC (00:05 MYT) dan mengejar bayaran tertunggak jika satu jadual terlepas.
 - **Panel admin** (`/admin`) — admin login sendiri, boleh:
   - Cipta / kemaskini / nyahaktifkan akaun user sambil mengekalkan sejarah kewangan
   - Pautkan akaun kepada rekod pendaftaran dan maklumat bank yang tepat

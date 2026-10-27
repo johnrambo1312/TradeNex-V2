@@ -45,6 +45,9 @@
       <label class="registration-label" for="registrationPhone">No. telefon</label>
       <input class="registration-input" id="registrationPhone" name="phone" type="tel" maxlength="30" autocomplete="tel" required>
 
+      <label class="registration-label" for="registrationReferral">Kod referral (pilihan)</label>
+      <input class="registration-input" id="registrationReferral" name="referral_code" type="text" maxlength="9" pattern="E-[0-9]{7}" placeholder="E-1234567" autocomplete="off">
+
       <label class="registration-label" for="registrationPlan">Pilihan modal akaun</label>
       <select class="registration-input" id="registrationPlan" name="plan" required>
         <option value="" selected disabled>Pilih pakej</option>
@@ -115,6 +118,7 @@ function submitRegistration(event){
       full_name:values.get('full_name'),
       email:values.get('email'),
       phone:values.get('phone'),
+      referral_code:values.get('referral_code'),
       plan:values.get('plan'),
       bank_name:values.get('bank_name'),
       bank_account_number:values.get('bank_account_number'),

@@ -1,3 +1,4 @@
+import calendar
 import math
 import os
 import re
@@ -10,11 +11,20 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from sqlalchemy import inspect as sqlalchemy_inspect
+from sqlalchemy import inspect as sqlalchemy_inspect, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from models import db, User, AdminUser, RegistrationRequest, TradeEntry, UserLiveBalance, WithdrawalRequest
+from models import (
+    db,
+    User,
+    AdminUser,
+    RegistrationRequest,
+    TradeEntry,
+    UserLiveBalance,
+    WithdrawalRequest,
+    ReferralCommission,
+)
 
 load_dotenv()
 
@@ -83,6 +93,75 @@ def registration_for_user(user):
     return user.registration_request
 
 
+def next_referral_commission_payable_at(now=None):
+    now = now or now_myt()
+
+    def payout_date(year, month):
+        return datetime(year, month, min(30, calendar.monthrange(year, month)[1]), 0, 5)
+
+    payable_at = payout_date(now.year, now.month)
+    if now < payable_at:
+        return payable_at
+
+    next_month = 1 if now.month == 12 else now.month + 1
+    next_year = now.year + 1 if now.month == 12 else now.year
+    return payout_date(next_year, next_month)
+
+
+def schedule_referral_commissions(user, now=None):
+    if not user.referred_by:
+        return
+
+    payable_at = next_referral_commission_payable_at(now)
+    beneficiaries = (
+        (1, user.referred_by, 30.0),
+        (2, user.referred_by.referred_by, 15.0),
+    )
+    scheduled_beneficiary_ids = set()
+    for level, beneficiary, amount in beneficiaries:
+        if not beneficiary or beneficiary.id in scheduled_beneficiary_ids:
+            continue
+        scheduled_beneficiary_ids.add(beneficiary.id)
+        db.session.add(ReferralCommission(
+            beneficiary=beneficiary,
+            referred_user=user,
+            level=level,
+            amount=amount,
+            payable_at=payable_at,
+        ))
+
+
+def process_due_referral_commissions(now=None):
+    now = now or now_myt()
+    commissions = ReferralCommission.query.filter(
+        ReferralCommission.status == "pending",
+        ReferralCommission.payable_at <= now,
+    ).with_for_update().all()
+    paid_count = 0
+    for commission in commissions:
+        beneficiary = db.session.get(User, commission.beneficiary_user_id)
+        referred_user = db.session.get(User, commission.referred_user_id)
+        if not beneficiary or not beneficiary.is_active or not referred_user or not referred_user.is_active:
+            continue
+        result = db.session.execute(
+            update(ReferralCommission)
+            .where(
+                ReferralCommission.id == commission.id,
+                ReferralCommission.status == "pending",
+                ReferralCommission.payable_at <= now,
+            )
+            .values(status="paid", paid_at=now)
+            .execution_options(synchronize_session=False)
+        )
+        paid_count += result.rowcount
+
+    if paid_count:
+        db.session.commit()
+    else:
+        db.session.rollback()
+    return paid_count
+
+
 def ensure_database_ready():
     """Pastikan jadual dan akaun admin tersedia sebelum aplikasi menerima trafik."""
     db.create_all()
@@ -119,6 +198,8 @@ def ensure_user_schema():
         "withdrawn_total": "FLOAT NOT NULL DEFAULT 0",
         "realized_profit_loss": "FLOAT NOT NULL DEFAULT 0",
         "is_matured": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "referral_code": "VARCHAR(9)",
+        "referred_by_id": "INTEGER REFERENCES users(id) ON DELETE SET NULL",
         "registration_request_id": (
             "INTEGER REFERENCES registration_requests(id) ON DELETE RESTRICT"
         ),
@@ -129,9 +210,42 @@ def ensure_user_schema():
                 connection.exec_driver_sql(
                     f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
                 )
+        referral_codes = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT referral_code FROM users WHERE referral_code IS NOT NULL"
+            ).fetchall()
+        }
+        rows_without_referral_code = connection.exec_driver_sql(
+            "SELECT id FROM users WHERE referral_code IS NULL OR referral_code = ''"
+        ).fetchall()
+        for row in rows_without_referral_code:
+            for attempt in range(100):
+                referral_code = f"E-{secrets.randbelow(10_000_000):07d}"
+                if referral_code not in referral_codes:
+                    referral_codes.add(referral_code)
+                    break
+            else:
+                raise RuntimeError(
+                    "Referral code unik tidak dapat dijana untuk akaun sedia ada."
+                )
+            if db.engine.dialect.name == "sqlite":
+                connection.exec_driver_sql(
+                    "UPDATE users SET referral_code = ? WHERE id = ?",
+                    (referral_code, row[0]),
+                )
+            else:
+                connection.exec_driver_sql(
+                    "UPDATE users SET referral_code = :code WHERE id = :id",
+                    {"code": referral_code, "id": row[0]},
+                )
         connection.exec_driver_sql(
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_registration_request_id "
             "ON users (registration_request_id)"
+        )
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_referral_code "
+            "ON users (referral_code)"
         )
 
 
@@ -180,6 +294,10 @@ def ensure_registration_request_schema():
         if "plan_price" not in existing_columns:
             connection.exec_driver_sql(
                 "ALTER TABLE registration_requests ADD COLUMN plan_price INTEGER NOT NULL DEFAULT 488"
+            )
+        if "referral_code" not in existing_columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE registration_requests ADD COLUMN referral_code VARCHAR(9)"
             )
 
         rows_without_code = connection.exec_driver_sql(
@@ -249,6 +367,15 @@ def generate_nova_id():
     return f"TN{int(datetime.now().timestamp()) % 10000:04d}"
 
 
+def generate_referral_code():
+    """Jana referral code unik dengan format E- diikuti tujuh digit."""
+    for _ in range(100):
+        referral_code = f"E-{secrets.randbelow(10_000_000):07d}"
+        if not User.query.filter_by(referral_code=referral_code).first():
+            return referral_code
+    raise RuntimeError("Referral code unik tidak dapat dijana selepas 100 percubaan.")
+
+
 # ---------------------------------------------------------------------------
 # Laman utama (index.html sedia ada)
 # ---------------------------------------------------------------------------
@@ -284,6 +411,15 @@ def api_registration():
     }
     if not all(isinstance(value, str) for value in fields.values()):
         return jsonify({"ok": False, "message": "Sila lengkapkan semua maklumat dengan format yang betul."}), 400
+    referral_code = data.get("referral_code", "")
+    if not isinstance(referral_code, str):
+        return jsonify({"ok": False, "message": "Kod referral tidak sah."}), 400
+    referral_code = referral_code.strip().upper()
+    if referral_code and not re.fullmatch(r"E-\d{7}", referral_code):
+        return jsonify({"ok": False, "message": "Kod referral mesti menggunakan format E- diikuti 7 digit."}), 400
+    if referral_code:
+        if not User.query.filter_by(referral_code=referral_code, is_active=True).first():
+            return jsonify({"ok": False, "message": "Kod referral tidak dijumpai atau tidak aktif."}), 400
 
     full_name = fields["full_name"].strip()
     email = fields["email"].strip().lower()
@@ -321,6 +457,7 @@ def api_registration():
         bank_account_number=bank_account_number,
         plan_name=plan_name,
         plan_price=plan_price,
+        referral_code=referral_code or None,
     )
     registration_saved = False
     for attempt in range(100):
@@ -399,6 +536,24 @@ def dashboard():
         WithdrawalRequest.created_at.desc()
     ).all()
     bank_registration = registration_for_user(user)
+    level_one_referrals = User.query.filter_by(referred_by_id=user.id).order_by(
+        User.created_at.asc()
+    ).all()
+    level_two_referrals = []
+    if level_one_referrals:
+        level_two_referrals = User.query.filter(
+            User.referred_by_id.in_([referral.id for referral in level_one_referrals])
+        ).order_by(User.created_at.asc()).all()
+    user_commissions = ReferralCommission.query.filter_by(
+        beneficiary_user_id=user.id
+    ).order_by(ReferralCommission.paid_at.desc(), ReferralCommission.payable_at.desc()).all()
+    commission_by_referral_level = {
+        (commission.referred_user_id, commission.level): commission
+        for commission in user_commissions
+    }
+    paid_commission_history = [
+        commission for commission in user_commissions if commission.status == "paid"
+    ]
 
     def to_utc_ts(dt):
         # Semua datetime dalam DB adalah naive MYT (UTC+8).
@@ -433,7 +588,8 @@ def dashboard():
             0.0,
             float(user.balance or 0)
             - float(user.withdrawn_total or 0)
-            + float(user.realized_profit_loss or 0),
+            + float(user.realized_profit_loss or 0)
+            + user.paid_referral_commission,
         ),
         chart_labels=chart_labels,
         chart_values=chart_values,
@@ -441,6 +597,11 @@ def dashboard():
         show_chart=show_chart,
         withdrawal_requests=withdrawal_requests,
         bank_registration=bank_registration,
+        level_one_referrals=level_one_referrals,
+        level_two_referrals=level_two_referrals,
+        commission_by_referral_level=commission_by_referral_level,
+        paid_commission_history=paid_commission_history,
+        now_myt=now_myt(),
     )
 
 
@@ -525,12 +686,42 @@ def admin_dashboard():
         for withdrawal in withdrawal_requests
         if withdrawal.registration_request_id
     }
+    referrals_by_user = {}
+    for user in users:
+        level_one = [referral for referral in users if referral.referred_by_id == user.id]
+        level_one_ids = {referral.id for referral in level_one}
+        level_two = [
+            referral for referral in users if referral.referred_by_id in level_one_ids
+        ]
+        referrals_by_user[user.id] = (level_one, level_two)
+    commissions_by_user = {user.id: [] for user in users}
+    commission_totals_by_user = {
+        user.id: {"paid": 0.0, "pending": 0.0} for user in users
+    }
+    commission_by_user_referral_level = {}
+    for commission in ReferralCommission.query.order_by(
+        ReferralCommission.created_at.desc()
+    ).all():
+        commissions_by_user.setdefault(commission.beneficiary_user_id, []).append(commission)
+        commission_by_user_referral_level[
+            (commission.beneficiary_user_id, commission.referred_user_id, commission.level)
+        ] = commission
+        total_key = "paid" if commission.status == "paid" else "pending"
+        commission_totals_by_user.setdefault(
+            commission.beneficiary_user_id, {"paid": 0.0, "pending": 0.0}
+        )[total_key] += float(commission.amount or 0)
+
     return render_template(
         "admin_dashboard.html",
         users=users,
         registration_requests=registration_requests,
         withdrawal_requests=withdrawal_requests,
         protected_registration_ids=protected_registration_ids,
+        referrals_by_user=referrals_by_user,
+        commissions_by_user=commissions_by_user,
+        commission_totals_by_user=commission_totals_by_user,
+        commission_by_user_referral_level=commission_by_user_referral_level,
+        now_myt=now_myt(),
     )
 
 
@@ -581,12 +772,16 @@ def admin_accept_registration(registration_id):
 
     user = User(
         nova_id=registration.request_code,
+        referral_code=generate_referral_code(),
+        referred_by=User.query.filter_by(referral_code=registration.referral_code).first()
+        if registration.referral_code else None,
         full_name=registration.full_name,
         balance=registration.plan_price,
         registration_request=registration,
     )
     user.set_password(password)
     db.session.add(user)
+    schedule_referral_commissions(user)
     try:
         db.session.commit()
     except IntegrityError:
@@ -661,12 +856,16 @@ def admin_create_user():
 
     user = User(
         nova_id=nova_id,
+        referral_code=generate_referral_code(),
+        referred_by=User.query.filter_by(referral_code=registration.referral_code).first()
+        if registration and registration.referral_code else None,
         full_name=full_name,
         balance=balance_float,
         registration_request=registration,
     )
     user.set_password(password)
     db.session.add(user)
+    schedule_referral_commissions(user)
     db.session.commit()
     flash(f"User berjaya dicipta — NOVA ID: {nova_id}", "success")
     return redirect(url_for("admin_dashboard"))
@@ -952,6 +1151,19 @@ def admin_clear_history(user_id):
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/user/<int:user_id>/mature", methods=["POST"])
+@admin_required
+def admin_mark_user_mature(user_id):
+    user = db.get_or_404(User, user_id)
+    if user.is_matured:
+        flash(f"Akaun '{user.nova_id}' sudah ditandakan matang.", "error")
+    else:
+        user.is_matured = True
+        db.session.commit()
+        flash(f"Akaun '{user.nova_id}' kini matang. Pengeluaran modal telah dibenarkan.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
 # ---------------------------------------------------------------------------
 # CLI command untuk setup pertama kali: buat tables + admin pertama
 # Guna: flask init-db
@@ -970,6 +1182,16 @@ def init_db():
         print("Admin 'admin' sudah wujud, skip.")
 
     print("Database sedia digunakan.")
+
+
+@app.cli.command("process-referral-commissions")
+def process_referral_commissions_command():
+    """Kredit komisen yang sudah melepasi tarikh bayaran berjadual."""
+    paid_count = process_due_referral_commissions()
+    if paid_count:
+        print(f"{paid_count} komisen referral berjaya dikreditkan ke Wallet.")
+    else:
+        print("Tiada komisen referral tertunggak yang layak dibayar.")
 
 
 if __name__ == "__main__":

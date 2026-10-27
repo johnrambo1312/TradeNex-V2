@@ -102,14 +102,27 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 #createPanel.open{display:block}
 
 /* DETAIL PANEL */
-.detail-panel{display:none}
-.detail-panel.active{display:block}
+.detail-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.78);align-items:center;justify-content:center;padding:1rem}
+.detail-overlay.active{display:flex}
+.detail-panel{display:block;width:min(1100px,100%);max-height:calc(100vh - 2rem);overflow-y:auto;margin:0}
 .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)}
 .detail-title{font-size:1rem;font-weight:700}
 .detail-id{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:0.85rem}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
 @media(max-width:800px){.detail-grid{grid-template-columns:1fr}}
 .detail-section-title{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.85rem}
+.user-name-button{padding:0;border:0;background:transparent;color:var(--light);font:600 0.84rem 'IBM Plex Sans',sans-serif;text-align:left;cursor:pointer}
+.user-name-button:hover{color:var(--gold2);text-decoration:underline}
+.user-detail-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem;margin-bottom:1.25rem}
+.user-summary-card{padding:0.85rem;background:var(--navy3);border:1px solid var(--border);border-radius:8px}
+.user-summary-label{color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.4px}
+.user-summary-value{margin-top:0.35rem;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;color:var(--gold2)}
+.user-detail-section{margin:1rem 0;padding-top:1rem;border-top:1px solid var(--border)}
+.user-detail-table{width:100%;border-collapse:collapse;font-size:0.78rem}
+.user-detail-table th,.user-detail-table td{padding:0.5rem 0.55rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.user-detail-table th{color:var(--muted);font-size:0.63rem}
+.user-detail-scroll{overflow-x:auto}
+.user-detail-empty{color:var(--muted);font-size:0.78rem;padding:0.5rem 0}
 
 /* ENTRY LIST */
 .entry-list{margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem}
@@ -262,6 +275,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               <th>Nama</th>
               <th>Emel</th>
               <th>No. Telefon</th>
+              <th>Kod Referral</th>
               <th>Pakej</th>
               <th>Modal (RM)</th>
               <th>Bank</th>
@@ -277,6 +291,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                 <td>{{ registration.full_name }}</td>
                 <td>{{ registration.email }}</td>
                 <td>{{ registration.phone }}</td>
+                <td>{{ registration.referral_code or '—' }}</td>
                 <td>{{ registration.plan_name }}</td>
                 <td class="col-modal">{{ '{:,.0f}'.format(registration.plan_price) }}</td>
                 <td>{{ registration.bank_name }}</td>
@@ -285,7 +300,6 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                   {% if registration.user %}
                     <span class="badge badge-processed">Diterima</span><br>
                     <span class="col-id">{{ registration.user.nova_id }}</span><br>
-                    <button class="btn btn-outline" type="button" onclick="selectUser({{ registration.user.id }})">Urus Akaun</button>
                   {% elif registration.id in protected_registration_ids %}
                     <span style="color:var(--muted)">Digunakan dalam sejarah pengeluaran</span>
                   {% else %}
@@ -432,7 +446,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <thead>
         <tr>
           <th>NOVA ID</th>
-          <th class="col-nama">Nama</th>
+          <th class="col-nama">Nama — tekan untuk butiran</th>
           <th>Modal (RM)</th>
           <th>Status</th>
           <th>Aksi</th>
@@ -442,7 +456,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         {% for u in users %}
         <tr>
           <td class="col-id">{{ u.nova_id }}</td>
-          <td class="col-nama">{{ u.full_name }}</td>
+          <td class="col-nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
           <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
           <td>
             {% if not u.is_active %}
@@ -458,12 +472,23 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </td>
           <td>
             <div class="actions">
-              <button class="btn btn-outline" onclick="selectUser({{ u.id }})">Urus</button>
               <form method="POST" action="{{ url_for('admin_clear_history', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Buang semua history entry untuk {{ u.nova_id }}?');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Clear</button>
               </form>
-                </div>
+              {% if not u.is_matured %}
+                <form method="POST" action="{{ url_for('admin_mark_user_mature', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Tandakan akaun {{ u.nova_id }} sebagai matang dan benarkan pengeluaran modal?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-gold">Matang</button>
+                </form>
+              {% endif %}
+              {% if u.is_active %}
+                <form method="POST" action="{{ url_for('admin_archive_user', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Padam akaun {{ u.nova_id }} daripada akses aktif? Akaun akan dinyahaktifkan tetapi semua rekod kewangan dan referral dikekalkan.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-danger">Padam</button>
+                </form>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% else %}
@@ -475,6 +500,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
   <!-- ===== DETAIL PANEL PER USER ===== -->
   {% for u in users %}
+  <div class="detail-overlay" id="detailOverlay-{{ u.id }}" onclick="if(event.target===this)closeUser({{ u.id }})">
   <div class="panel detail-panel" id="detail-{{ u.id }}">
 
     <div class="detail-header">
@@ -483,6 +509,117 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         <div class="detail-id">{{ u.nova_id }}</div>
       </div>
       <button class="btn btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem" onclick="closeUser({{ u.id }})">Tutup ✕</button>
+    </div>
+
+    {% set commission_totals = commission_totals_by_user.get(u.id, {}) %}
+    {% set genealogy = referrals_by_user.get(u.id, ([], [])) %}
+    <div class="user-detail-summary">
+      <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Komisen menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Jumlah komisen</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0) + commission_totals.get('pending', 0)) }}</div></div>
+    </div>
+
+    <div class="user-detail-section">
+      <div class="detail-section-title">Genealogi referral (2 level)</div>
+      <div class="user-detail-scroll">
+        <table class="user-detail-table">
+          <thead><tr><th>Level</th><th>Nama / NOVA ID</th><th>Laluan referral</th><th>Status akaun</th><th>Komisen</th><th>Status / sebab</th></tr></thead>
+          <tbody>
+            {% for referral in genealogy[0] %}
+              {% set commission = commission_by_user_referral_level.get((u.id, referral.id, 1)) %}
+              <tr>
+                <td>1</td>
+                <td>{{ referral.full_name }}<br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
+                <td>{{ u.full_name }} → {{ referral.full_name }}</td>
+                <td>{{ 'Aktif' if referral.is_active else 'Tidak aktif' }}</td>
+                <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
+                <td>
+                  {% if not commission %}Tiada komisen direkodkan; akaun referral lama tidak menerima backfill.
+                  {% elif commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
+                  {% elif not u.is_active and not referral.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
+                  {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
+                  {% elif not referral.is_active %}Ditahan: akaun referral tidak aktif.
+                  {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
+                  {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            {% for referral in genealogy[1] %}
+              {% set commission = commission_by_user_referral_level.get((u.id, referral.id, 2)) %}
+              <tr>
+                <td>2</td>
+                <td>{{ referral.full_name }}<br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
+                <td>{{ u.full_name }} → {{ referral.referred_by.full_name }} → {{ referral.full_name }}</td>
+                <td>{{ 'Aktif' if referral.is_active else 'Tidak aktif' }}</td>
+                <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
+                <td>
+                  {% if not commission %}Tiada komisen direkodkan; akaun referral lama tidak menerima backfill.
+                  {% elif commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
+                  {% elif not u.is_active and not referral.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
+                  {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
+                  {% elif not referral.is_active %}Ditahan: akaun referral tidak aktif.
+                  {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
+                  {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            {% if not genealogy[0] and not genealogy[1] %}
+              <tr><td colspan="6" class="user-detail-empty">Belum ada akaun referral di bawah user ini.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="user-detail-section">
+      <div class="detail-section-title">Rekod komisen</div>
+      <div class="user-detail-scroll">
+        <table class="user-detail-table">
+          <thead><tr><th>Tarikh layak</th><th>Referral</th><th>Level</th><th>Laluan</th><th>Jumlah</th><th>Status / sebab</th></tr></thead>
+          <tbody>
+            {% for commission in commissions_by_user.get(u.id, []) %}
+              <tr>
+                <td>{{ commission.payable_at.strftime('%d/%m/%Y') }}</td>
+                <td>{{ commission.referred_user.full_name }}<br><span class="col-id">{{ commission.referred_user.nova_id }}</span></td>
+                <td>{{ commission.level }}</td>
+                <td>{{ u.full_name }} → {% if commission.level == 2 and commission.referred_user.referred_by %}{{ commission.referred_user.referred_by.full_name }} → {% endif %}{{ commission.referred_user.full_name }}</td>
+                <td>RM {{ '%.2f'|format(commission.amount) }}</td>
+                <td>
+                  {% if commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
+                  {% elif not u.is_active and not commission.referred_user.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
+                  {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
+                  {% elif not commission.referred_user.is_active %}Ditahan: akaun referral tidak aktif.
+                  {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
+                  {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="user-detail-empty">Belum ada komisen referral.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="user-detail-section">
+      <div class="detail-section-title">Sejarah pengeluaran</div>
+      <div class="user-detail-scroll">
+        <table class="user-detail-table">
+          <thead><tr><th>Tarikh</th><th>Jumlah</th><th>Status</th><th>Rujukan bayaran</th></tr></thead>
+          <tbody>
+            {% for withdrawal in u.withdrawal_requests %}
+              <tr>
+                <td>{{ withdrawal.created_at.strftime('%d/%m/%Y %H:%M') if withdrawal.created_at else '—' }}</td>
+                <td>RM {{ '%.2f'|format(withdrawal.amount) }}</td>
+                <td>{{ {'pending':'Menunggu semakan','processed':'Selesai','rejected':'Ditolak'}.get(withdrawal.status, withdrawal.status) }}</td>
+                <td>{{ withdrawal.payment_reference or '—' }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="user-detail-empty">Belum ada sejarah pengeluaran.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="detail-grid">
@@ -530,12 +667,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             <button type="submit" class="btn btn-gold">Simpan</button>
           </div>
         </form>
-        {% if u.is_active %}
-          <form method="POST" action="{{ url_for('admin_archive_user', user_id=u.id) }}" style="display:block;margin-top:0.5rem" onsubmit="return confirm('Nyahaktifkan akaun {{ u.nova_id }}? Rekod dan sejarah kewangan akan dikekalkan.');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger">Nyahaktifkan &amp; Kekalkan Rekod</button>
-          </form>
-        {% else %}
+        {% if not u.is_active %}
           <p style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem">Akaun dinyahaktifkan. Rekod kewangan masih disimpan.</p>
         {% endif %}
       </div>
@@ -588,6 +720,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
       </div>
     </div>
+  </div>
   </div>
   {% endfor %}
 
@@ -726,14 +859,21 @@ function toggleCreate(){
 
 /* ── DETAIL PANEL ── */
 function selectUser(id){
-  document.querySelectorAll('.detail-panel').forEach(function(el){ el.classList.remove('active'); });
-  var t = document.getElementById('detail-'+id);
-  if(t){ t.classList.add('active'); setTimeout(function(){ t.scrollIntoView({behavior:'smooth',block:'start'}); },50); }
+  document.querySelectorAll('.detail-overlay').forEach(function(el){ el.classList.remove('active'); });
+  var overlay = document.getElementById('detailOverlay-'+id);
+  if(overlay){ overlay.classList.add('active'); document.body.style.overflow='hidden'; }
 }
 function closeUser(id){
-  var t = document.getElementById('detail-'+id);
-  if(t) t.classList.remove('active');
+  var overlay = document.getElementById('detailOverlay-'+id);
+  if(overlay) overlay.classList.remove('active');
+  document.body.style.overflow='';
 }
+document.addEventListener('keydown',function(event){
+  if(event.key==='Escape'){
+    document.querySelectorAll('.detail-overlay.active').forEach(function(el){ el.classList.remove('active'); });
+    document.body.style.overflow='';
+  }
+});
 
 /* ── CUSTOM RECEIPT GENERATOR ── */
 function formatRm(value){

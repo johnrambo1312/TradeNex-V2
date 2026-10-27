@@ -40,6 +40,8 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nova_id = db.Column(db.String(50), unique=True, nullable=False)  # ID login
+    referral_code = db.Column(db.String(9), unique=True, nullable=True)
+    referred_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
 
@@ -56,6 +58,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
     registration_request = db.relationship("RegistrationRequest", back_populates="user", uselist=False)
+    referred_by = db.relationship(
+        "User", remote_side=[id], foreign_keys=[referred_by_id], backref="referred_users"
+    )
     entries = db.relationship(
         "TradeEntry", backref="user", lazy=True,
         order_by="TradeEntry.entry_date", cascade="all, delete-orphan"
@@ -67,6 +72,28 @@ class User(db.Model):
         "WithdrawalRequest", backref="user", lazy=True,
         order_by="WithdrawalRequest.created_at.desc()"
     )
+    referral_commissions = db.relationship(
+        "ReferralCommission",
+        foreign_keys="ReferralCommission.beneficiary_user_id",
+        back_populates="beneficiary",
+        lazy=True,
+    )
+
+    @property
+    def paid_referral_commission(self):
+        return sum(
+            float(commission.amount or 0)
+            for commission in self.referral_commissions
+            if commission.status == "paid"
+        )
+
+    @property
+    def pending_referral_commission(self):
+        return sum(
+            float(commission.amount or 0)
+            for commission in self.referral_commissions
+            if commission.status == "pending"
+        )
 
     @property
     def current_balance(self):
@@ -120,7 +147,8 @@ class User(db.Model):
             float(self.balance or 0)
             - float(self.withdrawn_total or 0)
             + float(self.realized_profit_loss or 0)
-            + self.current_profit_loss,
+            + self.current_profit_loss
+            + self.paid_referral_commission,
         )
 
     @property
@@ -132,6 +160,7 @@ class User(db.Model):
             0.0,
             float(self.realized_profit_loss or 0)
             + self.current_profit_loss
+            + self.paid_referral_commission
             - float(self.withdrawn_total or 0),
         )
 
@@ -171,6 +200,7 @@ class RegistrationRequest(db.Model):
     bank_account_number = db.Column(db.String(34), nullable=False)
     plan_name = db.Column(db.String(20), nullable=False, default="basic", server_default="basic")
     plan_price = db.Column(db.Integer, nullable=False, default=488, server_default="488")
+    referral_code = db.Column(db.String(9))
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
     user = db.relationship("User", back_populates="registration_request", uselist=False)
 
@@ -221,3 +251,32 @@ class WithdrawalRequest(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending", server_default="pending")
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
     processed_at = db.Column(db.DateTime)
+
+
+class ReferralCommission(db.Model):
+    """Komisen referral sekali bayar bagi setiap akaun referral dan tahap."""
+    __tablename__ = "referral_commissions"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "referred_user_id", "level", name="uq_referral_commission_user_level"
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    beneficiary_user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    referred_user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    level = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="pending", server_default="pending")
+    payable_at = db.Column(db.DateTime, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    paid_at = db.Column(db.DateTime)
+
+    beneficiary = db.relationship(
+        "User", foreign_keys=[beneficiary_user_id], back_populates="referral_commissions"
+    )
+    referred_user = db.relationship("User", foreign_keys=[referred_user_id])
