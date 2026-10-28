@@ -560,21 +560,12 @@ def api_registration():
         return jsonify({"ok": False, "message": "Sila lengkapkan semua maklumat."}), 400
     if data.get("consent") is not True:
         return jsonify({"ok": False, "message": "Persetujuan penyimpanan maklumat diperlukan."}), 400
-    valid_full_name = (
-        len(full_name) <= 120
-        and any(character.isalpha() for character in full_name)
-        and all(character.isalpha() or character == " " for character in full_name)
-    )
-    if not valid_full_name:
-        return jsonify({"ok": False, "message": "Nama penuh hanya boleh mengandungi huruf dan ruang."}), 400
+    if len(full_name) > 120:
+        return jsonify({"ok": False, "message": "Nama penuh tidak sah."}), 400
     if len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         return jsonify({"ok": False, "message": "Alamat e-mel tidak sah."}), 400
-    if not re.fullmatch(r"[0-9]{7,15}", phone):
-        return jsonify({"ok": False, "message": "Nombor telefon mesti mengandungi 7 hingga 15 digit sahaja."}), 400
-    if len(bank_name) > 100:
-        return jsonify({"ok": False, "message": "Nama bank tidak sah."}), 400
-    if not re.fullmatch(r"[0-9]{5,34}", bank_account_number):
-        return jsonify({"ok": False, "message": "Nombor akaun bank mesti mengandungi 5 hingga 34 digit sahaja."}), 400
+    if len(phone) > 30 or len(bank_name) > 100 or len(bank_account_number) > 34:
+        return jsonify({"ok": False, "message": "Maklumat pendaftaran terlalu panjang."}), 400
     if plan not in REGISTRATION_PLANS:
         return jsonify({"ok": False, "message": "Sila pilih pakej akaun yang sah."}), 400
 
