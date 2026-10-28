@@ -510,7 +510,20 @@ def generate_referral_code():
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    rank_names = {0: "No Rank"}
+    rank_names.update({rank: name for rank, name, _ in INCENTIVE_RANKS})
+    affiliate_commission_ranks = [
+        {
+            "name": rank_names[rank],
+            "level_one": rates[1],
+            "level_two": rates[2],
+        }
+        for rank, rates in sorted(REFERRAL_COMMISSION_RATES.items())
+    ]
+    return render_template(
+        "index.html",
+        affiliate_commission_ranks=affiliate_commission_ranks,
+    )
 
 
 # ---------------------------------------------------------------------------

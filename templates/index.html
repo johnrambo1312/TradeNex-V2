@@ -156,11 +156,11 @@ section{padding:6rem 4rem}
 .why-text{color:var(--text-muted);font-size:0.85rem;line-height:1.7}
 
 /* ===== REFERRAL PROGRAM ===== */
-.referral-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin:2rem 0}
+.referral-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.25rem;margin:2rem 0}
 .referral-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;text-align:center}
-.referral-tier{color:var(--text-light);font-size:0.82rem;font-weight:600;line-height:1.4;min-height:2.3rem}
-.referral-commission{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:1.65rem;font-weight:700;margin-top:0.65rem}
-.referral-unit{color:var(--text-muted);font-size:0.75rem;margin-top:0.25rem}
+.referral-tier{color:var(--text-light);font-size:0.82rem;font-weight:600;line-height:1.4;min-height:2.3rem;display:flex;align-items:center;justify-content:center}
+.referral-rate{display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-top:0.85rem;color:var(--text-muted);font-size:0.75rem}
+.referral-rate strong{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:0.95rem}
 .referral-copy{color:var(--text-muted);font-size:0.9rem;line-height:1.7}
 .referral-highlight{color:var(--gold2);font-weight:600}
 
@@ -565,26 +565,13 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     <h2 class="section-title">🔥 Jana Komisen dengan Affiliate! 💰</h2>
     <p class="section-desc">Peluang menjana pendapatan melalui program affiliate dengan kadar komisen mengikut tahap keahlian anda.</p>
     <div class="referral-grid">
-      <div class="referral-card">
-        <div class="referral-tier">Elite Member</div>
-        <div class="referral-commission">RM50</div>
-        <div class="referral-unit">/ referral</div>
-      </div>
-      <div class="referral-card">
-        <div class="referral-tier">Ambassador Member</div>
-        <div class="referral-commission">RM80</div>
-        <div class="referral-unit">/ referral</div>
-      </div>
-      <div class="referral-card">
-        <div class="referral-tier">Senior Ambassador</div>
-        <div class="referral-commission">RM100</div>
-        <div class="referral-unit">/ referral</div>
-      </div>
-      <div class="referral-card">
-        <div class="referral-tier">Territory Partner</div>
-        <div class="referral-commission">RM150</div>
-        <div class="referral-unit">/ referral</div>
-      </div>
+      {% for rank in affiliate_commission_ranks %}
+        <div class="referral-card">
+          <div class="referral-tier">{{ rank.name }}</div>
+          <div class="referral-rate"><span>Level 1</span><strong>RM{{ '%.0f'|format(rank.level_one) }}</strong></div>
+          <div class="referral-rate"><span>Level 2</span><strong>RM{{ '%.0f'|format(rank.level_two) }}</strong></div>
+        </div>
+      {% endfor %}
     </div>
     <p class="referral-copy">🚀 Kongsi kod affiliate anda, kembangkan rangkaian dan jana komisen bagi setiap referral yang layak.</p>
     <p class="referral-copy referral-highlight" style="margin-top:0.6rem">💰 Lagi banyak referral, lagi tinggi potensi komisen!</p>
