@@ -665,7 +665,7 @@ def dashboard():
         commission for commission in user_commissions if commission.status == "paid"
     ]
     monthly_incentive_breakdowns = monthly_referral_commission_breakdowns(
-        paid_commission_history
+        user_commissions
     )
     active_referral_count = sum(
         1 for referral in level_one_referrals + level_two_referrals if referral.is_active
