@@ -143,13 +143,23 @@ def next_referral_commission_payable_at(now=None):
 
 def monthly_referral_commission_breakdowns(commissions, now=None):
     now = now or now_myt()
+    month_names = (
+        "Januari", "Februari", "Mac", "April", "Mei", "Jun",
+        "Julai", "Ogos", "September", "Oktober", "November", "Disember",
+    )
     breakdowns = []
-    for month_offset, label in enumerate(("Bulan ini", "Bulan lepas", "2 bulan lepas")):
+    for month_offset in range(3):
         month_number = now.month - month_offset
         year = now.year
         while month_number < 1:
             month_number += 12
             year -= 1
+        if month_offset == 0:
+            label = "Bulan ini"
+        elif month_offset == 1:
+            label = "Bulan lepas"
+        else:
+            label = f"{month_names[month_number - 1]} {year}"
         month_start = datetime(year, month_number, 1)
         next_month_start = (
             datetime(year + 1, 1, 1)
@@ -162,6 +172,11 @@ def monthly_referral_commission_breakdowns(commissions, now=None):
                 relevant_date = commission.paid_at
             elif commission.status == "pending":
                 relevant_date = commission.payable_at
+                if month_offset == 0 and commission.created_at:
+                    relevant_date = commission.created_at
+                    if relevant_date.tzinfo is None:
+                        relevant_date = relevant_date.replace(tzinfo=timezone.utc)
+                    relevant_date = relevant_date.astimezone(MYT).replace(tzinfo=None)
             else:
                 continue
             if relevant_date and month_start <= relevant_date < next_month_start:

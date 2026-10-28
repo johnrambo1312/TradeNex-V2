@@ -433,9 +433,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
               <div class="monthly-incentive-level">
                 <div class="monthly-incentive-badge">Level {{ level.level }}</div>
                 <div>
-                  <div class="monthly-incentive-level-title">Jumlah komisen</div>
                   <div class="monthly-incentive-members">{{ level.contributors }} ahli</div>
-                  <div class="monthly-incentive-status">Sudah diterima RM {{ '%.2f'|format(level.paid_amount) }} · Belum diterima RM {{ '%.2f'|format(level.pending_amount) }}</div>
                 </div>
                 <div class="monthly-incentive-amount">+RM{{ '%.2f'|format(level.amount) }}</div>
               </div>
