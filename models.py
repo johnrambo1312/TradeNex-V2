@@ -47,6 +47,7 @@ class User(db.Model):
 
     # Modal yang ditetapkan admin; sistem tidak mengubahnya semasa trade atau withdraw.
     balance = db.Column(db.Float, default=0.0)
+    current_rank = db.Column(db.Integer, default=0, nullable=False, server_default="0")
     withdrawn_total = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
     realized_profit_loss = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
     is_matured = db.Column(db.Boolean, default=False, nullable=False, server_default="false")

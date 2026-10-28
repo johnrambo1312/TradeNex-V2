@@ -82,6 +82,32 @@ REGISTRATION_PLANS = {
     "gold": ("Gold", 3888),
     "platinum": ("Platinum", 6888),
 }
+INCENTIVE_RANKS = (
+    (1, "1. Elite Member", 10),
+    (2, "2. Ambassador Member", 30),
+    (3, "3. Senior Ambassador", 80),
+    (4, "4. Territory Partner", 100),
+)
+
+
+def next_incentive_rank(current_rank):
+    return next(
+        (rank for rank in INCENTIVE_RANKS if rank[0] > current_rank),
+        None,
+    )
+
+
+def active_referral_count_for_user(user_id):
+    level_one_ids = db.session.query(User.id).filter(
+        User.referred_by_id == user_id
+    )
+    return User.query.filter(
+        User.is_active.is_(True),
+        or_(
+            User.referred_by_id == user_id,
+            User.referred_by_id.in_(level_one_ids),
+        ),
+    ).count()
 
 
 def now_myt():
@@ -106,6 +132,51 @@ def next_referral_commission_payable_at(now=None):
     next_month = 1 if now.month == 12 else now.month + 1
     next_year = now.year + 1 if now.month == 12 else now.year
     return payout_date(next_year, next_month)
+
+
+def monthly_referral_commission_breakdowns(commissions, now=None):
+    now = now or now_myt()
+    breakdowns = []
+    for month_offset, label in enumerate(("Bulan ini", "Bulan lepas", "2 bulan lepas")):
+        month_number = now.month - month_offset
+        year = now.year
+        while month_number < 1:
+            month_number += 12
+            year -= 1
+        month_start = datetime(year, month_number, 1)
+        next_month_start = (
+            datetime(year + 1, 1, 1)
+            if month_number == 12
+            else datetime(year, month_number + 1, 1)
+        )
+        monthly_commissions = [
+            commission for commission in commissions
+            if commission.status == "paid"
+            and commission.paid_at
+            and month_start <= commission.paid_at < next_month_start
+        ]
+        levels = []
+        for level in (1, 2):
+            level_commissions = [
+                commission for commission in monthly_commissions
+                if commission.level == level
+            ]
+            levels.append({
+                "level": level,
+                "amount": sum(float(commission.amount or 0) for commission in level_commissions),
+                "contributors": len({
+                    commission.referred_user_id for commission in level_commissions
+                }),
+            })
+        breakdowns.append({
+            "label": label,
+            "total": sum(float(commission.amount or 0) for commission in monthly_commissions),
+            "contributors": len({
+                commission.referred_user_id for commission in monthly_commissions
+            }),
+            "levels": levels,
+        })
+    return breakdowns
 
 
 def schedule_referral_commissions(user, now=None):
@@ -195,6 +266,7 @@ def ensure_user_schema():
 
     existing_columns = {column["name"] for column in inspector.get_columns("users")}
     missing_columns = {
+        "current_rank": "INTEGER NOT NULL DEFAULT 0",
         "withdrawn_total": "FLOAT NOT NULL DEFAULT 0",
         "realized_profit_loss": "FLOAT NOT NULL DEFAULT 0",
         "is_matured": "BOOLEAN NOT NULL DEFAULT FALSE",
@@ -542,6 +614,21 @@ def dashboard():
     paid_commission_history = [
         commission for commission in user_commissions if commission.status == "paid"
     ]
+    monthly_incentive_breakdowns = monthly_referral_commission_breakdowns(
+        paid_commission_history
+    )
+    active_referral_count = sum(
+        1 for referral in level_one_referrals + level_two_referrals if referral.is_active
+    )
+    rank_names = {0: "Belum ada rank"}
+    rank_names.update({rank: name for rank, name, _ in INCENTIVE_RANKS})
+    next_rank = next_incentive_rank(user.current_rank)
+    incentive_target = next_rank[2] if next_rank else INCENTIVE_RANKS[-1][2]
+    incentive_progress = min(
+        100,
+        round(active_referral_count / incentive_target * 100),
+    )
+    incentive_remaining = max(0, incentive_target - active_referral_count)
 
     def to_utc_ts(dt):
         # Semua datetime dalam DB adalah naive MYT (UTC+8).
@@ -589,6 +676,14 @@ def dashboard():
         level_two_referrals=level_two_referrals,
         commission_by_referral_level=commission_by_referral_level,
         paid_commission_history=paid_commission_history,
+        monthly_incentive_breakdowns=monthly_incentive_breakdowns,
+        current_rank_name=rank_names.get(user.current_rank, "Belum ada rank"),
+        next_rank_name=next_rank[1] if next_rank else "Tiada — rank tertinggi",
+        active_referral_count=active_referral_count,
+        incentive_target=incentive_target,
+        incentive_progress=incentive_progress,
+        incentive_remaining=incentive_remaining,
+        has_next_rank=next_rank is not None,
         now_myt=now_myt(),
     )
 
@@ -675,6 +770,7 @@ def admin_dashboard():
         if withdrawal.registration_request_id
     }
     referrals_by_user = {}
+    incentive_progress_by_user = {}
     for user in users:
         level_one = [referral for referral in users if referral.referred_by_id == user.id]
         level_one_ids = {referral.id for referral in level_one}
@@ -682,6 +778,15 @@ def admin_dashboard():
             referral for referral in users if referral.referred_by_id in level_one_ids
         ]
         referrals_by_user[user.id] = (level_one, level_two)
+        next_rank = next_incentive_rank(user.current_rank)
+        referral_count = sum(
+            1 for referral in level_one + level_two if referral.is_active
+        )
+        incentive_progress_by_user[user.id] = {
+            "next_rank": next_rank,
+            "referral_count": referral_count,
+            "eligible": bool(next_rank and referral_count >= next_rank[2]),
+        }
     commissions_by_user = {user.id: [] for user in users}
     commission_totals_by_user = {
         user.id: {"paid": 0.0, "pending": 0.0} for user in users
@@ -706,6 +811,10 @@ def admin_dashboard():
         withdrawal_requests=withdrawal_requests,
         protected_registration_ids=protected_registration_ids,
         referrals_by_user=referrals_by_user,
+        incentive_progress_by_user=incentive_progress_by_user,
+        current_rank_names={0: "Belum ada rank", **{
+            rank: name for rank, name, _ in INCENTIVE_RANKS
+        }},
         commissions_by_user=commissions_by_user,
         commission_totals_by_user=commission_totals_by_user,
         commission_by_user_referral_level=commission_by_user_referral_level,
@@ -911,6 +1020,33 @@ def admin_update_user(user_id):
 
     db.session.commit()
     flash(f"Akaun '{user.nova_id}' berjaya dikemaskini.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/user/<int:user_id>/promote-rank", methods=["POST"])
+@admin_required
+def admin_promote_user_rank(user_id):
+    user = db.get_or_404(User, user_id)
+    next_rank = next_incentive_rank(user.current_rank)
+    if not next_rank:
+        flash(f"Akaun '{user.nova_id}' sudah mencapai rank tertinggi.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    referral_count = active_referral_count_for_user(user.id)
+    if referral_count < next_rank[2]:
+        flash(
+            f"Belum layak naik rank. Perlu {next_rank[2] - referral_count} "
+            "referral aktif lagi.",
+            "error",
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    user.current_rank = next_rank[0]
+    db.session.commit()
+    flash(
+        f"Akaun '{user.nova_id}' dinaikkan ke {next_rank[1]}.",
+        "success",
+    )
     return redirect(url_for("admin_dashboard"))
 
 

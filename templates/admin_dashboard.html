@@ -117,12 +117,22 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .user-summary-card{padding:0.85rem;background:var(--navy3);border:1px solid var(--border);border-radius:8px}
 .user-summary-label{color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.4px}
 .user-summary-value{margin-top:0.35rem;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;color:var(--gold2)}
+.rank-promotion{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;padding:0.9rem 1rem;background:var(--navy3);border:1px solid var(--border);border-radius:9px}
+.rank-promotion-title{font-size:0.8rem;font-weight:700;color:var(--light)}
+.rank-promotion-note{margin-top:0.25rem;color:var(--muted);font-size:0.74rem;line-height:1.5}
+.rank-promotion-button{flex-shrink:0;padding:0.6rem 0.9rem;border:0;border-radius:7px;background:var(--gold);color:var(--navy);font:700 0.78rem 'IBM Plex Sans',sans-serif;cursor:pointer}
+.rank-promotion-button-ready{box-shadow:0 0 0 1px rgba(212,168,67,0.3),0 0 16px rgba(212,168,67,0.28)}
+.rank-promotion-button:hover:not(:disabled){background:var(--gold2)}
+.rank-promotion-button:disabled{background:#26354d;color:#8190a6;cursor:not-allowed}
+@media(max-width:600px){.rank-promotion{align-items:flex-start;flex-direction:column}.rank-promotion form,.rank-promotion-button{width:100%}}
 .user-detail-section{margin:1rem 0;padding-top:1rem;border-top:1px solid var(--border)}
 .user-detail-table{width:100%;border-collapse:collapse;font-size:0.78rem}
 .user-detail-table th,.user-detail-table td{padding:0.5rem 0.55rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 .user-detail-table th{color:var(--muted);font-size:0.63rem}
 .user-detail-scroll{overflow-x:auto}
 .user-detail-empty{color:var(--muted);font-size:0.78rem;padding:0.5rem 0}
+.genealogy-level-two td:nth-child(2){padding-left:1.75rem;position:relative}
+.genealogy-level-two td:nth-child(2)::before{content:'↳';position:absolute;left:0.65rem;color:var(--muted)}
 
 /* ENTRY LIST */
 .entry-list{margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem}
@@ -442,7 +452,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <thead>
         <tr>
           <th>NOVA ID</th>
-          <th class="col-nama">Nama — tekan untuk butiran</th>
+          <th class="col-nama">Nama</th>
           <th>Modal (RM)</th>
           <th>Status</th>
           <th>Aksi</th>
@@ -508,24 +518,45 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
     {% set commission_totals = commission_totals_by_user.get(u.id, {}) %}
     {% set genealogy = referrals_by_user.get(u.id, ([], [])) %}
+    {% set incentive = incentive_progress_by_user.get(u.id, {}) %}
     <div class="user-detail-summary">
       <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Komisen menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Jumlah komisen</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0) + commission_totals.get('pending', 0)) }}</div></div>
+    </div>
+    <div class="rank-promotion">
+      <div>
+        <div class="rank-promotion-title">Current Rank: {{ current_rank_names.get(u.current_rank, 'Belum ada rank') }}</div>
+        {% if incentive.get('next_rank') %}
+          {% set next_rank = incentive.get('next_rank') %}
+          {% if incentive.get('eligible') %}
+            <div class="rank-promotion-note">Target {{ next_rank[2] }} referral aktif tercapai ({{ incentive.get('referral_count') }} referral). Admin boleh sahkan kenaikan ke {{ next_rank[1] }}.</div>
+          {% else %}
+            <div class="rank-promotion-note">Progress {{ incentive.get('referral_count') }}/{{ next_rank[2] }} referral aktif. Perlu {{ next_rank[2] - incentive.get('referral_count') }} lagi untuk {{ next_rank[1] }}.</div>
+          {% endif %}
+        {% else %}
+          <div class="rank-promotion-note">Rank tertinggi telah dicapai.</div>
+        {% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('admin_promote_user_rank', user_id=u.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="rank-promotion-button {{ 'rank-promotion-button-ready' if incentive.get('eligible') else '' }}" type="submit" {% if not incentive.get('eligible') %}disabled{% endif %}>
+          {% if incentive.get('next_rank') %}Up Rank ke {{ incentive.get('next_rank')[1] }}{% else %}Rank Tertinggi{% endif %}
+        </button>
+      </form>
     </div>
 
     <div class="user-detail-section">
       <div class="detail-section-title">Genealogi referral (2 level)</div>
       <div class="user-detail-scroll">
         <table class="user-detail-table">
-          <thead><tr><th>Level</th><th>Nama / NOVA ID</th><th>Laluan referral</th><th>Status akaun</th><th>Komisen</th><th>Status / sebab</th></tr></thead>
+          <thead><tr><th>Level</th><th>Nama / NOVA ID</th><th>Status akaun</th><th>Komisen</th><th>Status / sebab</th></tr></thead>
           <tbody>
             {% for referral in genealogy[0] %}
               {% set commission = commission_by_user_referral_level.get((u.id, referral.id, 1)) %}
               <tr>
                 <td>1</td>
                 <td>{{ referral.full_name }}<br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
-                <td>{{ u.full_name }} → {{ referral.full_name }}</td>
                 <td>{{ 'Aktif' if referral.is_active else 'Tidak aktif' }}</td>
                 <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
                 <td>
@@ -538,28 +569,27 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                   {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
                 </td>
               </tr>
-            {% endfor %}
-            {% for referral in genealogy[1] %}
-              {% set commission = commission_by_user_referral_level.get((u.id, referral.id, 2)) %}
-              <tr>
-                <td>2</td>
-                <td>{{ referral.full_name }}<br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
-                <td>{{ u.full_name }} → {{ referral.referred_by.full_name }} → {{ referral.full_name }}</td>
-                <td>{{ 'Aktif' if referral.is_active else 'Tidak aktif' }}</td>
-                <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
-                <td>
-                  {% if not commission %}Tiada komisen direkodkan; akaun referral lama tidak menerima backfill.
-                  {% elif commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
-                  {% elif not u.is_active and not referral.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
-                  {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
-                  {% elif not referral.is_active %}Ditahan: akaun referral tidak aktif.
-                  {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
-                  {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
-                </td>
-              </tr>
+              {% for level_two_referral in genealogy[1] if level_two_referral.referred_by_id == referral.id %}
+                {% set commission = commission_by_user_referral_level.get((u.id, level_two_referral.id, 2)) %}
+                <tr class="genealogy-level-two">
+                  <td>2</td>
+                  <td>{{ level_two_referral.full_name }}<br><span class="col-id">{{ level_two_referral.nova_id }}</span><br><span class="col-id">{{ level_two_referral.referral_code or 'Tiada kod' }}</span></td>
+                  <td>{{ 'Aktif' if level_two_referral.is_active else 'Tidak aktif' }}</td>
+                  <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
+                  <td>
+                    {% if not commission %}Tiada komisen direkodkan; akaun referral lama tidak menerima backfill.
+                    {% elif commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
+                    {% elif not u.is_active and not level_two_referral.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
+                    {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
+                    {% elif not level_two_referral.is_active %}Ditahan: akaun referral tidak aktif.
+                    {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
+                    {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
             {% endfor %}
             {% if not genealogy[0] and not genealogy[1] %}
-              <tr><td colspan="6" class="user-detail-empty">Belum ada akaun referral di bawah user ini.</td></tr>
+              <tr><td colspan="5" class="user-detail-empty">Belum ada akaun referral di bawah user ini.</td></tr>
             {% endif %}
           </tbody>
         </table>

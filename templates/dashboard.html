@@ -100,25 +100,33 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .genealogy-overlay.open{display:flex}
 .genealogy-modal{position:relative;width:min(100%,620px);max-height:calc(100vh - 2rem);overflow-y:auto;padding:1.5rem;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,0.45)}
 .genealogy-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:0.35rem}
-.genealogy-level{margin-top:1rem}
-.genealogy-level-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.55rem;color:var(--gold2);font-size:0.76rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
-.genealogy-member{padding:0.75rem 0.85rem;margin-top:0.45rem;background:#0F1C32;border:1px solid var(--border);border-radius:8px}
-.genealogy-member-heading{display:flex;justify-content:space-between;align-items:center;gap:0.75rem}
-.genealogy-member-name{font-size:0.84rem;font-weight:600;overflow-wrap:anywhere}
-.genealogy-member-id{color:var(--text-muted);font:0.75rem 'IBM Plex Mono',monospace;white-space:nowrap}
-.genealogy-empty{padding:0.8rem;border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem}
-.genealogy-controls{display:grid;grid-template-columns:minmax(0,1fr) 150px 150px;gap:0.55rem;margin:0.8rem 0}
-.genealogy-controls input,.genealogy-controls select{min-width:0;padding:0.6rem 0.7rem;border:1px solid var(--border);border-radius:7px;background:#0F1C32;color:var(--white);font:0.78rem 'IBM Plex Sans',sans-serif}
-.genealogy-controls input:focus,.genealogy-controls select:focus{outline:none;border-color:var(--gold)}
-.genealogy-status{display:inline-block;margin-top:0.45rem;padding:0.2rem 0.45rem;border:1px solid var(--border);border-radius:999px;color:var(--text-muted);font-size:0.68rem}
-.genealogy-status-active{border-color:rgba(34,201,138,0.35);color:var(--green)}
-.genealogy-status-inactive,.genealogy-status-held{border-color:rgba(255,91,91,0.35);color:#FF8A8A}
-.genealogy-commission{margin-top:0.45rem;color:var(--gold2);font-size:0.76rem;font-weight:600}
+.incentive-summary{margin-top:0.9rem;padding:1rem;background:#0F1C32;border:1px solid rgba(212,168,67,0.25);border-radius:10px}
+.incentive-ranks{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem}
+.incentive-rank-label{color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.45px}
+.incentive-rank-value{margin-top:0.25rem;color:var(--gold2);font-size:0.9rem;font-weight:700}
+.incentive-progress{margin-top:1rem}
+.incentive-progress-heading{display:flex;justify-content:space-between;gap:0.75rem;margin-bottom:0.45rem;color:var(--text-light);font-size:0.74rem}
+.incentive-progress-track{height:9px;overflow:hidden;border-radius:999px;background:var(--navy3)}
+.incentive-progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width 0.3s}
+.incentive-progress-note{margin-top:0.45rem;color:var(--text-muted);font-size:0.72rem;line-height:1.5}
+.monthly-incentive{margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+.monthly-incentive-header{display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;margin-bottom:0.75rem}
+.monthly-incentive-title{font-family:'Syne',sans-serif;font-size:0.92rem;font-weight:800}
+.monthly-incentive-total{margin-top:0.3rem;color:var(--text-light);font-size:0.8rem}
+.monthly-incentive-total strong{color:var(--green);font-family:'IBM Plex Mono',monospace}
+.monthly-incentive-select{max-width:145px;padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:7px;background:var(--navy3);color:var(--text-light);font:500 0.74rem 'IBM Plex Sans',sans-serif}
+.monthly-incentive-level{display:grid;grid-template-columns:100px minmax(0,1fr) auto;align-items:center;gap:0.75rem;padding:0.8rem 0;border-top:1px solid var(--border)}
+.monthly-incentive-badge{padding:0.45rem 0.5rem;border-radius:999px;background:linear-gradient(100deg,#a600cf,#5920d8);color:#fff;text-align:center;font-size:0.74rem;font-weight:700}
+.monthly-incentive-level-title{color:var(--gold2);font-size:0.8rem;font-weight:700}
+.monthly-incentive-members{margin-top:0.18rem;color:var(--text-muted);font-size:0.72rem}
+.monthly-incentive-amount{color:var(--green);font:700 0.85rem 'IBM Plex Mono',monospace;white-space:nowrap}
+.monthly-incentive-empty{padding:0.65rem 0;color:var(--text-muted);font-size:0.76rem}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:480px){.monthly-incentive-header{flex-direction:column}.monthly-incentive-select{max-width:none;width:100%}.monthly-incentive-level{grid-template-columns:82px minmax(0,1fr) auto;gap:0.5rem}.monthly-incentive-badge{font-size:0.68rem}.monthly-incentive-amount{font-size:0.75rem}}
 .genealogy-history{width:100%;border-collapse:collapse;font-size:0.76rem}
 .genealogy-history th,.genealogy-history td{padding:0.55rem 0.45rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 .genealogy-history th{color:var(--text-muted);font-size:0.66rem}
 .genealogy-history-wrap{overflow-x:auto;margin-top:0.55rem}
-@media(max-width:560px){.genealogy-controls{grid-template-columns:1fr 1fr}.genealogy-controls input{grid-column:1/-1}}
 .withdrawal-history{margin-top:1.25rem}
 .withdrawal-history-title{font-size:0.74rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:0.5rem}
 .withdrawal-row{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.65rem 0;border-top:1px solid var(--border);font-size:0.8rem}
@@ -322,7 +330,8 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </button>
       <div class="nav-menu-panel" id="navMenuPanel">
         <button class="nav-menu-item" type="button" onclick="closeNavMenu();openProfileModal()">Profil</button>
-        <button class="nav-menu-item" type="button" onclick="closeNavMenu();openGenealogyModal()">Genealogi</button>
+        <button class="nav-menu-item" type="button" onclick="closeNavMenu();openGenealogyModal()">Insentif</button>
+        <button class="nav-menu-item" type="button" onclick="closeNavMenu();openCommissionHistoryModal()">Sejarah Kredit &amp; Komisen</button>
         <div class="nav-menu-divider"></div>
         <form class="nav-menu-logout" method="POST" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -360,69 +369,105 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 <div class="genealogy-overlay" id="genealogyModal" onclick="if(event.target===this)closeGenealogyModal()">
   <section class="genealogy-modal" role="dialog" aria-modal="true" aria-labelledby="genealogyTitle">
     <button class="profile-close" type="button" onclick="closeGenealogyModal()" aria-label="Tutup">&times;</button>
-    <h2 class="genealogy-title" id="genealogyTitle">Genealogi</h2>
-    <div class="genealogy-level">
-      <div class="genealogy-level-title"><span>Komisen Referral</span></div>
-      <div class="genealogy-member">
-        <div class="genealogy-member-heading"><span class="genealogy-member-name">Sudah dikreditkan</span><span class="genealogy-member-id">RM {{ '%.2f'|format(user.paid_referral_commission) }}</span></div>
+    <h2 class="genealogy-title" id="genealogyTitle">Insentif</h2>
+    <div class="incentive-summary">
+      <div class="incentive-ranks">
+        <div>
+          <div class="incentive-rank-label">Current Rank</div>
+          <div class="incentive-rank-value">{{ current_rank_name }}</div>
+        </div>
+        <div>
+          <div class="incentive-rank-label">Next Rank</div>
+          <div class="incentive-rank-value">{{ next_rank_name }}</div>
+        </div>
       </div>
-      <div class="genealogy-member">
-        <div class="genealogy-member-heading"><span class="genealogy-member-name">Menunggu</span><span class="genealogy-member-id">RM {{ '%.2f'|format(user.pending_referral_commission) }}</span></div>
+      <div class="incentive-progress">
+        <div class="incentive-progress-heading">
+          <span>Progress ke rank seterusnya</span>
+          {% if has_next_rank %}
+            <span>{{ active_referral_count }} daripada {{ incentive_target }} referral aktif</span>
+          {% else %}
+            <span>Rank tertinggi telah dicapai</span>
+          {% endif %}
+        </div>
+        <div class="incentive-progress-track" role="progressbar" aria-label="Current Incentive progress" aria-valuemin="0" aria-valuemax="{{ incentive_target }}" aria-valuenow="{{ [active_referral_count, incentive_target]|min }}">
+          <div class="incentive-progress-fill" style="width:{{ incentive_progress }}%"></div>
+        </div>
+        {% if has_next_rank %}
+          {% if incentive_remaining %}
+            <div class="incentive-progress-note">Perlu {{ incentive_remaining }} referral aktif lagi untuk capai {{ next_rank_name }}. Rank akan dikemas kini admin selepas semakan.</div>
+          {% else %}
+            <div class="incentive-progress-note">Target dicapai. Admin akan menyemak dan mengemas kini rank anda.</div>
+          {% endif %}
+        {% else %}
+          <div class="incentive-progress-note">Anda sudah mencapai rank tertinggi.</div>
+        {% endif %}
       </div>
-    </div>
-    <div class="genealogy-controls" aria-label="Carian dan penapis genealogi">
-      <input id="genealogySearch" type="search" placeholder="Cari nama, NOVA ID atau kod" aria-label="Cari ahli genealogi" oninput="filterGenealogyMembers()">
-      <select id="genealogyLevelFilter" aria-label="Tapis mengikut level" onchange="filterGenealogyMembers()">
-        <option value="all">Semua level</option>
-        <option value="1">Level 1</option>
-        <option value="2">Level 2</option>
-      </select>
-      <select id="genealogyStatusFilter" aria-label="Tapis status akaun" onchange="filterGenealogyMembers()">
-        <option value="all">Semua status</option>
-        <option value="active">Aktif</option>
-        <option value="inactive">Tidak aktif</option>
-      </select>
-    </div>
-    <div class="genealogy-level">
-      <div class="genealogy-level-title"><span>Level 1</span><span>{{ level_one_referrals|length }} akaun</span></div>
-      {% if level_one_referrals %}
-        {% for referral in level_one_referrals %}
-          {% set commission = commission_by_referral_level.get((referral.id, 1)) %}
-          <div class="genealogy-member genealogy-member-row" data-genealogy-member data-level="1" data-status="{{ 'active' if referral.is_active else 'inactive' }}" data-search="{{ (referral.full_name ~ ' ' ~ referral.nova_id ~ ' ' ~ (referral.referral_code or ''))|lower }}">
-            <div class="genealogy-member-heading">
-              <span class="genealogy-member-name">{{ referral.full_name }}</span>
-              <span class="genealogy-member-id">{{ referral.nova_id }}</span>
+      <section class="monthly-incentive" aria-labelledby="monthlyIncentiveTitle">
+        <div class="monthly-incentive-header">
+          <div>
+            <h3 class="monthly-incentive-title" id="monthlyIncentiveTitle">Komisen referral bulanan</h3>
+            <div class="monthly-incentive-total">
+              Jumlah: <strong id="monthlyIncentiveTotal">RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
+              <span aria-hidden="true"> · </span>
+              <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> ahli yang menjana komisen
             </div>
-            <span class="genealogy-status {{ 'genealogy-status-active' if referral.is_active else 'genealogy-status-inactive' }}">{{ 'Akaun aktif' if referral.is_active else 'Akaun tidak aktif' }}</span>
-            {% if commission %}
-              <div class="genealogy-commission">Komisen: RM {{ '%.2f'|format(commission.amount) }} · Level 1</div>
-              <span class="genealogy-status">{{ 'Dibayar' if commission.status == 'paid' else 'Menunggu' }}</span>
+            <div class="incentive-progress-note">Jumlah komisen referral yang telah dibayar dalam tempoh dipilih.</div>
+          </div>
+          <label>
+            <span class="sr-only">Pilih tempoh insentif</span>
+            <select class="monthly-incentive-select" id="monthlyIncentivePeriod">
+              {% for breakdown in monthly_incentive_breakdowns %}
+                <option value="{{ loop.index0 }}">{{ breakdown.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        {% for breakdown in monthly_incentive_breakdowns %}
+          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
+            {% for level in breakdown.levels %}
+              <div class="monthly-incentive-level">
+                <div class="monthly-incentive-badge">Level {{ level.level }}</div>
+                <div>
+                  <div class="monthly-incentive-level-title">Komisen dibayar</div>
+                  <div class="monthly-incentive-members">{{ level.contributors }} ahli yang menjana komisen</div>
+                </div>
+                <div class="monthly-incentive-amount">+RM{{ '%.2f'|format(level.amount) }}</div>
+              </div>
+            {% endfor %}
+            {% if not breakdown.contributors %}
+              <div class="monthly-incentive-empty">Tiada insentif dibayar dalam tempoh ini.</div>
             {% endif %}
           </div>
         {% endfor %}
-      {% else %}
-        <div class="genealogy-empty">Belum ada akaun di bawah referral anda.</div>
-      {% endif %}
+      </section>
     </div>
-    <div class="genealogy-level">
-      <div class="genealogy-level-title"><span>Level 2</span><span>{{ level_two_referrals|length }} akaun</span></div>
-      {% if level_two_referrals %}
-        {% for referral in level_two_referrals %}
-          {% set commission = commission_by_referral_level.get((referral.id, 2)) %}
-          <div class="genealogy-member genealogy-member-row" data-genealogy-member data-level="2" data-status="{{ 'active' if referral.is_active else 'inactive' }}" data-search="{{ (referral.full_name ~ ' ' ~ referral.nova_id ~ ' ' ~ (referral.referral_code or ''))|lower }}">
-            <div class="genealogy-member-heading">
-              <span class="genealogy-member-name">{{ referral.full_name }}</span>
-              <span class="genealogy-member-id">{{ referral.nova_id }}</span>
-            </div>
-            <span class="genealogy-status {{ 'genealogy-status-active' if referral.is_active else 'genealogy-status-inactive' }}">{{ 'Akaun aktif' if referral.is_active else 'Akaun tidak aktif' }}</span>
-            {% if commission %}
-              <div class="genealogy-commission">Komisen: RM {{ '%.2f'|format(commission.amount) }} · Level 2</div>
-              <span class="genealogy-status">{{ 'Dibayar' if commission.status == 'paid' else 'Menunggu' }}</span>
-            {% endif %}
-          </div>
-        {% endfor %}
+  </section>
+</div>
+
+<div class="genealogy-overlay" id="commissionHistoryModal" onclick="if(event.target===this)closeCommissionHistoryModal()">
+  <section class="genealogy-modal" role="dialog" aria-modal="true" aria-labelledby="commissionHistoryTitle">
+    <button class="profile-close" type="button" onclick="closeCommissionHistoryModal()" aria-label="Tutup">&times;</button>
+    <h2 class="genealogy-title" id="commissionHistoryTitle">Sejarah Kredit &amp; Komisen</h2>
+    <div class="withdrawal-history">
+      {% if paid_commission_history %}
+        <div class="genealogy-history-wrap">
+          <table class="genealogy-history">
+            <thead><tr><th>Tarikh kredit</th><th>Referral</th><th>Level</th><th>Jumlah</th></tr></thead>
+            <tbody>
+              {% for commission in paid_commission_history %}
+                <tr>
+                  <td>{{ commission.paid_at.strftime('%d/%m/%Y %H:%M') if commission.paid_at else '—' }}</td>
+                  <td>{{ commission.referred_user.full_name }}<br><span class="genealogy-member-id">{{ commission.referred_user.nova_id }}</span></td>
+                  <td>{{ commission.level }}</td>
+                  <td>RM {{ '%.2f'|format(commission.amount) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       {% else %}
-        <div class="genealogy-empty">Belum ada akaun pada level kedua.</div>
+        <div class="genealogy-empty">Belum ada komisen yang dikreditkan ke Wallet.</div>
       {% endif %}
     </div>
   </section>
@@ -516,28 +561,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         {% endfor %}
       </div>
     {% endif %}
-    <div class="withdrawal-history">
-      <div class="withdrawal-history-title">Sejarah Kredit Komisen Wallet</div>
-      {% if paid_commission_history %}
-        <div class="genealogy-history-wrap">
-          <table class="genealogy-history">
-            <thead><tr><th>Tarikh kredit</th><th>Referral</th><th>Level</th><th>Jumlah</th></tr></thead>
-            <tbody>
-              {% for commission in paid_commission_history %}
-                <tr>
-                  <td>{{ commission.paid_at.strftime('%d/%m/%Y %H:%M') if commission.paid_at else '—' }}</td>
-                  <td>{{ commission.referred_user.full_name }}<br><span class="genealogy-member-id">{{ commission.referred_user.nova_id }}</span></td>
-                  <td>{{ commission.level }}</td>
-                  <td>RM {{ '%.2f'|format(commission.amount) }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <div class="genealogy-empty">Belum ada komisen yang dikreditkan ke Wallet.</div>
-      {% endif %}
-    </div>
   </section>
 
   <!-- ===== CHART ===== -->
@@ -1910,7 +1933,6 @@ function openGenealogyModal(){
   if(!modal) return;
   modal.classList.add('open');
   document.body.style.overflow='hidden';
-  filterGenealogyMembers();
 }
 
 function closeGenealogyModal(){
@@ -1920,20 +1942,41 @@ function closeGenealogyModal(){
   document.body.style.overflow='';
 }
 
-function filterGenealogyMembers(){
-  var search=document.getElementById('genealogySearch');
-  var levelFilter=document.getElementById('genealogyLevelFilter');
-  var statusFilter=document.getElementById('genealogyStatusFilter');
-  var members=document.querySelectorAll('[data-genealogy-member]');
-  if(!search||!levelFilter||!statusFilter) return;
-  var term=search.value.trim().toLowerCase();
-  members.forEach(function(member){
-    var matchesSearch=(member.getAttribute('data-search')||'').indexOf(term)!==-1;
-    var matchesLevel=levelFilter.value==='all'||member.getAttribute('data-level')===levelFilter.value;
-    var matchesStatus=statusFilter.value==='all'||member.getAttribute('data-status')===statusFilter.value;
-    var visible=matchesSearch&&matchesLevel&&matchesStatus;
-    member.hidden=!visible;
+function updateMonthlyIncentivePeriod(){
+  var selector=document.getElementById('monthlyIncentivePeriod');
+  var total=document.getElementById('monthlyIncentiveTotal');
+  var contributors=document.getElementById('monthlyIncentiveContributors');
+  var periods=document.querySelectorAll('[data-monthly-incentive-period]');
+  if(!selector||!total||!contributors) return;
+  var selectedPeriod=null;
+  periods.forEach(function(period){
+    var isSelected=period.getAttribute('data-monthly-incentive-period')===selector.value;
+    period.hidden=!isSelected;
+    if(isSelected) selectedPeriod=period;
   });
+  if(selectedPeriod){
+    total.textContent=selectedPeriod.getAttribute('data-total')||'RM 0.00';
+    contributors.textContent=selectedPeriod.getAttribute('data-contributors')||'0';
+  }
+}
+
+var monthlyIncentivePeriod=document.getElementById('monthlyIncentivePeriod');
+if(monthlyIncentivePeriod){
+  monthlyIncentivePeriod.addEventListener('change',updateMonthlyIncentivePeriod);
+}
+
+function openCommissionHistoryModal(){
+  var modal=document.getElementById('commissionHistoryModal');
+  if(!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeCommissionHistoryModal(){
+  var modal=document.getElementById('commissionHistoryModal');
+  if(!modal) return;
+  modal.classList.remove('open');
+  document.body.style.overflow='';
 }
 
 function copyReferralCode(){
@@ -1973,6 +2016,7 @@ document.addEventListener('keydown',function(event){
     closeWithdrawalModal();
     closeProfileModal();
     closeGenealogyModal();
+    closeCommissionHistoryModal();
   }
 });
 
