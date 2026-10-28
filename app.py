@@ -88,6 +88,13 @@ INCENTIVE_RANKS = (
     (3, "Senior Ambassador", 80),
     (4, "Territory Partner", 100),
 )
+REFERRAL_COMMISSION_RATES = {
+    0: {1: 15.0, 2: 5.0},
+    1: {1: 30.0, 2: 15.0},
+    2: {1: 50.0, 2: 25.0},
+    3: {1: 80.0, 2: 40.0},
+    4: {1: 100.0, 2: 50.0},
+}
 
 
 def next_incentive_rank(current_rank):
@@ -209,19 +216,23 @@ def schedule_referral_commissions(user, now=None):
 
     payable_at = next_referral_commission_payable_at(now)
     beneficiaries = (
-        (1, user.referred_by, 30.0),
-        (2, user.referred_by.referred_by, 15.0),
+        (1, user.referred_by),
+        (2, user.referred_by.referred_by),
     )
     scheduled_beneficiary_ids = set()
-    for level, beneficiary, amount in beneficiaries:
+    for level, beneficiary in beneficiaries:
         if not beneficiary or beneficiary.id in scheduled_beneficiary_ids:
             continue
         scheduled_beneficiary_ids.add(beneficiary.id)
+        commission_rates = REFERRAL_COMMISSION_RATES.get(
+            beneficiary.current_rank,
+            REFERRAL_COMMISSION_RATES[0],
+        )
         db.session.add(ReferralCommission(
             beneficiary=beneficiary,
             referred_user=user,
             level=level,
-            amount=amount,
+            amount=commission_rates[level],
             payable_at=payable_at,
         ))
 
