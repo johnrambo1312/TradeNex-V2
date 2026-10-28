@@ -37,13 +37,13 @@
     <div class="registration-message" id="registrationMessage" role="status" aria-live="polite"></div>
     <form id="registrationForm" onsubmit="submitRegistration(event)">
       <label class="registration-label" for="registrationName">Nama penuh (mengikut IC)</label>
-      <input class="registration-input" id="registrationName" name="full_name" type="text" maxlength="120" autocomplete="name" pattern="[\p{L} ]+" title="Nama hanya boleh mengandungi huruf dan ruang." oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'')" required>
+      <input class="registration-input" id="registrationName" name="full_name" type="text" maxlength="120" autocomplete="name" pattern="[\p{L} ]+" title="Nama hanya boleh mengandungi huruf dan ruang." onbeforeinput="if(event.data&&!/^[\p{L} ]+$/u.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'')" required>
 
       <label class="registration-label" for="registrationEmail">Emel</label>
       <input class="registration-input" id="registrationEmail" name="email" type="email" maxlength="254" autocomplete="email" placeholder="nama@email.com" pattern="[^@\s]+@[^@\s]+\.[^@\s]+" title="Masukkan emel yang sah, contohnya nama@email.com atau nama@email.my." required>
 
       <label class="registration-label" for="registrationPhone">No. telefon</label>
-      <input class="registration-input" id="registrationPhone" name="phone" type="tel" inputmode="numeric" maxlength="15" pattern="[0-9]{7,15}" title="Masukkan 7 hingga 15 digit sahaja, tanpa simbol atau ruang." oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="tel" required>
+      <input class="registration-input" id="registrationPhone" name="phone" type="tel" inputmode="numeric" maxlength="15" pattern="[0-9]{7,15}" title="Masukkan 7 hingga 15 digit sahaja, tanpa simbol atau ruang." onbeforeinput="if(event.data&&!/^[0-9]+$/.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="tel" required>
 
       <label class="registration-label" for="registrationReferral">Kod referral (pilihan)</label>
       <input class="registration-input" id="registrationReferral" name="referral_code" type="text" maxlength="9" pattern="E-[0-9]{7}" placeholder="E-1234567" autocomplete="off">
@@ -58,10 +58,10 @@
       </select>
 
       <label class="registration-label" for="registrationBank">Jenis / nama bank</label>
-      <input class="registration-input" id="registrationBank" name="bank_name" type="text" maxlength="100" pattern="[\p{L} ]+" title="Nama bank hanya boleh mengandungi huruf dan ruang." oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'')" autocomplete="off" required>
+      <input class="registration-input" id="registrationBank" name="bank_name" type="text" maxlength="100" pattern="[\p{L} ]+" title="Nama bank hanya boleh mengandungi huruf dan ruang." onbeforeinput="if(event.data&&!/^[\p{L} ]+$/u.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'')" autocomplete="off" required>
 
       <label class="registration-label" for="registrationAccount">No. akaun bank</label>
-      <input class="registration-input" id="registrationAccount" name="bank_account_number" type="text" inputmode="numeric" maxlength="34" pattern="[0-9]{5,34}" title="Masukkan 5 hingga 34 digit sahaja, tanpa ruang atau simbol." oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="off" required>
+      <input class="registration-input" id="registrationAccount" name="bank_account_number" type="text" inputmode="numeric" maxlength="34" pattern="[0-9]{5,34}" title="Masukkan 5 hingga 34 digit sahaja, tanpa ruang atau simbol." onbeforeinput="if(event.data&&!/^[0-9]+$/.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="off" required>
 
       <label class="registration-consent">
         <input type="checkbox" name="consent" required>
