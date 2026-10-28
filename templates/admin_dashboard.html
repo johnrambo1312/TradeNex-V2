@@ -597,36 +597,6 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     </div>
 
     <div class="user-detail-section">
-      <div class="detail-section-title">Rekod komisen</div>
-      <div class="user-detail-scroll">
-        <table class="user-detail-table">
-          <thead><tr><th>Tarikh layak</th><th>Referral</th><th>Level</th><th>Laluan</th><th>Jumlah</th><th>Status / sebab</th></tr></thead>
-          <tbody>
-            {% for commission in commissions_by_user.get(u.id, []) %}
-              <tr>
-                <td>{{ commission.payable_at.strftime('%d/%m/%Y') }}</td>
-                <td>{{ commission.referred_user.full_name }}<br><span class="col-id">{{ commission.referred_user.nova_id }}</span></td>
-                <td>{{ commission.level }}</td>
-                <td>{{ u.full_name }} → {% if commission.level == 2 and commission.referred_user.referred_by %}{{ commission.referred_user.referred_by.full_name }} → {% endif %}{{ commission.referred_user.full_name }}</td>
-                <td>RM {{ '%.2f'|format(commission.amount) }}</td>
-                <td>
-                  {% if commission.status == 'paid' %}Dibayar {{ commission.paid_at.strftime('%d/%m/%Y') if commission.paid_at else '' }}.
-                  {% elif not u.is_active and not commission.referred_user.is_active %}Ditahan: akaun penerima dan referral tidak aktif.
-                  {% elif not u.is_active %}Ditahan: akaun penerima tidak aktif.
-                  {% elif not commission.referred_user.is_active %}Ditahan: akaun referral tidak aktif.
-                  {% elif commission.payable_at > now_myt %}Menunggu tarikh {{ commission.payable_at.strftime('%d/%m/%Y') }}.
-                  {% else %}Tarikh tiba; menunggu proses payout.{% endif %}
-                </td>
-              </tr>
-            {% else %}
-              <tr><td colspan="6" class="user-detail-empty">Belum ada komisen referral.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="user-detail-section">
       <div class="detail-section-title">Sejarah pengeluaran</div>
       <div class="user-detail-scroll">
         <table class="user-detail-table">
