@@ -472,6 +472,25 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <div class="genealogy-empty">Belum ada komisen yang dikreditkan ke Wallet.</div>
       {% endif %}
     </div>
+    {% if withdrawal_requests %}
+      <div class="withdrawal-history">
+        <div class="withdrawal-history-title">Sejarah Permohonan Pengeluaran</div>
+        {% for withdrawal in withdrawal_requests %}
+          <div class="withdrawal-row">
+            <span>{{ withdrawal.created_at.strftime('%d/%m/%Y %H:%M') if withdrawal.created_at else '—' }}</span>
+            <span class="withdrawal-amount">RM {{ '%.2f'|format(withdrawal.amount) }}</span>
+            {% if withdrawal.status == 'pending' %}
+              <span class="withdrawal-status">Menunggu semakan</span>
+            {% elif withdrawal.status == 'processed' %}
+              <span class="withdrawal-status processed">Selesai</span>
+              {% if withdrawal.payment_reference %}<small>Rujukan bayaran: {{ withdrawal.payment_reference }}</small>{% endif %}
+            {% else %}
+              <span class="withdrawal-status rejected">Ditolak — amaun dipulangkan</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </section>
 </div>
 
@@ -544,25 +563,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
           {% endif %}
         </section>
       </div>
-    {% if withdrawal_requests %}
-      <div class="withdrawal-history">
-        <div class="withdrawal-history-title">Sejarah Permohonan Pengeluaran</div>
-        {% for withdrawal in withdrawal_requests %}
-          <div class="withdrawal-row">
-            <span>{{ withdrawal.created_at.strftime('%d/%m/%Y %H:%M') if withdrawal.created_at else '—' }}</span>
-            <span class="withdrawal-amount">RM {{ '%.2f'|format(withdrawal.amount) }}</span>
-            {% if withdrawal.status == 'pending' %}
-              <span class="withdrawal-status">Menunggu semakan</span>
-            {% elif withdrawal.status == 'processed' %}
-              <span class="withdrawal-status processed">Selesai</span>
-              {% if withdrawal.payment_reference %}<small>Rujukan bayaran: {{ withdrawal.payment_reference }}</small>{% endif %}
-            {% else %}
-              <span class="withdrawal-status rejected">Ditolak — amaun dipulangkan</span>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
   </section>
 
   <!-- ===== CHART ===== -->
