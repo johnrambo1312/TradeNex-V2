@@ -131,8 +131,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .user-detail-table th{color:var(--muted);font-size:0.63rem}
 .user-detail-scroll{overflow-x:auto}
 .user-detail-empty{color:var(--muted);font-size:0.78rem;padding:0.5rem 0}
-.genealogy-level-two td:nth-child(2){padding-left:1.75rem;position:relative}
-.genealogy-level-two td:nth-child(2)::before{content:'↳';position:absolute;left:0.65rem;color:var(--muted)}
+.genealogy-level-two td:first-child{padding-left:1.75rem;position:relative}
+.genealogy-level-two td:first-child::before{content:'↳';position:absolute;left:0.65rem;color:var(--muted)}
+.genealogy-level-tag{display:inline-block;margin-left:0.35rem;color:var(--muted);font-size:0.68rem;font-weight:700}
 
 /* ENTRY LIST */
 .entry-list{margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem}
@@ -512,6 +513,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <div>
         <div class="detail-title">{{ u.full_name }}</div>
         <div class="detail-id">{{ u.nova_id }}</div>
+        <div class="col-id">Kod referral: {{ u.referral_code or 'Tiada kod' }}</div>
       </div>
       <button class="btn btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem" onclick="closeUser({{ u.id }})">Tutup ✕</button>
     </div>
@@ -550,13 +552,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <div class="detail-section-title">Genealogi referral (2 level)</div>
       <div class="user-detail-scroll">
         <table class="user-detail-table">
-          <thead><tr><th>Level</th><th>Nama / NOVA ID</th><th>Status akaun</th><th>Komisen</th><th>Status / sebab</th></tr></thead>
+          <thead><tr><th>Nama / NOVA ID</th><th>Status akaun</th><th>Komisen</th><th>Status / sebab</th></tr></thead>
           <tbody>
             {% for referral in genealogy[0] %}
               {% set commission = commission_by_user_referral_level.get((u.id, referral.id, 1)) %}
               <tr>
-                <td>1</td>
-                <td>{{ referral.full_name }}<br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
+                <td>{{ referral.full_name }}<span class="genealogy-level-tag">L1</span><br><span class="col-id">{{ referral.nova_id }}</span><br><span class="col-id">{{ referral.referral_code or 'Tiada kod' }}</span></td>
                 <td>{{ 'Aktif' if referral.is_active else 'Tidak aktif' }}</td>
                 <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
                 <td>
@@ -572,8 +573,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               {% for level_two_referral in genealogy[1] if level_two_referral.referred_by_id == referral.id %}
                 {% set commission = commission_by_user_referral_level.get((u.id, level_two_referral.id, 2)) %}
                 <tr class="genealogy-level-two">
-                  <td>2</td>
-                  <td>{{ level_two_referral.full_name }}<br><span class="col-id">{{ level_two_referral.nova_id }}</span><br><span class="col-id">{{ level_two_referral.referral_code or 'Tiada kod' }}</span></td>
+                  <td>{{ level_two_referral.full_name }}<span class="genealogy-level-tag">L2</span><br><span class="col-id">{{ level_two_referral.nova_id }}</span><br><span class="col-id">{{ level_two_referral.referral_code or 'Tiada kod' }}</span></td>
                   <td>{{ 'Aktif' if level_two_referral.is_active else 'Tidak aktif' }}</td>
                   <td>{{ 'RM ' ~ ('%.2f'|format(commission.amount)) if commission else '—' }}</td>
                   <td>
@@ -589,7 +589,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               {% endfor %}
             {% endfor %}
             {% if not genealogy[0] and not genealogy[1] %}
-              <tr><td colspan="5" class="user-detail-empty">Belum ada akaun referral di bawah user ini.</td></tr>
+              <tr><td colspan="4" class="user-detail-empty">Belum ada akaun referral di bawah user ini.</td></tr>
             {% endif %}
           </tbody>
         </table>

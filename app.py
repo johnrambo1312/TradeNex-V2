@@ -252,6 +252,24 @@ def schedule_referral_commissions(user, now=None):
         ))
 
 
+def reprice_pending_referral_commissions(user):
+    commission_rates = REFERRAL_COMMISSION_RATES.get(
+        user.current_rank,
+        REFERRAL_COMMISSION_RATES[0],
+    )
+    pending_commissions = ReferralCommission.query.filter_by(
+        beneficiary_user_id=user.id,
+        status="pending",
+    ).all()
+    for commission in pending_commissions:
+        if commission.level not in commission_rates:
+            raise RuntimeError(
+                f"Invalid commission level {commission.level} "
+                f"for commission {commission.id}."
+            )
+        commission.amount = commission_rates[commission.level]
+
+
 def process_due_referral_commissions(now=None):
     now = now or now_myt()
     commissions = ReferralCommission.query.filter(
@@ -1092,6 +1110,7 @@ def admin_promote_user_rank(user_id):
         return redirect(url_for("admin_dashboard"))
 
     user.current_rank = next_rank[0]
+    reprice_pending_referral_commissions(user)
     db.session.commit()
     flash(
         f"Akaun '{user.nova_id}' dinaikkan ke {next_rank[1]}.",
