@@ -77,10 +77,10 @@ def inject_contact_settings():
 MYT = timezone(timedelta(hours=8))
 
 REGISTRATION_PLANS = {
-    "basic": ("Basic", 488),
-    "advance": ("Advance", 1888),
-    "gold": ("Gold", 3888),
-    "platinum": ("Platinum", 6888),
+    "silver": ("Silver", 508),
+    "gold": ("Gold", 4908),
+    "platinum": ("Platinum", 24908),
+    "diamond": ("Diamond", 48908),
 }
 INCENTIVE_RANKS = (
     (1, "Elite Member", 10),

@@ -166,7 +166,7 @@ section{padding:6rem 4rem}
 
 /* ===== INVESTMENT PACKAGES ===== */
 .investment-intro{color:var(--text-muted);font-size:0.95rem;line-height:1.7;margin-bottom:2.5rem}
-.investment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem}
+.investment-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem}
 .investment-card{
   --package-accent:#C8D0DC;
   position:relative;isolation:isolate;overflow:hidden;
@@ -182,6 +182,7 @@ section{padding:6rem 4rem}
 .investment-card.silver{--package-accent:#D5E2F2;background:radial-gradient(ellipse at 100% 0%,rgba(180,204,235,0.22),transparent 58%),linear-gradient(135deg,#24364E,#111E35 72%)}
 .investment-card.gold{--package-accent:var(--gold2);background:radial-gradient(ellipse at 100% 0%,rgba(240,185,75,0.24),transparent 58%),linear-gradient(135deg,#46351F,#1B2230 72%)}
 .investment-card.platinum{--package-accent:#C5C9FF;background:radial-gradient(ellipse at 100% 0%,rgba(154,137,255,0.25),transparent 58%),linear-gradient(135deg,#302B50,#141F38 72%)}
+.investment-card.diamond{--package-accent:#8FE5F4;background:radial-gradient(ellipse at 100% 0%,rgba(92,220,239,0.25),transparent 58%),linear-gradient(135deg,#1F3E50,#111E35 72%)}
 .investment-name{color:var(--text-light);font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:0.3px}
 .investment-price-label{color:var(--text-muted);font-size:0.78rem;margin-top:2.5rem}
 .investment-price{margin-top:0.35rem;color:var(--package-accent);font-family:'IBM Plex Mono',monospace;font-size:clamp(1.55rem,2.4vw,2rem);font-weight:700;letter-spacing:-1px;white-space:nowrap}
@@ -513,6 +514,12 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
       </div>
       <div class="investment-card platinum">
         <div class="investment-name">Platinum</div>
+        <div class="investment-price-label">Harga pakej</div>
+        <div class="investment-price">RM24,908</div>
+        <div class="investment-divider"></div>
+      </div>
+      <div class="investment-card diamond">
+        <div class="investment-name">Diamond</div>
         <div class="investment-price-label">Harga pakej</div>
         <div class="investment-price">RM48,908</div>
         <div class="investment-divider"></div>
