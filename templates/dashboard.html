@@ -119,8 +119,8 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .monthly-incentive-badge{padding:0.45rem 0.5rem;border-radius:999px;background:linear-gradient(100deg,#a600cf,#5920d8);color:#fff;text-align:center;font-size:0.74rem;font-weight:700}
 .monthly-incentive-level-title{color:var(--gold2);font-size:0.8rem;font-weight:700}
 .monthly-incentive-members{margin-top:0.18rem;color:var(--text-muted);font-size:0.72rem}
+.monthly-incentive-status{margin-top:0.18rem;color:var(--text-muted);font-size:0.68rem;line-height:1.45}
 .monthly-incentive-amount{color:var(--green);font:700 0.85rem 'IBM Plex Mono',monospace;white-space:nowrap}
-.monthly-incentive-empty{padding:0.65rem 0;color:var(--text-muted);font-size:0.76rem}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:480px){.monthly-incentive-header{flex-direction:column}.monthly-incentive-select{max-width:none;width:100%}.monthly-incentive-level{grid-template-columns:82px minmax(0,1fr) auto;gap:0.5rem}.monthly-incentive-badge{font-size:0.68rem}.monthly-incentive-amount{font-size:0.75rem}}
 .genealogy-history{width:100%;border-collapse:collapse;font-size:0.76rem}
@@ -410,9 +410,13 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
             <div class="monthly-incentive-total">
               Jumlah: <strong id="monthlyIncentiveTotal">RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
               <span aria-hidden="true"> · </span>
-              <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> ahli yang menjana komisen
+              <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> ahli
             </div>
-            <div class="incentive-progress-note">Jumlah komisen referral yang telah dibayar dalam tempoh dipilih.</div>
+            <div class="monthly-incentive-status">
+              <span id="monthlyIncentivePaid">Sudah diterima RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].paid_total) }}</span>
+              <span aria-hidden="true"> · </span>
+              <span id="monthlyIncentivePending">Belum diterima RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
+            </div>
           </div>
           <label>
             <span class="sr-only">Pilih tempoh insentif</span>
@@ -424,20 +428,18 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
           </label>
         </div>
         {% for breakdown in monthly_incentive_breakdowns %}
-          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
+          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-paid-total="Sudah diterima RM {{ '%.2f'|format(breakdown.paid_total) }}" data-pending-total="Belum diterima RM {{ '%.2f'|format(breakdown.pending_total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
             {% for level in breakdown.levels %}
               <div class="monthly-incentive-level">
                 <div class="monthly-incentive-badge">Level {{ level.level }}</div>
                 <div>
-                  <div class="monthly-incentive-level-title">Komisen dibayar</div>
-                  <div class="monthly-incentive-members">{{ level.contributors }} ahli yang menjana komisen</div>
+                  <div class="monthly-incentive-level-title">Jumlah komisen</div>
+                  <div class="monthly-incentive-members">{{ level.contributors }} ahli</div>
+                  <div class="monthly-incentive-status">Sudah diterima RM {{ '%.2f'|format(level.paid_amount) }} · Belum diterima RM {{ '%.2f'|format(level.pending_amount) }}</div>
                 </div>
                 <div class="monthly-incentive-amount">+RM{{ '%.2f'|format(level.amount) }}</div>
               </div>
             {% endfor %}
-            {% if not breakdown.contributors %}
-              <div class="monthly-incentive-empty">Tiada insentif dibayar dalam tempoh ini.</div>
-            {% endif %}
           </div>
         {% endfor %}
       </section>
@@ -1946,8 +1948,10 @@ function updateMonthlyIncentivePeriod(){
   var selector=document.getElementById('monthlyIncentivePeriod');
   var total=document.getElementById('monthlyIncentiveTotal');
   var contributors=document.getElementById('monthlyIncentiveContributors');
+  var paidTotal=document.getElementById('monthlyIncentivePaid');
+  var pendingTotal=document.getElementById('monthlyIncentivePending');
   var periods=document.querySelectorAll('[data-monthly-incentive-period]');
-  if(!selector||!total||!contributors) return;
+  if(!selector||!total||!contributors||!paidTotal||!pendingTotal) return;
   var selectedPeriod=null;
   periods.forEach(function(period){
     var isSelected=period.getAttribute('data-monthly-incentive-period')===selector.value;
@@ -1957,6 +1961,8 @@ function updateMonthlyIncentivePeriod(){
   if(selectedPeriod){
     total.textContent=selectedPeriod.getAttribute('data-total')||'RM 0.00';
     contributors.textContent=selectedPeriod.getAttribute('data-contributors')||'0';
+    paidTotal.textContent=selectedPeriod.getAttribute('data-paid-total')||'Sudah diterima RM 0.00';
+    pendingTotal.textContent=selectedPeriod.getAttribute('data-pending-total')||'Belum diterima RM 0.00';
   }
 }
 

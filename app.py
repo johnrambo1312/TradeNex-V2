@@ -83,10 +83,10 @@ REGISTRATION_PLANS = {
     "platinum": ("Platinum", 6888),
 }
 INCENTIVE_RANKS = (
-    (1, "1. Elite Member", 10),
-    (2, "2. Ambassador Member", 30),
-    (3, "3. Senior Ambassador", 80),
-    (4, "4. Territory Partner", 100),
+    (1, "Elite Member", 10),
+    (2, "Ambassador Member", 30),
+    (3, "Senior Ambassador", 80),
+    (4, "Territory Partner", 100),
 )
 
 
@@ -149,21 +149,35 @@ def monthly_referral_commission_breakdowns(commissions, now=None):
             if month_number == 12
             else datetime(year, month_number + 1, 1)
         )
-        monthly_commissions = [
-            commission for commission in commissions
-            if commission.status == "paid"
-            and commission.paid_at
-            and month_start <= commission.paid_at < next_month_start
-        ]
+        monthly_commissions = []
+        for commission in commissions:
+            if commission.status == "paid":
+                relevant_date = commission.paid_at
+            elif commission.status == "pending":
+                relevant_date = commission.payable_at
+            else:
+                continue
+            if relevant_date and month_start <= relevant_date < next_month_start:
+                monthly_commissions.append(commission)
         levels = []
         for level in (1, 2):
             level_commissions = [
                 commission for commission in monthly_commissions
                 if commission.level == level
             ]
+            paid_commissions = [
+                commission for commission in level_commissions
+                if commission.status == "paid"
+            ]
+            pending_commissions = [
+                commission for commission in level_commissions
+                if commission.status == "pending"
+            ]
             levels.append({
                 "level": level,
                 "amount": sum(float(commission.amount or 0) for commission in level_commissions),
+                "paid_amount": sum(float(commission.amount or 0) for commission in paid_commissions),
+                "pending_amount": sum(float(commission.amount or 0) for commission in pending_commissions),
                 "contributors": len({
                     commission.referred_user_id for commission in level_commissions
                 }),
@@ -171,6 +185,16 @@ def monthly_referral_commission_breakdowns(commissions, now=None):
         breakdowns.append({
             "label": label,
             "total": sum(float(commission.amount or 0) for commission in monthly_commissions),
+            "paid_total": sum(
+                float(commission.amount or 0)
+                for commission in monthly_commissions
+                if commission.status == "paid"
+            ),
+            "pending_total": sum(
+                float(commission.amount or 0)
+                for commission in monthly_commissions
+                if commission.status == "pending"
+            ),
             "contributors": len({
                 commission.referred_user_id for commission in monthly_commissions
             }),
@@ -620,7 +644,7 @@ def dashboard():
     active_referral_count = sum(
         1 for referral in level_one_referrals + level_two_referrals if referral.is_active
     )
-    rank_names = {0: "Belum ada rank"}
+    rank_names = {0: "No Rank"}
     rank_names.update({rank: name for rank, name, _ in INCENTIVE_RANKS})
     next_rank = next_incentive_rank(user.current_rank)
     incentive_target = next_rank[2] if next_rank else INCENTIVE_RANKS[-1][2]
@@ -677,7 +701,7 @@ def dashboard():
         commission_by_referral_level=commission_by_referral_level,
         paid_commission_history=paid_commission_history,
         monthly_incentive_breakdowns=monthly_incentive_breakdowns,
-        current_rank_name=rank_names.get(user.current_rank, "Belum ada rank"),
+        current_rank_name=rank_names.get(user.current_rank, "No Rank"),
         next_rank_name=next_rank[1] if next_rank else "Tiada — rank tertinggi",
         active_referral_count=active_referral_count,
         incentive_target=incentive_target,
@@ -812,7 +836,7 @@ def admin_dashboard():
         protected_registration_ids=protected_registration_ids,
         referrals_by_user=referrals_by_user,
         incentive_progress_by_user=incentive_progress_by_user,
-        current_rank_names={0: "Belum ada rank", **{
+        current_rank_names={0: "No Rank", **{
             rank: name for rank, name, _ in INCENTIVE_RANKS
         }},
         commissions_by_user=commissions_by_user,

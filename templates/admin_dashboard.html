@@ -526,7 +526,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     </div>
     <div class="rank-promotion">
       <div>
-        <div class="rank-promotion-title">Current Rank: {{ current_rank_names.get(u.current_rank, 'Belum ada rank') }}</div>
+        <div class="rank-promotion-title">Current Rank: {{ current_rank_names.get(u.current_rank, 'No Rank') }}</div>
         {% if incentive.get('next_rank') %}
           {% set next_rank = incentive.get('next_rank') %}
           {% if incentive.get('eligible') %}
