@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png', v=3) }}">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>Admin Login — TradeNex Capital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,8 +16,9 @@
 }
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
 .box{background:#0F1C32;border:1px solid var(--border);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px}
-.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:0.4rem}
+.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:center;gap:0.4rem}
 .logo span{color:var(--gold)}
+.brand-mark{width:42px;height:42px;object-fit:contain;mix-blend-mode:screen}
 .subtitle{text-align:center;color:var(--text-muted);font-size:0.8rem;margin-bottom:2rem}
 .label{display:block;font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:0.4rem;text-transform:uppercase}
 .input{width:100%;background:#162033;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;color:var(--white);font-size:0.9rem;font-family:'IBM Plex Sans',sans-serif;outline:none;margin-bottom:1.1rem}
@@ -30,7 +31,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 </head>
 <body>
 <div class="box">
-  <div class="logo">Trade<span>Nex</span> <span style="color:var(--text-muted);font-weight:600;font-size:0.95rem">Admin</span></div>
+  <div class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span> <span style="color:var(--text-muted);font-weight:600;font-size:0.95rem">Admin</span></div>
   <div class="subtitle">Panel Pentadbiran</div>
 
   <div class="error" id="loginError">Username atau password tidak sah.</div>

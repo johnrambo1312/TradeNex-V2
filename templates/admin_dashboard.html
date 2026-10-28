@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png', v=3) }}">
 <title>Admin Panel — TradeNex</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -25,8 +25,9 @@ nav{
   display:flex;align-items:center;justify-content:space-between;
   height:60px;position:sticky;top:0;z-index:50;
 }
-.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800}
+.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;display:flex;align-items:center;gap:0.4rem}
 .logo span{color:var(--gold)}
+.brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .nav-right{display:flex;align-items:center;gap:1rem}
 .admin-label{font-size:0.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
 .btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:6px;font-size:0.78rem;cursor:pointer;text-decoration:none;transition:all 0.2s}
@@ -224,7 +225,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 <body>
 
 <nav>
-  <div class="logo">Trade<span>Nex</span></div>
+  <div class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span></div>
   <div class="nav-right">
     <span class="admin-label">Admin Panel</span>
     <form method="POST" action="{{ url_for('admin_logout') }}">

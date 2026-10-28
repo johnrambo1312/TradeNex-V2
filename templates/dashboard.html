@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png', v=3) }}">
 <title>Dashboard — TradeNex Capital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -19,8 +19,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 .num{font-family:'IBM Plex Mono',monospace}
 
 nav{background:rgba(11,22,41,0.97);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
-.logo{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;color:var(--white);text-decoration:none}
+.logo{display:inline-flex;align-items:center;gap:0.4rem;font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;color:var(--white);text-decoration:none}
 .logo span{color:var(--gold)}
+.brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .nav-right{display:flex;align-items:center;gap:0.75rem;min-width:0}
 .nav-user{color:var(--text-light);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 .wrap{max-width:1100px;margin:0 auto;padding:2.5rem 1.5rem}
@@ -239,8 +240,9 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;margin-top:3rem}
 .footer-wrap{max-width:1200px;margin:0 auto}
 .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:2.5rem}
-.footer-logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;text-decoration:none;display:inline-block;margin-bottom:0.85rem}
+.footer-logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;margin-bottom:0.85rem}
 .footer-logo span{color:var(--gold)}
+.footer-brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .footer-brand-desc{color:#607a99;font-size:0.8rem;line-height:1.75;max-width:270px;margin-bottom:1.25rem}
 .footer-contact{display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.25rem}
 .footer-contact a{color:#8fa3bf;font-size:0.78rem;text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s}
@@ -321,7 +323,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 <body>
 
 <nav>
-  <a href="/" class="logo">Trade<span>Nex</span></a>
+  <a href="/" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span></a>
   <div class="nav-right">
     <span class="nav-user">{{ user.full_name }} ({{ user.nova_id }})</span>
     <div class="nav-menu">
@@ -813,7 +815,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   <div class="footer-wrap">
     <div class="footer-top">
       <div>
-        <a href="/" class="footer-logo">Trade<span>Nex</span> Capital</a>
+        <a href="/" class="footer-logo"><img class="footer-brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span> Capital</a>
         <p class="footer-brand-desc">Platform niaga bertauliah untuk pasaran Malaysia dan global. Akses lebih 40 bursa antarabangsa dengan sokongan pakar 24/5.</p>
         <div class="footer-contact">
           <a href="tel:+60327830388">

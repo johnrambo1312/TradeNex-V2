@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='statictradenex logo.png', v=3) }}">
 <title>TradeNex Capital — Platform Niaga Malaysia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -40,8 +40,9 @@ nav{
   position:sticky;top:0;z-index:100;
   backdrop-filter:blur(8px);
 }
-.logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--white);letter-spacing:-0.5px;text-decoration:none}
+.logo{display:inline-flex;align-items:center;gap:0.45rem;font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--white);letter-spacing:-0.5px;text-decoration:none}
 .logo span{color:var(--gold)}
+.brand-mark{width:38px;height:38px;object-fit:contain;mix-blend-mode:screen}
 .nav-links{display:flex;gap:2.25rem;list-style:none}
 .nav-links a{color:var(--text-muted);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s}
 .nav-links a:hover{color:var(--white)}
@@ -374,7 +375,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 
 <!-- ===== NAVIGATION ===== -->
 <nav>
-  <a href="#" class="logo">Trade<span>Nex</span></a>
+  <a href="#" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span></a>
   <ul class="nav-links">
     <li><a href="#affiliate">Affiliate</a></li>
     <li><a href="#about">Tentang Kami</a></li>
