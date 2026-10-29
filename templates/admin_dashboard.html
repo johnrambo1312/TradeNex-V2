@@ -604,7 +604,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     {% set genealogy = referrals_by_user.get(u.id, ([], [])) %}
     {% set incentive = incentive_progress_by_user.get(u.id, {}) %}
     <div class="user-detail-summary">
-      <div class="user-summary-card"><div class="user-summary-label">Baki Wallet (komisen dalam kurungan)</div><div class="user-summary-value">RM {{ '%.2f'|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e);font-size:0.8em">(RM {{ '%.2f'|format(u.withdrawable_commission) }})</span>{% endif %}</div></div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Baki Wallet (komisen dalam kurungan)</div><div class="user-summary-value">RM {{ '%.2f'|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e);font-size:0.8em">(RM {{ '%.2f'|format(u.withdrawable_commission) }})</span>{% endif %}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar (sepanjang masa)</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Sudah dimohon / dikeluarkan</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawn_commission) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Baki komisen tersedia</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawable_commission) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>

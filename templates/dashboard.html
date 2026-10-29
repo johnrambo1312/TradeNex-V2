@@ -421,6 +421,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
               <span aria-hidden="true"> · </span>
               <span id="monthlyIncentivePending">Belum diterima RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
             </div>
+            {% if user.next_commission_payable_at %}
+              <div class="wallet-commission-note">Komisen menunggu RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
+            {% endif %}
           </div>
           <label>
             <span class="sr-only">Pilih tempoh insentif</span>
@@ -536,9 +539,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
             <span class="wallet-commission-breakdown" id="commissionBalance">(RM {{ "%.2f"|format(user.withdrawable_commission) }})</span>
           {% endif %}
         </div>
-        {% if user.next_commission_payable_at %}
-          <div class="wallet-commission-note">Komisen menunggu RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
-        {% endif %}
       </div>
     </div>
     <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
