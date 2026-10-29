@@ -34,6 +34,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
   <div class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span> <span style="color:var(--text-muted);font-weight:600;font-size:0.95rem">Admin</span></div>
   <div class="subtitle">Panel Pentadbiran</div>
 
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}<div class="error show">{{ messages[0] }}</div>{% endif %}
+  {% endwith %}
   <div class="error" id="loginError">Username atau password tidak sah.</div>
 
   <label class="label">Username</label>

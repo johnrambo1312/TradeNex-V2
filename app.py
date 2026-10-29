@@ -42,7 +42,8 @@ secret_key = os.environ.get("SECRET_KEY", "").strip()
 if IS_PRODUCTION and not secret_key:
     raise RuntimeError("SECRET_KEY mesti ditetapkan untuk production.")
 app.config["SECRET_KEY"] = secret_key or "ubah-rahsia-ini-dalam-env"
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)  # tamat user ikut tidak aktif
+ADMIN_IDLE_SECONDS = 30 * 60
 app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -75,6 +76,8 @@ def inject_contact_settings():
 
 # MYT = UTC+8 — semua masa dalam DB disimpan sebagai naive MYT
 MYT = timezone(timedelta(hours=8))
+ADMIN_USERS_PER_PAGE = 25
+ADMIN_REGISTRATIONS_PER_PAGE = 20
 
 REGISTRATION_PLANS = {
     "silver": ("Silver", 508),
@@ -486,6 +489,14 @@ def admin_required(f):
     def wrapper(*args, **kwargs):
         if "admin_id" not in session:
             return redirect(url_for("admin_login_page"))
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        last_seen = session.get("admin_seen")
+        if not isinstance(last_seen, int) or now_ts - last_seen > ADMIN_IDLE_SECONDS:
+            session.pop("admin_id", None)
+            session.pop("admin_seen", None)
+            flash("Sesi admin tamat kerana tidak aktif selama 30 minit. Sila log masuk semula.", "error")
+            return redirect(url_for("admin_login_page"))
+        session["admin_seen"] = now_ts
         return f(*args, **kwargs)
     return wrapper
 
@@ -543,6 +554,14 @@ def login_page():
     return render_template("login.html")
 
 
+def normalized_phone(value):
+    """Nombor telefon dalam digit sahaja; +60 dan 0 dianggap sama."""
+    digits = re.sub(r"\D", "", value or "")
+    if digits.startswith("60"):
+        digits = "0" + digits[2:]
+    return digits
+
+
 @app.route("/api/registration", methods=["POST"])
 @limiter.limit("10 per minute")
 def api_registration():
@@ -589,6 +608,26 @@ def api_registration():
         return jsonify({"ok": False, "message": "Maklumat pendaftaran terlalu panjang."}), 400
     if plan not in REGISTRATION_PLANS:
         return jsonify({"ok": False, "message": "Sila pilih pakej akaun yang sah."}), 400
+
+    phone_key = normalized_phone(phone)
+    duplicate = RegistrationRequest.query.filter(
+        db.func.lower(RegistrationRequest.email) == email
+    ).first()
+    if not duplicate and phone_key:
+        duplicate = next(
+            (
+                existing for existing in RegistrationRequest.query.with_entities(
+                    RegistrationRequest.id, RegistrationRequest.phone
+                ).all()
+                if normalized_phone(existing.phone) == phone_key
+            ),
+            None,
+        )
+    if duplicate:
+        return jsonify({
+            "ok": False,
+            "message": "E-mel atau nombor telefon ini sudah didaftarkan. Sila hubungi admin jika anda perlukan bantuan.",
+        }), 409
 
     plan_name, plan_price = REGISTRATION_PLANS[plan]
     registration = RegistrationRequest(
@@ -655,6 +694,7 @@ def api_login():
     if not user.is_active:
         return jsonify({"ok": False, "message": "Akaun anda telah dinyahaktifkan. Sila hubungi admin."}), 403
 
+    session.permanent = True
     session["user_id"] = user.id
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
@@ -663,6 +703,17 @@ def api_login():
 def logout():
     session.pop("user_id", None)
     return redirect(url_for("login_page"))
+
+
+@app.route("/api/chart/candles")
+@login_required
+def chart_candles():
+    user = db.session.get(User, session["user_id"])
+    if not user:
+        return jsonify({"candles": []}), 401
+    response = jsonify({"candles": user.chart_candles()})
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/dashboard")
@@ -741,6 +792,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user=user,
+        chart_candles=user.chart_candles() if show_chart else [],
         wallet_balance_before_session=user.wallet_balance_before_session,
         chart_labels=chart_labels,
         chart_values=chart_values,
@@ -789,7 +841,9 @@ def admin_api_login():
     if not admin or not admin.check_password(password):
         return jsonify({"ok": False, "message": "Username atau password admin tidak sah."}), 401
 
+    session.permanent = True
     session["admin_id"] = admin.id
+    session["admin_seen"] = int(datetime.now(timezone.utc).timestamp())
     if admin.check_password("admin123"):
         flash("Password admin masih menggunakan password lalai. Sila tukar segera.", "error")
     return jsonify({"ok": True, "redirect": url_for("admin_dashboard")})
@@ -833,7 +887,9 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     users = User.query.order_by(User.created_at.asc()).all()
-    registration_requests = RegistrationRequest.query.order_by(RegistrationRequest.created_at.desc()).all()
+    all_registration_requests = RegistrationRequest.query.order_by(
+        RegistrationRequest.created_at.desc()
+    ).all()
     withdrawal_requests = WithdrawalRequest.query.order_by(
         WithdrawalRequest.created_at.desc()
     ).all()
@@ -911,10 +967,95 @@ def admin_dashboard():
             commission.beneficiary_user_id, {"paid": 0.0, "pending": 0.0}
         )[total_key] += float(commission.amount or 0)
 
+    def page_number(name):
+        try:
+            return max(1, int(request.args.get(name, "1")))
+        except ValueError:
+            return 1
+
+    def paginate(items, page, per_page):
+        pages = max(1, math.ceil(len(items) / per_page))
+        page = min(page, pages)
+        start = (page - 1) * per_page
+        return items[start:start + per_page], page, pages
+
+    def user_list_status(account):
+        if not account.is_active:
+            return "inactive"
+        if account.is_trade_closed:
+            return "closed"
+        return "active" if account.entries else "ready"
+
+    user_query = request.args.get("u_q", "").strip()[:80]
+    user_status = request.args.get("u_status", "")
+    user_maturity = request.args.get("u_mat", "")
+    needle = user_query.casefold()
+    filtered_users = [
+        account for account in users
+        if (not needle or needle in f"{account.full_name} {account.nova_id}".casefold())
+        and (not user_status or user_list_status(account) == user_status)
+        and (
+            not user_maturity
+            or (user_maturity == "matured") == bool(account.is_matured)
+        )
+    ]
+    page_users, user_page, user_pages = paginate(
+        filtered_users, page_number("u_page"), ADMIN_USERS_PER_PAGE
+    )
+    user_statuses = {account.id: user_list_status(account) for account in page_users}
+
+    registration_query = request.args.get("r_q", "").strip()[:80]
+    registration_status = request.args.get("r_status", "")
+    registration_needle = registration_query.casefold()
+
+    def registration_state(registration):
+        if registration.user:
+            return "accepted"
+        if registration.id in protected_registration_ids:
+            return "used"
+        return "pending"
+
+    filtered_registrations = [
+        registration for registration in all_registration_requests
+        if (
+            not registration_needle
+            or registration_needle in (
+                f"{registration.full_name} {registration.request_code} "
+                f"{registration.phone}"
+            ).casefold()
+        )
+        and (not registration_status or registration_state(registration) == registration_status)
+    ]
+    # Permohonan yang menunggu diutamakan di atas; susunan tarikh dikekalkan.
+    filtered_registrations.sort(key=lambda r: registration_state(r) != "pending")
+    registration_requests, registration_page, registration_pages = paginate(
+        filtered_registrations, page_number("r_page"), ADMIN_REGISTRATIONS_PER_PAGE
+    )
+    pending_registration_count = sum(
+        1 for registration in all_registration_requests
+        if registration_state(registration) == "pending"
+    )
+
     return render_template(
         "admin_dashboard.html",
-        users=users,
+        users=page_users,
+        total_users=len(users),
+        filtered_user_count=len(filtered_users),
+        user_page=user_page,
+        user_pages=user_pages,
+        user_statuses=user_statuses,
+        user_query=user_query,
+        user_status=user_status,
+        user_maturity=user_maturity,
         registration_requests=registration_requests,
+        total_registrations=len(all_registration_requests),
+        all_registration_requests=all_registration_requests,
+        filtered_registration_count=len(filtered_registrations),
+        pending_registration_count=pending_registration_count,
+        registration_page=registration_page,
+        registration_pages=registration_pages,
+        registration_query=registration_query,
+        registration_status=registration_status,
         withdrawal_requests=withdrawal_requests,
         completed_withdrawals=completed_withdrawals,
         receipt_withdrawal=receipt_withdrawal,
@@ -1437,24 +1578,38 @@ def admin_add_entry(user_id):
     return redirect(url_for("admin_dashboard"))
 
 
+def _preserve_displayed_balance(user, before_balance):
+    """Kekalkan Baki dipaparkan selepas entri dibuang.
+
+    Semasa sesi berjalan Baki dibekukan, jadi beza ≈ 0 dan tiada untung dipindahkan.
+    Sesi yang sudah tamat memindahkan untung/ruginya ke dalam baki akaun.
+    """
+    db.session.expire(user, ["entries"])
+    after_balance = user.wallet_display_balance
+    user.realized_profit_loss = round(
+        float(user.realized_profit_loss or 0) + before_balance - after_balance,
+        2,
+    )
+
+
 @app.route("/admin/entry/<int:entry_id>/delete", methods=["POST"])
 @admin_required
 def admin_delete_entry(entry_id):
     entry = db.get_or_404(TradeEntry, entry_id)
     user = db.get_or_404(User, entry.user_id)
-    profit_loss_before = user.current_profit_loss
+    session_running = not user.is_trade_closed and bool(user.entries)
+    before_balance = user.wallet_display_balance
     user.entries.remove(entry)
     db.session.flush()
-    user.realized_profit_loss = round(
-        float(user.realized_profit_loss or 0)
-        + profit_loss_before
-        - user.current_profit_loss,
-        2,
-    )
+    _preserve_displayed_balance(user, before_balance)
     if user.live_balance_snapshot:
         db.session.delete(user.live_balance_snapshot)
     db.session.commit()
-    flash("Entry dipadam. Pelarasan dibuat supaya baki Wallet kekal konsisten.", "success")
+    flash(
+        "Entry dipadam. Baki Wallet kekal tidak berubah"
+        + (" (sesi berjalan, tiada untung/rugi dipindahkan)." if session_running else "."),
+        "success",
+    )
     return redirect(url_for("admin_dashboard"))
 
 
@@ -1462,17 +1617,20 @@ def admin_delete_entry(entry_id):
 @admin_required
 def admin_clear_history(user_id):
     user = db.get_or_404(User, user_id)
-    user.realized_profit_loss = round(
-        float(user.realized_profit_loss or 0) + user.current_profit_loss,
-        2,
-    )
+    session_running = not user.is_trade_closed and bool(user.entries)
+    before_balance = user.wallet_display_balance
     TradeEntry.query.filter_by(user_id=user.id).delete()
+    db.session.flush()
+    _preserve_displayed_balance(user, before_balance)
     if user.live_balance_snapshot:
         db.session.delete(user.live_balance_snapshot)
     db.session.commit()
+    if session_running:
+        detail = "Sesi sedang berjalan, jadi tiada untung/rugi dipindahkan ke baki akaun."
+    else:
+        detail = "Untung/rugi sesi telah disimpan dalam baki akaun."
     flash(
-        f"Rekod carta '{user.nova_id}' dikosongkan. Untung/rugi semasa telah disimpan "
-        "dalam baki akaun; rekod kewangan lain tidak dipadam.",
+        f"Rekod carta '{user.nova_id}' dikosongkan. {detail} Rekod kewangan lain tidak dipadam.",
         "success",
     )
     return redirect(url_for("admin_dashboard"))

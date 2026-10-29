@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone, timedelta
 
+from candle_engine import build_candles, final_candle_close
+
 db = SQLAlchemy()
 
 def utcnow():
@@ -13,6 +15,11 @@ _MYT = timezone(timedelta(hours=8))
 
 def _now_myt():
     return datetime.now(_MYT).replace(tzinfo=None)
+
+
+def _entry_timestamp(value):
+    """Timestamp UTC (saat) untuk entry_date naive MYT, sama seperti carta."""
+    return int(value.replace(tzinfo=_MYT).timestamp())
 
 
 def _as_utc_naive(value, naive_timezone):
@@ -226,6 +233,26 @@ class User(db.Model):
             if commission.status == "pending"
         )
 
+    def chart_candles(self, now_ts=None):
+        """Candle lengkap untuk carta; kosong jika sesi (Entry -> Close) belum lengkap."""
+        ordered = sorted(self.entries, key=lambda e: e.entry_date)
+        if len(ordered) < 2:
+            return []
+        if not (ordered[0].note or "").startswith("[Entry]"):
+            return []
+        if not (ordered[-1].note or "").startswith("[Close]"):
+            return []
+        if now_ts is None:
+            now_ts = datetime.now(timezone.utc).timestamp()
+        return build_candles(
+            self.id,
+            ordered[0].value,
+            ordered[-1].value,
+            _entry_timestamp(ordered[0].entry_date),
+            _entry_timestamp(ordered[-1].entry_date),
+            now_ts,
+        )
+
     @property
     def current_balance(self):
         """Baki live semasa — berdasarkan entry sahaja, tidak melibatkan modal."""
@@ -234,6 +261,18 @@ class User(db.Model):
 
         sorted_entries = sorted(self.entries, key=lambda e: e.entry_date)
         now = _now_myt()
+
+        if self.is_trade_closed:
+            # Sesi tamat: nilai penutup candle terakhir di carta yang menentukan baki.
+            closing_value = final_candle_close(
+                self.id,
+                sorted_entries[0].value,
+                sorted_entries[-1].value,
+                _entry_timestamp(sorted_entries[0].entry_date),
+                _entry_timestamp(sorted_entries[-1].entry_date),
+            )
+            if closing_value is not None:
+                return closing_value
 
         past = [e for e in sorted_entries if e.entry_date <= now]
         future = [e for e in sorted_entries if e.entry_date > now]
@@ -274,6 +313,29 @@ class User(db.Model):
     def withdraw_live_balance(self):
         """Baki Wallet: baki akaun ditambah komisen yang masih tersedia."""
         return self.wallet_account_balance + self.withdrawable_commission
+
+    @property
+    def wallet_display_balance(self):
+        """Baki Wallet yang dipaparkan: dibekukan semasa sesi berjalan, dikemas kini bila sesi tamat."""
+        entries = sorted(self.entries, key=lambda e: e.entry_date)
+        session_ready = (
+            len(entries) >= 2
+            and any((e.note or "").startswith("[Entry]") for e in entries)
+            and (entries[-1].note or "").startswith("[Close]")
+        )
+        if session_ready and not self.is_trade_closed:
+            return self.wallet_balance_before_session
+        return self.withdraw_live_balance
+
+    @property
+    def next_commission_payable_at(self):
+        """Tarikh bayaran komisen menunggu yang paling awal, atau None."""
+        dates = [
+            commission.payable_at
+            for commission in self.referral_commissions
+            if commission.status == "pending" and commission.payable_at
+        ]
+        return min(dates) if dates else None
 
     @property
     def withdrawable_amount(self):

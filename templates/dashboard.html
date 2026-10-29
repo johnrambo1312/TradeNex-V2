@@ -46,6 +46,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-total .card-val{font-size:2rem;color:var(--gold2)}
 .wallet-total .card-sub{margin-top:0.5rem}
 .wallet-commission-breakdown{display:inline-block;margin-left:0.25rem;color:var(--green);font-size:0.62em;white-space:nowrap;letter-spacing:0}
+.wallet-commission-note{margin-top:0.45rem;color:var(--muted,#94a3b8);font-size:0.72rem;line-height:1.4}
 .wallet-feedback{padding:0.7rem 0.9rem;margin-bottom:0.8rem;border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:0.82rem}
 .wallet-feedback-success{border-color:rgba(34,201,138,0.3);color:var(--green)}
 .wallet-feedback-error{border-color:rgba(255,91,91,0.3);color:#FF8A8A}
@@ -528,13 +529,16 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
       <div class="card wallet-total">
         <div class="card-label">Baki</div>
-        {% set displayed_balance = wallet_balance_before_session if chart_values|length > 0 and not user.is_trade_closed else user.withdraw_live_balance %}
+        {% set displayed_balance = user.wallet_display_balance %}
         <div class="card-val num" id="balanceVal">
           <span id="balanceAmount">RM {{ "%.2f"|format(displayed_balance) }}</span>
           {% if user.withdrawable_commission > 0 %}
             <span class="wallet-commission-breakdown" id="commissionBalance">(RM {{ "%.2f"|format(user.withdrawable_commission) }})</span>
           {% endif %}
         </div>
+        {% if user.next_commission_payable_at %}
+          <div class="wallet-commission-note">Komisen menunggu RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
+        {% endif %}
       </div>
     </div>
     <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
@@ -1016,120 +1020,37 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   var waypoints = [{ts:sessionStart, val:startingBalance}];
   for(var wi=0;wi<anchorTimes.length;wi++) waypoints.push({ts:anchorTimes[wi], val:anchorValues[wi]});
 
-  // ── BUILD 1-MINUTE CANDLES ───────────────────────────────────────────
-  // Each candle is exactly 60 seconds. No variable duration.
-  // Candle index i covers [sessionStart + i*60, sessionStart + (i+1)*60)
+  // ── 1-MINUTE CANDLES (dijana oleh server) ────────────────────────────
+  // Server ialah satu-satunya sumber candle yang sudah lengkap; baki dan had
+  // pengeluaran dikira daripada candle yang sama. Pelayar hanya melukis.
   var CANDLE_SEC = 60;
-  var totalSessionCandles = Math.max(1, Math.ceil((sessionEnd - sessionStart) / CANDLE_SEC));
-  var allCandles = [];
+  var allCandles = {{ chart_candles|tojson }};
+  var candleFeedBusy = false;
 
-  function buildHistoricCandles(){
+  function refreshServerCandles(){
+    if(candleFeedBusy) return;
     var nowTs = Date.now()/1000;
-    var effectiveNow = Math.min(nowTs, sessionEnd);
-    var totalSecs = effectiveNow - sessionStart;
-    if(totalSecs < 0) return [];
-
-    var completedCount = Math.min(totalSessionCandles, Math.floor(totalSecs / CANDLE_SEC));
-    var result = [];
-    var price = startingBalance;
-    var momentum = 0;
-
-    // Total candles expected for full session — used to spread pull evenly
-    var totalCandles = totalSessionCandles;
-    var sessionDur = waypoints[waypoints.length-1].ts - sessionStart;
-
-    for(var ci=0; ci<completedCount; ci++){
-      var tOpen  = sessionStart + ci * CANDLE_SEC;
-      var tClose = tOpen + CANDLE_SEC;
-      var r1 = seededRng(ci*4+0), r2 = seededRng(ci*4+1), r3 = seededRng(ci*4+2), r4 = seededRng(ci*4+3);
-
-      // ── STEADY PULL from start to end: share the gap evenly across all candles ──
-      // This means from candle 1, price is gently nudged toward final target.
-      var finalTarget  = waypoints[waypoints.length-1].val;
-      var candlesLeft  = Math.max(1, totalCandles - ci);
-      // Per-candle share of remaining gap — 0.85 factor untuk reach target gradually
-      var remainGap    = finalTarget - price;
-      var steadyPull   = (remainGap / candlesLeft) * 0.85;
-
-      // ── Volatility ikut tempoh trade (short = lebih agresif) ──
-      var baseVol = price * profile.baseVolPct;
-      var spikeRoll = r1();
-      var spike;
-      if(spikeRoll > profile.highSpikeTh)      spike = profile.highSpikeMin + r2() * profile.highSpikeRange;
-      else if(spikeRoll > profile.midSpikeTh)  spike = profile.midSpikeMin + r2() * profile.midSpikeRange;
-      else if(spikeRoll > 0.40)                spike = profile.medSpikeMin + r2() * profile.medSpikeRange;
-      else                      spike = 1.0;
-      var vol = baseVol * spike;
-
-      // ── BALANCED RED/GREEN: near-equal distribution ──
-      // biasRoll splits: ~42.5% bull, ~42.5% bear, 15% doji
-      var biasRoll = r4();
-      var bias;
-      if(biasRoll < 0.425)      bias =  (0.5 + r2() * 0.6);   // bullish
-      else if(biasRoll < 0.85)  bias = -(0.5 + r2() * 0.6);   // bearish
-      else                      bias =  (r2() - 0.5) * 0.12;  // flat/doji
-      // Momentum carries direction across candles
-      momentum = momentum * 0.35 + bias * 0.45;
-
-      var move  = (r3() - 0.5) * 2 * vol * profile.moveMul + momentum * vol * profile.momentumMul;
-
-      // Shock burst (naik/turun) berlaku sekali-sekala untuk efek lonjakan jelas.
-      var shockRoll = r4();
-      if(shockRoll > profile.shockTh){
-        var shockDir = r2() > 0.5 ? 1 : -1;
-        move += shockDir * (price * (profile.shockMin + r3() * profile.shockRange));
-      }
-
-      var open  = price;
-      var close = open + move + steadyPull;
-
-      // Candle terakhir mesti lock tepat pada nilai Close supaya baki konsisten.
-      var isFinal = ci === totalCandles - 1;
-      if(isFinal){
-        close = finalTarget;
-      }
-
-      // Hard clamp supaya tetap realistik walaupun agresif.
-      var maxPct = spike > 3 ? profile.clampHigh : profile.clampNorm;
-      var maxMove = price * maxPct * spike;
-      if(Math.abs(close - open) > maxMove) close = open + Math.sign(close-open) * maxMove;
-
-      // Dynamic price floor: min 5% of starting balance, but at least RM 1
-      var minPrice = Math.max(1, startingBalance * 0.05);
-      if(close < minPrice) close = minPrice;
-
-      // ── WICKS: pendek, natural ──
-      var bodySize = Math.max(Math.abs(close - open), price * 0.003);
-      var wUp, wDn;
-      var wRoll = r1();
-      if(wRoll < 0.22){       // upper wick (shooting star)
-        wUp = bodySize * (0.5 + r2() * 0.6);
-        wDn = bodySize * (0.05 + r3() * 0.1);
-      } else if(wRoll < 0.44){ // lower wick (hammer)
-        wUp = bodySize * (0.05 + r2() * 0.1);
-        wDn = bodySize * (0.5 + r3() * 0.6);
-      } else if(wRoll < 0.66){ // balanced wicks
-        wUp = bodySize * (0.15 + r2() * 0.3);
-        wDn = bodySize * (0.15 + r3() * 0.3);
-      } else {                  // doji / small both
-        wUp = bodySize * (0.25 + r2() * 0.35);
-        wDn = bodySize * (0.25 + r3() * 0.35);
-      }
-      // Spike candles boleh wick sikit lebih
-      if(spike > 3){ wUp *= 1.2; wDn *= 1.2; }
-      else if(spike > 1.8){ wUp *= 1.05; wDn *= 1.05; }
-
-      var high = Math.max(open, close) + wUp;
-      var low  = Math.min(open, close) - wDn;
-      var minPrice = Math.max(1, startingBalance * 0.05);
-      if(low < minPrice) low = minPrice;
-
-      var volBar = bodySize * (25 + r4() * 100);
-
-      result.push({t:tOpen, dur:CANDLE_SEC, o:open, c:close, h:high, l:low, v:volBar, ci:ci});
-      price = close;
-    }
-    return result;
+    var expected = Math.min(
+      Math.ceil((sessionEnd - sessionStart) / CANDLE_SEC),
+      Math.floor((Math.min(nowTs, sessionEnd) - sessionStart) / CANDLE_SEC)
+    );
+    var sessionEnded = nowTs >= sessionEnd;
+    if(!sessionEnded && allCandles.length >= expected) return;
+    candleFeedBusy = true;
+    fetch('{{ url_for("chart_candles") }}', {credentials:'same-origin', cache:'no-store'})
+      .then(function(response){ return response.ok ? response.json() : null; })
+      .then(function(data){
+        if(data && Array.isArray(data.candles) && data.candles.length >= allCandles.length){
+          var changed = data.candles.length !== allCandles.length
+            || (data.candles.length > 0 && data.candles[data.candles.length-1].c !== allCandles[allCandles.length-1].c);
+          if(changed){
+            allCandles = data.candles;
+            tickStateCandleIdx = -1;
+          }
+        }
+      })
+      .catch(function(){})
+      .then(function(){ candleFeedBusy = false; });
   }
 
   // ── LIVE CANDLE (current forming minute) ────────────────────────────
@@ -1277,18 +1198,11 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   }
 
   // ── INIT ─────────────────────────────────────────────────────────────
-  allCandles = buildHistoricCandles();
   var firstPrice = startingBalance;
 
-  // Rebuild completed candles every 5s (new minute boundary)
-  setInterval(function(){
-    var newCandles = buildHistoricCandles();
-    if(newCandles.length > allCandles.length){
-      // Candle baru selesai — tickState akan resync sendiri dalam buildLiveCandle
-      allCandles = newCandles;
-      tickStateCandleIdx = -1; // force resync pada tick seterusnya
-    }
-  }, 5000);
+  // Ambil candle lengkap baharu daripada server setiap 5s
+  refreshServerCandles();
+  setInterval(refreshServerCandles, 5000);
 
   // ── CANVASES ─────────────────────────────────────────────────────────
   var cvC = document.getElementById('tvCandle');

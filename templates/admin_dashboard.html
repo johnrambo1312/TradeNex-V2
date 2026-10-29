@@ -117,6 +117,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .user-list-tools{display:grid;grid-template-columns:minmax(220px,1fr) minmax(160px,220px) minmax(150px,200px) auto;gap:0.65rem;align-items:end;margin-bottom:1rem}
 .user-list-tools .form-row{min-width:0}
 .user-list-count{color:var(--muted);font-size:0.76rem;white-space:nowrap;padding-bottom:0.65rem}
+.pager{display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;color:var(--muted);font-size:0.8rem}
+.pager .btn{text-decoration:none}
 @media(max-width:700px){.user-list-tools{grid-template-columns:1fr 1fr}.user-list-count{grid-column:1/-1}}
 @media(max-width:420px){.user-list-tools{grid-template-columns:1fr}}
 .user-detail-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.75rem;margin-bottom:1.25rem}
@@ -242,8 +244,18 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
 <div class="wrap">
 
+  {% macro pager(page_key, page, pages, anchor) %}
+    {% if pages > 1 %}
+      <nav class="pager" aria-label="Halaman">
+        {% if page > 1 %}<a class="btn btn-outline" href="{{ url_for('admin_dashboard', _anchor=anchor, **dict(request.args.to_dict(), **{page_key: page - 1})) }}">&laquo; Sebelum</a>{% endif %}
+        <span>Halaman {{ page }} / {{ pages }}</span>
+        {% if page < pages %}<a class="btn btn-outline" href="{{ url_for('admin_dashboard', _anchor=anchor, **dict(request.args.to_dict(), **{page_key: page + 1})) }}">Seterusnya &raquo;</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% endmacro %}
+
   <div class="page-header">
-    <div class="page-title">Urus Akaun <span>{{ users|length }} user berdaftar</span></div>
+    <div class="page-title">Urus Akaun <span>{{ total_users }} user berdaftar</span></div>
     <button class="btn btn-gold" onclick="toggleCreate()">+ Cipta User Baru</button>
   </div>
 
@@ -278,10 +290,27 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   </details>
 
   <!-- ===== PERMOHONAN PENDAFTARAN ===== -->
-  <div class="panel">
+  <div class="panel" id="registrationPanel">
     <div class="panel-header">
-      <span class="panel-title">Permohonan Pendaftaran <span style="color:var(--muted);font-weight:400">({{ registration_requests|length }})</span></span>
+      <span class="panel-title">Permohonan Pendaftaran <span style="color:var(--muted);font-weight:400">({{ filtered_registration_count }}{% if filtered_registration_count != total_registrations %} daripada {{ total_registrations }}{% endif %}{% if pending_registration_count %} · {{ pending_registration_count }} menunggu{% endif %})</span></span>
     </div>
+    <form class="user-list-tools" method="GET" action="{{ url_for('admin_dashboard') }}#registrationPanel" role="search">
+      {% for key in ['u_q','u_status','u_mat','u_page'] %}{% if request.args.get(key) %}<input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">{% endif %}{% endfor %}
+      <div class="form-row">
+        <label class="form-label" for="registrationSearch">Cari nama, NOVA ID atau telefon</label>
+        <input class="form-input" type="search" id="registrationSearch" name="r_q" value="{{ registration_query }}" maxlength="80" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="registrationStatus">Status</label>
+        <select class="form-input" id="registrationStatus" name="r_status">
+          <option value="">Semua</option>
+          <option value="pending" {{ 'selected' if registration_status == 'pending' }}>Menunggu</option>
+          <option value="accepted" {{ 'selected' if registration_status == 'accepted' }}>Diterima</option>
+          <option value="used" {{ 'selected' if registration_status == 'used' }}>Digunakan dalam sejarah</option>
+        </select>
+      </div>
+      <div class="form-row" style="align-self:end"><button class="btn btn-gold" type="submit">Cari</button></div>
+    </form>
     {% if registration_requests %}
       <div class="table-scroll">
         <table>
@@ -340,8 +369,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </tbody>
         </table>
       </div>
+      {{ pager('r_page', registration_page, registration_pages, 'registrationPanel') }}
     {% else %}
-      <p style="color:var(--muted);font-size:0.82rem">Tiada permohonan pendaftaran buat masa ini.</p>
+      <p style="color:var(--muted);font-size:0.82rem">{{ 'Tiada permohonan sepadan dengan carian.' if total_registrations else 'Tiada permohonan pendaftaran buat masa ini.' }}</p>
     {% endif %}
   </div>
 
@@ -455,7 +485,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           <label class="form-label">Pautkan Rekod Pendaftaran (wajib untuk pengeluaran)</label>
           <select class="form-input" name="registration_request_id">
             <option value="">Tidak dipautkan</option>
-            {% for registration in registration_requests %}
+            {% for registration in all_registration_requests %}
               {% if registration.id not in protected_registration_ids %}
                 <option value="{{ registration.id }}">{{ registration.request_code }} — {{ registration.full_name }} · {{ registration.bank_name }} · {{ registration.bank_account_number }}</option>
               {% endif %}
@@ -470,51 +500,51 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     </form>
   </div>
 
-  <div class="panel">
-    <div class="user-list-tools" role="search">
+  <div class="panel" id="userPanel">
+    <form class="user-list-tools" method="GET" action="{{ url_for('admin_dashboard') }}#userPanel" role="search">
+      {% for key in ['r_q','r_status','r_page'] %}{% if request.args.get(key) %}<input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">{% endif %}{% endfor %}
       <div class="form-row">
         <label class="form-label" for="userSearch">Cari nama atau NOVA ID</label>
-        <input class="form-input" type="search" id="userSearch" placeholder="Taip nama / NOVA ID" autocomplete="off">
+        <input class="form-input" type="search" id="userSearch" name="u_q" value="{{ user_query }}" maxlength="80" placeholder="Taip nama / NOVA ID" autocomplete="off">
       </div>
       <div class="form-row">
         <label class="form-label" for="userStatusFilter">Status akaun</label>
-        <select class="form-input" id="userStatusFilter">
+        <select class="form-input" id="userStatusFilter" name="u_status">
           <option value="">Semua status</option>
-          <option value="ready">Sedia</option>
-          <option value="active">Aktif</option>
-          <option value="closed">Selesai</option>
-          <option value="inactive">Tidak aktif</option>
+          <option value="ready" {{ 'selected' if user_status == 'ready' }}>Sedia</option>
+          <option value="active" {{ 'selected' if user_status == 'active' }}>Aktif</option>
+          <option value="closed" {{ 'selected' if user_status == 'closed' }}>Selesai</option>
+          <option value="inactive" {{ 'selected' if user_status == 'inactive' }}>Tidak aktif</option>
         </select>
       </div>
       <div class="form-row">
         <label class="form-label" for="userMaturityFilter">Kematangan</label>
-        <select class="form-input" id="userMaturityFilter">
+        <select class="form-input" id="userMaturityFilter" name="u_mat">
           <option value="">Semua</option>
-          <option value="matured">Matang</option>
-          <option value="immature">Belum matang</option>
+          <option value="matured" {{ 'selected' if user_maturity == 'matured' }}>Matang</option>
+          <option value="immature" {{ 'selected' if user_maturity == 'immature' }}>Belum matang</option>
         </select>
       </div>
-      <span class="user-list-count" id="userListCount" aria-live="polite">{{ users|length }} akaun</span>
-    </div>
+      <button class="btn btn-gold" type="submit" style="align-self:end">Cari</button>
+      <span class="user-list-count" aria-live="polite">{{ filtered_user_count }}{% if filtered_user_count != total_users %} daripada {{ total_users }}{% endif %} akaun</span>
+    </form>
     <table>
       <thead>
         <tr>
           <th>NOVA ID</th>
           <th class="col-nama">Nama</th>
           <th>Modal (RM)</th>
+          <th>Baki Wallet (RM)</th>
           <th>Status</th>
           <th>Aksi</th>
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
-        <tr data-user-row
-            data-search="{{ (u.full_name ~ ' ' ~ u.nova_id)|lower }}"
-            data-status="{{ 'inactive' if not u.is_active else 'closed' if u.is_trade_closed else 'active' if u.entries|length > 0 else 'ready' }}"
-            data-matured="{{ 'matured' if u.is_matured else 'immature' }}">
-          <td class="col-id">{{ u.nova_id }}</td>
+        <tr>{{ u.nova_id }}</td>
           <td class="col-nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
           <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
+          <td class="col-modal">{{ "%.2f"|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e)">({{ "%.2f"|format(u.withdrawable_commission) }})</span>{% endif %}</td>
           <td>
             {% if not u.is_active %}
               <span class="badge badge-off">Tidak Aktif</span>
@@ -548,13 +578,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </td>
         </tr>
         {% endfor %}
-        {% if users %}
-          <tr id="noUsersMatch" hidden><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada akaun sepadan dengan carian atau penapis.</td></tr>
-        {% else %}
-          <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada user lagi. Cipta user baru untuk mula.</td></tr>
+        {% if not users %}
+          <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:2rem">{{ 'Tiada akaun sepadan dengan carian atau penapis.' if total_users else 'Tiada user lagi. Cipta user baru untuk mula.' }}</td></tr>
         {% endif %}
       </tbody>
     </table>
+    {{ pager('u_page', user_page, user_pages, 'userPanel') }}
   </div>
 
   <!-- ===== DETAIL PANEL PER USER ===== -->
@@ -575,7 +604,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     {% set genealogy = referrals_by_user.get(u.id, ([], [])) %}
     {% set incentive = incentive_progress_by_user.get(u.id, {}) %}
     <div class="user-detail-summary">
-      <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar (sepanjang masa)</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Baki Wallet (komisen dalam kurungan)</div><div class="user-summary-value">RM {{ '%.2f'|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e);font-size:0.8em">(RM {{ '%.2f'|format(u.withdrawable_commission) }})</span>{% endif %}</div></div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Sudah dimohon / dikeluarkan</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawn_commission) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Baki komisen tersedia</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawable_commission) }}</div></div>
       <div class="user-summary-card"><div class="user-summary-label">Menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>
@@ -686,7 +715,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             <label class="form-label">Rekod Pendaftaran / Akaun Bank</label>
             <select class="form-input" name="registration_request_id">
               <option value="" selected>{{ 'Kekalkan pautan semasa' if u.registration_request_id else 'Tidak dipautkan' }}</option>
-              {% for registration in registration_requests %}
+              {% for registration in all_registration_requests %}
                 {% if registration.id not in protected_registration_ids or registration.id == u.registration_request_id %}
                   <option value="{{ registration.id }}">
                     {{ registration.request_code }} — {{ registration.full_name }} · {{ registration.bank_name }} · {{ registration.bank_account_number }}
@@ -950,31 +979,6 @@ document.addEventListener('keydown',function(event){
     document.querySelectorAll('.detail-overlay.active').forEach(function(el){ el.classList.remove('active'); });
     document.body.style.overflow='';
   }
-});
-
-/* ── USER LIST SEARCH AND FILTER ── */
-function filterUsers(){
-  var query=(document.getElementById('userSearch').value||'').trim().toLocaleLowerCase();
-  var status=document.getElementById('userStatusFilter').value;
-  var maturity=document.getElementById('userMaturityFilter').value;
-  var rows=Array.prototype.slice.call(document.querySelectorAll('[data-user-row]'));
-  var visibleCount=0;
-  rows.forEach(function(row){
-    var matches=row.dataset.search.indexOf(query)!==-1
-      &&(!status||row.dataset.status===status)
-      &&(!maturity||row.dataset.matured===maturity);
-    row.hidden=!matches;
-    if(matches) visibleCount++;
-  });
-  var count=document.getElementById('userListCount');
-  if(count) count.textContent=visibleCount+' daripada '+rows.length+' akaun';
-  var empty=document.getElementById('noUsersMatch');
-  if(empty) empty.hidden=visibleCount!==0||rows.length===0;
-}
-['userSearch','userStatusFilter','userMaturityFilter'].forEach(function(id){
-  var control=document.getElementById(id);
-  if(control) control.addEventListener('input',filterUsers);
-  if(control&&control.tagName==='SELECT') control.addEventListener('change',filterUsers);
 });
 
 /* ── VERIFIED PAYMENT RECEIPT ── */
