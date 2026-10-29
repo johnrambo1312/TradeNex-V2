@@ -396,6 +396,8 @@ def ensure_withdrawal_request_schema():
         "account_holder_name": "VARCHAR(120)",
         "bank_name": "VARCHAR(100)",
         "bank_account_number": "VARCHAR(34)",
+        "commission_amount": "FLOAT NOT NULL DEFAULT 0",
+        "account_amount": "FLOAT NOT NULL DEFAULT 0",
         "payment_reference": "VARCHAR(120)",
         "registration_request_id": (
             "INTEGER REFERENCES registration_requests(id) ON DELETE RESTRICT"
@@ -407,6 +409,12 @@ def ensure_withdrawal_request_schema():
                 connection.exec_driver_sql(
                     f"ALTER TABLE withdrawal_requests ADD COLUMN {column_name} {column_definition}"
                 )
+        if "profit_amount" in existing_columns and "account_amount" not in existing_columns:
+            connection.exec_driver_sql(
+                "UPDATE withdrawal_requests "
+                "SET account_amount = profit_amount "
+                "WHERE profit_amount IS NOT NULL"
+            )
 
 
 def ensure_registration_request_schema():
@@ -733,13 +741,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user=user,
-        wallet_balance_before_session=max(
-            0.0,
-            float(user.balance or 0)
-            - float(user.withdrawn_total or 0)
-            + float(user.realized_profit_loss or 0)
-            + user.paid_referral_commission,
-        ),
+        wallet_balance_before_session=user.wallet_balance_before_session,
         chart_labels=chart_labels,
         chart_values=chart_values,
         chart_timestamps=chart_timestamps,
@@ -1134,9 +1136,7 @@ def user_withdrawal_request():
         session.pop("user_id", None)
         return redirect(url_for("login_page"))
 
-    if not user.is_trade_closed:
-        flash("Permohonan pengeluaran hanya boleh dibuat selepas sesi dagangan ditutup.", "error")
-        return redirect(url_for("dashboard"))
+    trade_closed = user.is_trade_closed
 
     try:
         amount = round(float(request.form.get("amount", "")), 2)
@@ -1148,12 +1148,25 @@ def user_withdrawal_request():
         flash("Jumlah pengeluaran mesti melebihi RM 0.00.", "error")
         return redirect(url_for("dashboard"))
 
-    available = round(user.withdrawable_amount, 2)
+    available = round(
+        user.withdrawable_amount
+        if trade_closed
+        else user.withdrawable_commission,
+        2,
+    )
     if amount > available:
-        if user.is_matured:
+        if not trade_closed:
+            message = (
+                "Semasa sesi dagangan berjalan, pengeluaran terhad kepada komisen "
+                f"yang telah dibayar (RM {available:,.2f})."
+            )
+        elif user.is_matured:
             message = f"Jumlah melebihi baki yang boleh dikeluarkan (RM {available:,.2f})."
         else:
-            message = f"Sebelum akaun matang, pengeluaran terhad kepada keuntungan (RM {available:,.2f})."
+            message = (
+                "Jumlah melebihi baki keuntungan dan komisen yang boleh dikeluarkan "
+                f"(RM {available:,.2f})."
+            )
         flash(message, "error")
         return redirect(url_for("dashboard"))
 
@@ -1162,22 +1175,32 @@ def user_withdrawal_request():
         flash("Akaun belum dipautkan kepada rekod pendaftaran yang tepat. Sila hubungi admin untuk semakan.", "error")
         return redirect(url_for("dashboard"))
 
+    account_amount = 0.0
+    commission_amount = amount
+    if trade_closed:
+        account_amount = round(min(amount, user.withdrawable_account_amount), 2)
+        commission_amount = round(amount - account_amount, 2)
+
     user.withdrawn_total = round(float(user.withdrawn_total or 0) + amount, 2)
-    user.realized_profit_loss = round(
-        float(user.realized_profit_loss or 0) + user.current_profit_loss,
-        2,
-    )
+    if trade_closed:
+        user.realized_profit_loss = round(
+            float(user.realized_profit_loss or 0) + user.current_profit_loss,
+            2,
+        )
     db.session.add(WithdrawalRequest(
         user_id=user.id,
         registration_request_id=bank_registration.id,
         amount=amount,
+        account_amount=account_amount,
+        commission_amount=commission_amount,
         account_holder_name=bank_registration.full_name,
         bank_name=bank_registration.bank_name,
         bank_account_number=bank_registration.bank_account_number,
     ))
-    TradeEntry.query.filter_by(user_id=user.id).delete()
-    if user.live_balance_snapshot:
-        db.session.delete(user.live_balance_snapshot)
+    if trade_closed:
+        TradeEntry.query.filter_by(user_id=user.id).delete()
+        if user.live_balance_snapshot:
+            db.session.delete(user.live_balance_snapshot)
 
     db.session.commit()
     flash("Permohonan pengeluaran berjaya dihantar kepada admin untuk semakan.", "success")

@@ -45,6 +45,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-cards .wallet-total{background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
 .wallet-total .card-val{font-size:2rem;color:var(--gold2)}
 .wallet-total .card-sub{margin-top:0.5rem}
+.wallet-commission-breakdown{display:inline-block;margin-left:0.25rem;color:var(--green);font-size:0.62em;white-space:nowrap;letter-spacing:0}
 .wallet-feedback{padding:0.7rem 0.9rem;margin-bottom:0.8rem;border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:0.82rem}
 .wallet-feedback-success{border-color:rgba(34,201,138,0.3);color:var(--green)}
 .wallet-feedback-error{border-color:rgba(255,91,91,0.3);color:#FF8A8A}
@@ -527,7 +528,13 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
       <div class="card wallet-total">
         <div class="card-label">Baki</div>
-        <div class="card-val num" id="balanceVal">RM {{ "%.2f"|format(wallet_balance_before_session if chart_values|length > 0 and not user.is_trade_closed else user.withdraw_live_balance) }}</div>
+        {% set displayed_balance = wallet_balance_before_session if chart_values|length > 0 and not user.is_trade_closed else user.withdraw_live_balance %}
+        <div class="card-val num" id="balanceVal">
+          <span id="balanceAmount">RM {{ "%.2f"|format(displayed_balance) }}</span>
+          {% if user.withdrawable_commission > 0 %}
+            <span class="wallet-commission-breakdown" id="commissionBalance">(RM {{ "%.2f"|format(user.withdrawable_commission) }})</span>
+          {% endif %}
+        </div>
       </div>
     </div>
     <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
@@ -535,19 +542,30 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <section class="withdraw-modal" role="dialog" aria-modal="true" aria-labelledby="withdrawalModalTitle">
           <button class="withdraw-modal-close" type="button" onclick="closeWithdrawalModal()" aria-label="Tutup">&times;</button>
           <h2 class="withdraw-modal-title" id="withdrawalModalTitle">Pengeluaran</h2>
-          {% if not user.is_trade_closed %}
-            <p class="withdraw-modal-sub">Permohonan pengeluaran boleh dibuat selepas sesi dagangan anda ditutup.</p>
-          {% elif user.withdrawable_amount <= 0 %}
-            <p class="withdraw-modal-sub">Buat masa ini tiada baki yang boleh dikeluarkan.</p>
+          {% set withdrawal_limit = user.withdrawable_amount if user.is_trade_closed else user.withdrawable_commission %}
+          {% if withdrawal_limit <= 0 %}
+            {% if not user.is_trade_closed %}
+              <p class="withdraw-modal-sub">Tiada komisen referral berstatus dibayar untuk dikeluarkan sekarang. Keuntungan dagangan boleh dikeluarkan selepas sesi ditutup.</p>
+            {% else %}
+              <p class="withdraw-modal-sub">Buat masa ini tiada baki keuntungan atau komisen yang boleh dikeluarkan.</p>
+            {% endif %}
           {% elif not bank_registration %}
             <p class="withdraw-modal-sub">Akaun bank belum dipautkan kepada rekod pendaftaran yang sah. Sila hubungi admin untuk bantuan.</p>
           {% else %}
-          <p class="withdraw-modal-sub">Semak jumlah dan pastikan butiran penerima betul. Baki akan ditolak sebaik sahaja anda mengesahkan permohonan.</p>
+          {% if user.is_trade_closed %}
+            {% if user.is_matured %}
+              <p class="withdraw-modal-sub">Akaun matang: baki akaun dan komisen yang sudah dibayar boleh dimohon untuk pengeluaran.</p>
+            {% else %}
+              <p class="withdraw-modal-sub">Akaun belum matang: hanya untung selepas sesi ditutup dan komisen yang sudah dibayar boleh dimohon. Modal akaun belum boleh dikeluarkan.</p>
+            {% endif %}
+          {% else %}
+            <p class="withdraw-modal-sub">Komisen referral yang telah dibayar boleh dikeluarkan sekarang. Pengeluaran ini tidak akan menutup sesi dagangan.</p>
+          {% endif %}
           <form method="POST" action="{{ url_for('user_withdrawal_request') }}" onsubmit="return confirm('Sahkan permohonan ini? Jumlah akan ditolak daripada baki anda.');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="wallet-request-field">
               <label for="withdrawAmount">Jumlah Pengeluaran (RM)</label>
-              <input id="withdrawAmount" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(user.withdrawable_amount) }}" step="0.01" required>
+              <input id="withdrawAmount" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(withdrawal_limit) }}" step="0.01" required>
             </div>
             <div class="withdraw-bank-details" aria-label="Maklumat bank penerima">
               <div class="withdraw-bank-row"><span>Nama penama (nama pendaftaran)</span><span>{{ bank_registration.full_name }}</span></div>
@@ -917,10 +935,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   var startingBalance = anchorValues[0];
   var SEED_BASE       = {{ user.id }};
   var walletModal     = {{ (user.balance or 0)|tojson }};
-  var walletWithdrawn = {{ (user.withdrawn_total or 0)|tojson }};
   var walletRealizedPL = {{ (user.realized_profit_loss or 0)|tojson }};
-  var walletReferralCommission = {{ user.paid_referral_commission|tojson }};
-  var walletMatured   = {{ user.is_matured|tojson }};
+  var walletAccountWithdrawn = {{ user.withdrawn_account_amount|tojson }};
+  var walletWithdrawableCommission = {{ user.withdrawable_commission|tojson }};
   var sessionStart    = anchorTimes[0];
   // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
   var entryTime       = anchorTimes[0];
@@ -1348,18 +1365,18 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     // Current price
     var effClose = live ? live.c : shown[shown.length-1].c;
     var liveProfitLoss = effClose - startingBalance;
-    var liveBalance = Math.max(0, walletModal - walletWithdrawn + walletRealizedPL + walletReferralCommission + liveProfitLoss);
-    var liveWithdrawable = walletMatured
-      ? liveBalance
-      : Math.max(0, walletRealizedPL + walletReferralCommission + liveProfitLoss - walletWithdrawn);
+    var liveBalance = Math.max(0, walletModal - walletAccountWithdrawn + walletRealizedPL + liveProfitLoss)
+      + walletWithdrawableCommission;
     var plEl = document.getElementById('plVal');
-    var balanceEl = document.getElementById('balanceVal');
+    var balanceEl = document.getElementById('balanceAmount');
     if(plEl){
       plEl.textContent = 'RM ' + (liveProfitLoss >= 0 ? '+' : '') + liveProfitLoss.toFixed(2);
       plEl.classList.toggle('pl-pos', liveProfitLoss >= 0);
       plEl.classList.toggle('pl-neg', liveProfitLoss < 0);
     }
     if(balanceEl && Date.now()/1000 >= sessionEnd) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
+    var commissionEl = document.getElementById('commissionBalance');
+    if(commissionEl) commissionEl.textContent = '(RM ' + walletWithdrawableCommission.toFixed(2) + ')';
 
     // ── Y AXIS: fixed scale, pan-able ─────────────────────────────────
     var centerPrice = effClose + yPanOffset;

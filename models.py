@@ -15,6 +15,14 @@ def _now_myt():
     return datetime.now(_MYT).replace(tzinfo=None)
 
 
+def _as_utc_naive(value, naive_timezone):
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=naive_timezone)
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 class AdminUser(db.Model):
     """Akaun admin - boleh log masuk ke /admin untuk urus user."""
     __tablename__ = "admin_users"
@@ -88,6 +96,128 @@ class User(db.Model):
             if commission.status == "paid"
         )
 
+    def _withdrawal_commission_allocations(self):
+        paid_commissions = sorted(
+            (
+                (_as_utc_naive(commission.paid_at, _MYT), float(commission.amount or 0))
+                for commission in self.referral_commissions
+                if commission.status == "paid" and commission.paid_at
+            ),
+            key=lambda item: item[0],
+        )
+        withdrawals = sorted(
+            self.withdrawal_requests,
+            key=lambda withdrawal: (
+                _as_utc_naive(withdrawal.created_at, timezone.utc) or datetime.min,
+                withdrawal.id or 0,
+            ),
+        )
+        allocations = {}
+        allocated_commission = 0.0
+        eligible_commission = 0.0
+        paid_index = 0
+        for withdrawal in withdrawals:
+            if withdrawal.status == "rejected":
+                allocations[withdrawal] = 0.0
+                continue
+
+            created_at = _as_utc_naive(withdrawal.created_at, timezone.utc)
+            while (
+                created_at is not None
+                and paid_index < len(paid_commissions)
+                and paid_commissions[paid_index][0] <= created_at
+            ):
+                eligible_commission += paid_commissions[paid_index][1]
+                paid_index += 1
+
+            amount = max(0.0, float(withdrawal.amount or 0))
+            recorded_commission = withdrawal.commission_amount
+            recorded_account = withdrawal.account_amount
+            is_legacy = (
+                float(recorded_commission or 0) == 0
+                and float(recorded_account or 0) == 0
+            )
+            if is_legacy:
+                # Legacy requests had no source split; reserve eligible paid commissions first.
+                commission_amount = min(
+                    amount,
+                    max(0.0, eligible_commission - allocated_commission),
+                )
+            else:
+                commission_amount = min(
+                    amount,
+                    max(0.0, float(recorded_commission or 0)),
+                )
+
+            allocations[withdrawal] = commission_amount
+            allocated_commission += commission_amount
+        return allocations
+
+    @property
+    def withdrawn_commission(self):
+        return sum(self._withdrawal_commission_allocations().values())
+
+    @property
+    def withdrawable_commission(self):
+        return round(max(0.0, self.paid_referral_commission - self.withdrawn_commission), 2)
+
+    @property
+    def withdrawn_account_amount(self):
+        commission_allocations = self._withdrawal_commission_allocations()
+        return sum(
+            max(
+                0.0,
+                float(withdrawal.amount or 0)
+                - commission_allocations.get(withdrawal, 0.0),
+            )
+            for withdrawal in self.withdrawal_requests
+            if withdrawal.status != "rejected"
+        )
+
+    @property
+    def wallet_balance_before_session(self):
+        return round(
+            max(
+                0.0,
+                float(self.balance or 0)
+                + float(self.realized_profit_loss or 0)
+                - self.withdrawn_account_amount,
+            )
+            + self.withdrawable_commission,
+            2,
+        )
+
+    @property
+    def wallet_account_balance(self):
+        return round(
+            max(
+                0.0,
+                float(self.balance or 0)
+                + float(self.realized_profit_loss or 0)
+                + self.current_profit_loss
+                - self.withdrawn_account_amount,
+            ),
+            2,
+        )
+
+    @property
+    def withdrawable_account_amount(self):
+        account_balance = (
+            float(self.balance or 0)
+            if self.is_matured
+            else 0.0
+        )
+        return round(
+            max(
+                0.0,
+                account_balance
+                + float(self.realized_profit_loss or 0)
+                + self.current_profit_loss
+                - self.withdrawn_account_amount,
+            ),
+            2,
+        )
+
     @property
     def pending_referral_commission(self):
         return sum(
@@ -142,28 +272,13 @@ class User(db.Model):
 
     @property
     def withdraw_live_balance(self):
-        """Baki boleh dikeluarkan: modal, untung/rugi, dan jumlah pengeluaran."""
-        return max(
-            0.0,
-            float(self.balance or 0)
-            - float(self.withdrawn_total or 0)
-            + float(self.realized_profit_loss or 0)
-            + self.current_profit_loss
-            + self.paid_referral_commission,
-        )
+        """Baki Wallet: baki akaun ditambah komisen yang masih tersedia."""
+        return self.wallet_account_balance + self.withdrawable_commission
 
     @property
     def withdrawable_amount(self):
-        """Keuntungan sahaja sebelum matang; keseluruhan baki selepas matang."""
-        if self.is_matured:
-            return self.withdraw_live_balance
-        return max(
-            0.0,
-            float(self.realized_profit_loss or 0)
-            + self.current_profit_loss
-            + self.paid_referral_commission
-            - float(self.withdrawn_total or 0),
-        )
+        """Jumlah pengeluaran tersedia; komisen diasingkan daripada baki akaun."""
+        return self.withdrawable_account_amount + self.withdrawable_commission
 
     @property
     def is_trade_closed(self):
@@ -245,6 +360,8 @@ class WithdrawalRequest(db.Model):
         db.ForeignKey("registration_requests.id", ondelete="RESTRICT"),
     )
     amount = db.Column(db.Float, nullable=False)
+    commission_amount = db.Column(db.Float, nullable=False, default=0.0, server_default="0")
+    account_amount = db.Column(db.Float, nullable=False, default=0.0, server_default="0")
     account_holder_name = db.Column(db.String(120))
     bank_name = db.Column(db.String(100))
     bank_account_number = db.Column(db.String(34))
