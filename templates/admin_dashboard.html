@@ -541,7 +541,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </thead>
       <tbody>
         {% for u in users %}
-        <tr>{{ u.nova_id }}</td>
+        <tr>
+          <td class="col-id">{{ u.nova_id }}</td>
           <td class="col-nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
           <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
           <td class="col-modal">{{ "%.2f"|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e)">({{ "%.2f"|format(u.withdrawable_commission) }})</span>{% endif %}</td>
