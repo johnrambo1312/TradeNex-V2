@@ -226,6 +226,18 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   .flash-stack{top:calc(60px + 0.75rem);right:0.75rem;width:min(240px,calc(100% - 1.5rem))}
   .receipt-grid{grid-template-columns:1fr}
   .receipt-note{max-width:100%}
+
+  /* Jadual Urus Akaun jadi kad di telefon */
+  .user-table,.user-table tbody,.user-table tr,.user-table td{display:block;width:100%}
+  .user-table thead{display:none}
+  .user-table tr{border:1px solid var(--border);border-radius:10px;padding:0.6rem 0.85rem;margin-bottom:0.75rem}
+  .user-table td{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.35rem 0;border:0}
+  .user-table td.col-id{display:flex}
+  .user-table td[data-label]::before{content:attr(data-label);color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;flex:none}
+  .user-table td>span{text-align:right}
+  .user-table td.col-actions{display:block;padding-top:0.6rem;margin-top:0.3rem;border-top:1px solid var(--border)}
+  .user-table .actions{gap:0.4rem}
+  .user-table .actions .btn{padding:0.45rem 0.7rem}
 }
 </style>
 </head>
@@ -528,7 +540,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <button class="btn btn-gold" type="submit" style="align-self:end">Cari</button>
       <span class="user-list-count" aria-live="polite">{{ filtered_user_count }}{% if filtered_user_count != total_users %} daripada {{ total_users }}{% endif %} akaun</span>
     </form>
-    <table>
+    <table class="user-table">
       <thead>
         <tr>
           <th>NOVA ID</th>
@@ -542,11 +554,11 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <tbody>
         {% for u in users %}
         <tr>
-          <td class="col-id">{{ u.nova_id }}</td>
-          <td class="col-nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
-          <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
-          <td class="col-modal">{{ "%.2f"|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e)">({{ "%.2f"|format(u.withdrawable_commission) }})</span>{% endif %}</td>
-          <td>
+          <td class="col-id" data-label="NOVA ID">{{ u.nova_id }}</td>
+          <td class="col-nama" data-label="Nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
+          <td class="col-modal" data-label="Modal (RM)">{{ "%.2f"|format(u.balance) }}</td>
+          <td class="col-modal" data-label="Baki Wallet (RM)"><span>{{ "%.2f"|format(u.wallet_display_balance) }}{% if u.withdrawable_commission > 0 %} <span style="color:var(--green,#22c55e)">({{ "%.2f"|format(u.withdrawable_commission) }})</span>{% endif %}</span></td>
+          <td data-label="Status"><span>
             {% if not u.is_active %}
               <span class="badge badge-off">Tidak Aktif</span>
             {% elif u.is_trade_closed %}
@@ -556,9 +568,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             {% else %}
               <span class="badge badge-sedia">Sedia</span>
             {% endif %}
-            {% if u.is_matured %}<br><span class="badge badge-matang">Matang</span>{% endif %}
-          </td>
-          <td>
+            {% if u.is_matured %}<span class="badge badge-matang">Matang</span>{% endif %}
+          </span></td>
+          <td class="col-actions">
             <div class="actions">
               <form method="POST" action="{{ url_for('admin_clear_history', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Kosongkan rekod carta {{ u.nova_id }}? Untung/rugi semasa akan disimpan dalam baki akaun.');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
