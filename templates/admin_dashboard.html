@@ -325,7 +325,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     </form>
     {% if registration_requests %}
       <div class="table-scroll">
-        <table>
+        <table class="user-table">
           <thead>
             <tr>
               <th>NOVA ID</th>
@@ -342,15 +342,15 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           <tbody>
             {% for registration in registration_requests %}
               <tr>
-                <td class="col-id">{{ registration.request_code }}</td>
-                <td>{{ registration.created_at.strftime('%d/%m/%Y %H:%M') if registration.created_at else '—' }}</td>
-                <td>{{ registration.full_name }}</td>
-                <td>{{ registration.phone }}</td>
-                <td>{{ registration.referral_code or '—' }}</td>
-                <td>{{ registration.plan_name }}</td>
-                <td>{{ registration.bank_name }}</td>
-                <td>{{ registration.bank_account_number }}</td>
-                <td>
+                <td class="col-id" data-label="NOVA ID">{{ registration.request_code }}</td>
+                <td data-label="Tarikh"><span>{{ registration.created_at.strftime('%d/%m/%Y %H:%M') if registration.created_at else '—' }}</span></td>
+                <td data-label="Nama"><span>{{ registration.full_name }}</span></td>
+                <td data-label="No. Telefon"><span>{{ registration.phone }}</span></td>
+                <td data-label="Kod Referral"><span>{{ registration.referral_code or '—' }}</span></td>
+                <td data-label="Pakej"><span>{{ registration.plan_name }}</span></td>
+                <td data-label="Bank"><span>{{ registration.bank_name }}</span></td>
+                <td data-label="No. Akaun Bank"><span>{{ registration.bank_account_number }}</span></td>
+                <td class="col-actions">
                   {% if registration.user %}
                     <span class="badge badge-processed">Diterima</span><br>
                     <span class="col-id">{{ registration.user.nova_id }}</span><br>
