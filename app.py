@@ -837,6 +837,30 @@ def admin_dashboard():
     withdrawal_requests = WithdrawalRequest.query.order_by(
         WithdrawalRequest.created_at.desc()
     ).all()
+    completed_withdrawals = [
+        withdrawal for withdrawal in withdrawal_requests
+        if withdrawal.status == "processed"
+    ]
+    receipt_withdrawal = None
+    receipt_processed_at = None
+    receipt_id = request.args.get("receipt_id", "").strip()
+    if receipt_id:
+        try:
+            receipt_id = int(receipt_id)
+        except ValueError:
+            receipt_id = None
+        if receipt_id:
+            receipt_candidate = db.session.get(WithdrawalRequest, receipt_id)
+            if receipt_candidate and receipt_candidate.status == "processed":
+                receipt_withdrawal = receipt_candidate
+                processed_at = receipt_candidate.processed_at or receipt_candidate.created_at
+                if processed_at:
+                    if processed_at.tzinfo is None:
+                        processed_at = processed_at.replace(tzinfo=timezone.utc)
+                    receipt_processed_at = processed_at.astimezone(MYT).replace(tzinfo=None)
+        if not receipt_withdrawal:
+            flash("Resit hanya boleh dijana untuk bayaran yang telah disahkan selesai.", "error")
+
     linked_registration_ids = {
         user.registration_request_id for user in users if user.registration_request_id
     }
@@ -845,13 +869,20 @@ def admin_dashboard():
         for withdrawal in withdrawal_requests
         if withdrawal.registration_request_id
     }
+    children_by_parent = {}
+    for user in users:
+        if user.referred_by_id:
+            children_by_parent.setdefault(user.referred_by_id, []).append(user)
+
     referrals_by_user = {}
     incentive_progress_by_user = {}
     for user in users:
-        level_one = [referral for referral in users if referral.referred_by_id == user.id]
+        level_one = children_by_parent.get(user.id, [])
         level_one_ids = {referral.id for referral in level_one}
         level_two = [
-            referral for referral in users if referral.referred_by_id in level_one_ids
+            referral
+            for referral_id in level_one_ids
+            for referral in children_by_parent.get(referral_id, [])
         ]
         referrals_by_user[user.id] = (level_one, level_two)
         next_rank = next_incentive_rank(user.current_rank)
@@ -885,6 +916,9 @@ def admin_dashboard():
         users=users,
         registration_requests=registration_requests,
         withdrawal_requests=withdrawal_requests,
+        completed_withdrawals=completed_withdrawals,
+        receipt_withdrawal=receipt_withdrawal,
+        receipt_processed_at=receipt_processed_at,
         protected_registration_ids=protected_registration_ids,
         referrals_by_user=referrals_by_user,
         incentive_progress_by_user=incentive_progress_by_user,
@@ -998,6 +1032,12 @@ def admin_create_user():
     if not password or not full_name:
         flash("Sila isi Nama dan Password.", "error")
         return redirect(url_for("admin_dashboard"))
+    if len(password) < 12:
+        flash("Password user mesti sekurang-kurangnya 12 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if len(password) > 128:
+        flash("Password user tidak boleh melebihi 128 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
 
     try:
         balance_float = float(balance)
@@ -1051,9 +1091,9 @@ def admin_update_user(user_id):
 
     full_name = request.form.get("full_name", "").strip()
     balance = request.form.get("balance")
-    new_password = request.form.get("new_password", "").strip()
+    new_password = request.form.get("new_password", "")
     is_active = request.form.get("is_active") == "on"
-    is_matured = request.form.get("is_matured") == "on"
+    is_matured = user.is_matured or request.form.get("is_matured") == "on"
     registration_id = request.form.get("registration_request_id", "").strip()
 
     if full_name:
@@ -1074,6 +1114,12 @@ def admin_update_user(user_id):
             flash("Format baki tidak sah (mesti angka).", "error")
             return redirect(url_for("admin_dashboard"))
     
+    if new_password and len(new_password) < 12:
+        flash("Password user mesti sekurang-kurangnya 12 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if len(new_password) > 128:
+        flash("Password user tidak boleh melebihi 128 aksara.", "error")
+        return redirect(url_for("admin_dashboard"))
     if new_password:
         user.set_password(new_password)
     if registration_id:
@@ -1089,8 +1135,6 @@ def admin_update_user(user_id):
             return redirect(url_for("admin_dashboard"))
         user.registration_request = registration
         user.full_name = registration.full_name
-    else:
-        user.registration_request = None
     user.is_active = is_active
     user.is_matured = is_matured
 
@@ -1231,16 +1275,29 @@ def admin_update_withdrawal(withdrawal_id, action):
         withdrawal.status = "rejected"
         flash(f"Permohonan {user.nova_id} ditolak dan RM {withdrawal.amount:,.2f} dipulangkan ke baki.", "success")
     else:
+        if request.form.get("payment_confirmed") != "on":
+            flash("Sahkan dahulu bahawa pindahan bank telah dibuat.", "error")
+            return redirect(url_for("admin_dashboard"))
         payment_reference = request.form.get("payment_reference", "").strip()
         if not payment_reference or len(payment_reference) > 120:
             flash("Masukkan nombor rujukan transaksi bayaran (maksimum 120 aksara).", "error")
             return redirect(url_for("admin_dashboard"))
         withdrawal.payment_reference = payment_reference
         withdrawal.status = "processed"
-        flash(f"Permohonan {user.nova_id} ditandakan selesai. Rujukan bayaran: {payment_reference}.", "success")
 
     withdrawal.processed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.session.commit()
+    if action == "processed":
+        flash(
+            f"Bayaran RM {withdrawal.amount:,.2f} untuk {user.nova_id} disahkan. "
+            "Resit transaksi tersedia untuk dimuat turun.",
+            "success",
+        )
+        return redirect(url_for(
+            "admin_dashboard",
+            receipt_id=withdrawal.id,
+            _anchor="receiptPanel",
+        ))
     return redirect(url_for("admin_dashboard"))
 
 
@@ -1413,7 +1470,11 @@ def admin_clear_history(user_id):
     if user.live_balance_snapshot:
         db.session.delete(user.live_balance_snapshot)
     db.session.commit()
-    flash(f"History entry untuk '{user.nova_id}' berjaya dipadam.", "success")
+    flash(
+        f"Rekod carta '{user.nova_id}' dikosongkan. Untung/rugi semasa telah disimpan "
+        "dalam baki akaun; rekod kewangan lain tidak dipadam.",
+        "success",
+    )
     return redirect(url_for("admin_dashboard"))
 
 

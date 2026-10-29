@@ -565,8 +565,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="wallet-request-field">
               <label for="withdrawAmount">Jumlah Pengeluaran (RM)</label>
-              <input id="withdrawAmount" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(withdrawal_limit) }}" step="0.01" required>
-            </div>
+              <input id="withdrawAmount" name="amount" type="number"               min="0.01" step="0.01" inputmode="decimal" required>
+                            <small class="wallet-request-note">Maksimum: RM {{ '%.2f'|format(withdrawal_limit) }}</small>
+                          </div>
             <div class="withdraw-bank-details" aria-label="Maklumat bank penerima">
               <div class="withdraw-bank-row"><span>Nama penama (nama pendaftaran)</span><span>{{ bank_registration.full_name }}</span></div>
               <div class="withdraw-bank-row"><span>Nama bank</span><span>{{ bank_registration.bank_name }}</span></div>

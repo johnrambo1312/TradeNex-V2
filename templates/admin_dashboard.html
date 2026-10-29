@@ -114,7 +114,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .detail-section-title{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.85rem}
 .user-name-button{padding:0;border:0;background:transparent;color:var(--light);font:600 0.84rem 'IBM Plex Sans',sans-serif;text-align:left;cursor:pointer}
 .user-name-button:hover{color:var(--gold2);text-decoration:underline}
-.user-detail-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem;margin-bottom:1.25rem}
+.user-list-tools{display:grid;grid-template-columns:minmax(220px,1fr) minmax(160px,220px) minmax(150px,200px) auto;gap:0.65rem;align-items:end;margin-bottom:1rem}
+.user-list-tools .form-row{min-width:0}
+.user-list-count{color:var(--muted);font-size:0.76rem;white-space:nowrap;padding-bottom:0.65rem}
+@media(max-width:700px){.user-list-tools{grid-template-columns:1fr 1fr}.user-list-count{grid-column:1/-1}}
+@media(max-width:420px){.user-list-tools{grid-template-columns:1fr}}
+.user-detail-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.75rem;margin-bottom:1.25rem}
 .user-summary-card{padding:0.85rem;background:var(--navy3);border:1px solid var(--border);border-radius:8px}
 .user-summary-label{color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.4px}
 .user-summary-value{margin-top:0.35rem;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;color:var(--gold2)}
@@ -158,7 +163,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.25rem}
 
 /* RECEIPT */
-#customReceiptCard{
+#paymentReceiptCard{
   width:380px;max-width:100%;
   background:
     radial-gradient(120% 80% at 0% 0%,rgba(36,106,186,0.24) 0%,rgba(36,106,186,0) 55%),
@@ -194,12 +199,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .rc-ref{font-family:'IBM Plex Mono',monospace;font-size:0.58rem;color:#2d4a6a;letter-spacing:1px;margin-top:0.4rem}
 .rc-wm{position:absolute;bottom:48px;right:14px;font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;color:rgba(212,168,67,0.045);letter-spacing:-1px;pointer-events:none;user-select:none;line-height:1}
 
-/* CUSTOM RECEIPT PANEL */
-.custom-receipt-grid{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start}
-.custom-receipt-form{width:100%;max-width:430px}
-.custom-receipt-preview{display:flex;flex-direction:column;align-items:center;gap:0.7rem}
-.custom-receipt-preview .rc-amount-label{text-transform:none;letter-spacing:0.4px}
-.custom-receipt-actions{display:flex;gap:0.6rem;flex-wrap:wrap;justify-content:center}
+/* VERIFIED PAYMENT RECEIPT */
+.receipt-grid{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start}
+.receipt-note{width:100%;max-width:430px}
+.receipt-preview{display:flex;flex-direction:column;align-items:center;gap:0.7rem}
+.receipt-preview .rc-amount-label{text-transform:none;letter-spacing:0.4px}
+.receipt-actions{display:flex;gap:0.6rem;flex-wrap:wrap;justify-content:center}
 
 @keyframes rcHeadShine{
   0%, 70%, 100%{left:-42%;opacity:0}
@@ -217,8 +222,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   td,th{padding:0.5rem 0.4rem}
   .col-id{display:none}
   .flash-stack{top:calc(60px + 0.75rem);right:0.75rem;width:min(240px,calc(100% - 1.5rem))}
-  .custom-receipt-grid{grid-template-columns:1fr}
-  .custom-receipt-form{max-width:100%}
+  .receipt-grid{grid-template-columns:1fr}
+  .receipt-note{max-width:100%}
 }
 </style>
 </head>
@@ -352,7 +357,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             <tr>
               <th>Tarikh</th>
               <th>Nama / NOVA ID</th>
-              <th>Jumlah (RM)</th>
+              <th>Jumlah / Pecahan (RM)</th>
               <th>Maklumat Pendaftaran</th>
               <th>Status</th>
               <th>Tindakan</th>
@@ -363,7 +368,15 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               <tr>
                 <td>{{ withdrawal.created_at.strftime('%d/%m/%Y %H:%M') if withdrawal.created_at else '—' }}</td>
                 <td>{{ withdrawal.user.full_name }}<br><span class="col-id">{{ withdrawal.user.nova_id }}</span></td>
-                <td class="col-modal">{{ 'RM {:,.2f}'.format(withdrawal.amount) }}</td>
+                <td class="col-modal">
+                  <strong>Jumlah: RM {{ '%.2f'|format(withdrawal.amount) }}</strong><br>
+                  {% if withdrawal.commission_amount or withdrawal.account_amount %}
+                    <small>Komisen: RM {{ '%.2f'|format(withdrawal.commission_amount) }}<br>
+                    Baki akaun (modal/untung): RM {{ '%.2f'|format(withdrawal.account_amount) }}</small>
+                  {% else %}
+                    <small style="color:var(--muted)">Pecahan tidak direkodkan (permohonan lama)</small>
+                  {% endif %}
+                </td>
                 <td>
                   {% if withdrawal.bank_name and withdrawal.bank_account_number %}
                     {{ withdrawal.account_holder_name or '—' }}<br>
@@ -388,7 +401,11 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                       <form method="POST" action="{{ url_for('admin_update_withdrawal', withdrawal_id=withdrawal.id, action='processed') }}" onsubmit="return confirm('Pastikan bayaran sudah dibuat dan rujukan transaksi betul sebelum mengesahkan.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input class="form-input" type="text" name="payment_reference" maxlength="120" placeholder="No. rujukan transaksi" aria-label="Nombor rujukan transaksi bayaran" required>
-                        <button class="btn btn-gold" type="submit">Tandakan Bayaran Selesai</button>
+                        <label class="checkbox-row">
+                          <input type="checkbox" name="payment_confirmed" required>
+                          <span>Saya sahkan pindahan bank telah dibuat</span>
+                        </label>
+                        <button class="btn btn-gold" type="submit">Tandakan Selesai</button>
                       </form>
                       <form method="POST" action="{{ url_for('admin_update_withdrawal', withdrawal_id=withdrawal.id, action='rejected') }}" onsubmit="return confirm('Tolak permohonan ini dan pulangkan jumlah ke baki user?');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -396,7 +413,11 @@ tr:hover td{background:rgba(255,255,255,0.015)}
                       </form>
                     </div>
                   {% else %}
-                    <span style="color:var(--muted)">—</span>
+                    {% if withdrawal.status == 'processed' %}
+                      <a class="btn btn-outline" href="{{ url_for('admin_dashboard', receipt_id=withdrawal.id, _anchor='receiptPanel') }}">Lihat / muat turun resit</a>
+                    {% else %}
+                      <span style="color:var(--muted)">—</span>
+                    {% endif %}
                   {% endif %}
                 </td>
               </tr>
@@ -424,7 +445,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         </div>
         <div class="form-row">
           <label class="form-label">Password</label>
-          <input class="form-input" type="password" name="password" placeholder="Tetapkan password" autocomplete="new-password" required>
+          <input class="form-input" type="password" name="password" placeholder="Minimum 12 aksara" minlength="12" maxlength="128" autocomplete="new-password" required>
         </div>
         <div class="form-row">
           <label class="form-label">Modal Awal (RM)</label>
@@ -450,6 +471,31 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   </div>
 
   <div class="panel">
+    <div class="user-list-tools" role="search">
+      <div class="form-row">
+        <label class="form-label" for="userSearch">Cari nama atau NOVA ID</label>
+        <input class="form-input" type="search" id="userSearch" placeholder="Taip nama / NOVA ID" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="userStatusFilter">Status akaun</label>
+        <select class="form-input" id="userStatusFilter">
+          <option value="">Semua status</option>
+          <option value="ready">Sedia</option>
+          <option value="active">Aktif</option>
+          <option value="closed">Selesai</option>
+          <option value="inactive">Tidak aktif</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="userMaturityFilter">Kematangan</label>
+        <select class="form-input" id="userMaturityFilter">
+          <option value="">Semua</option>
+          <option value="matured">Matang</option>
+          <option value="immature">Belum matang</option>
+        </select>
+      </div>
+      <span class="user-list-count" id="userListCount" aria-live="polite">{{ users|length }} akaun</span>
+    </div>
     <table>
       <thead>
         <tr>
@@ -462,7 +508,10 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </thead>
       <tbody>
         {% for u in users %}
-        <tr>
+        <tr data-user-row
+            data-search="{{ (u.full_name ~ ' ' ~ u.nova_id)|lower }}"
+            data-status="{{ 'inactive' if not u.is_active else 'closed' if u.is_trade_closed else 'active' if u.entries|length > 0 else 'ready' }}"
+            data-matured="{{ 'matured' if u.is_matured else 'immature' }}">
           <td class="col-id">{{ u.nova_id }}</td>
           <td class="col-nama"><button class="user-name-button" type="button" onclick="selectUser({{ u.id }})">{{ u.full_name }}</button></td>
           <td class="col-modal">{{ "%.2f"|format(u.balance) }}</td>
@@ -480,9 +529,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </td>
           <td>
             <div class="actions">
-              <form method="POST" action="{{ url_for('admin_clear_history', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Buang semua history entry untuk {{ u.nova_id }}?');">
+              <form method="POST" action="{{ url_for('admin_clear_history', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Kosongkan rekod carta {{ u.nova_id }}? Untung/rugi semasa akan disimpan dalam baki akaun.');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-danger">Clear</button>
+                <button type="submit" class="btn btn-danger">Kosongkan Carta</button>
               </form>
               <button type="button" class="btn btn-outline" onclick="selectUser({{ u.id }}, true)">Urus Chart</button>
               {% if not u.is_matured %}
@@ -498,9 +547,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             </div>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada user lagi. Cipta user baru untuk mula.</td></tr>
         {% endfor %}
+        {% if users %}
+          <tr id="noUsersMatch" hidden><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada akaun sepadan dengan carian atau penapis.</td></tr>
+        {% else %}
+          <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">Tiada user lagi. Cipta user baru untuk mula.</td></tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
@@ -523,9 +575,10 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     {% set genealogy = referrals_by_user.get(u.id, ([], [])) %}
     {% set incentive = incentive_progress_by_user.get(u.id, {}) %}
     <div class="user-detail-summary">
-      <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
-      <div class="user-summary-card"><div class="user-summary-label">Komisen menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>
-      <div class="user-summary-card"><div class="user-summary-label">Jumlah komisen</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0) + commission_totals.get('pending', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Komisen dibayar (sepanjang masa)</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('paid', 0)) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Sudah dimohon / dikeluarkan</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawn_commission) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Baki komisen tersedia</div><div class="user-summary-value">RM {{ '%.2f'|format(u.withdrawable_commission) }}</div></div>
+      <div class="user-summary-card"><div class="user-summary-label">Menunggu / ditahan</div><div class="user-summary-value">RM {{ '%.2f'|format(commission_totals.get('pending', 0)) }}</div></div>
     </div>
     <div class="rank-promotion">
       <div>
@@ -632,16 +685,21 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           <div class="form-row" style="margin-bottom:0.7rem">
             <label class="form-label">Rekod Pendaftaran / Akaun Bank</label>
             <select class="form-input" name="registration_request_id">
-              <option value="">Tidak dipautkan</option>
+              <option value="" selected>{{ 'Kekalkan pautan semasa' if u.registration_request_id else 'Tidak dipautkan' }}</option>
               {% for registration in registration_requests %}
                 {% if registration.id not in protected_registration_ids or registration.id == u.registration_request_id %}
-                  <option value="{{ registration.id }}" {{ 'selected' if registration.id == u.registration_request_id }}>
+                  <option value="{{ registration.id }}">
                     {{ registration.request_code }} — {{ registration.full_name }} · {{ registration.bank_name }} · {{ registration.bank_account_number }}
                   </option>
                 {% endif %}
               {% endfor %}
             </select>
-            <small style="color:var(--muted)">Pilih rekod yang tepat; nama sahaja tidak digunakan untuk padanan pengeluaran.</small>
+            <small style="color:var(--muted)">Kosong mengekalkan pautan semasa. Pilih rekod baharu hanya untuk menukar akaun bank; nama sahaja tidak digunakan untuk padanan pengeluaran.</small>
+            {% if u.registration_request %}
+              <small style="display:block;color:var(--light);margin-top:0.25rem">Pautan semasa: {{ u.registration_request.full_name }} · {{ u.registration_request.bank_name }} · {{ u.registration_request.bank_account_number }}</small>
+            {% else %}
+              <small style="display:block;color:var(--gold2);margin-top:0.25rem">Belum ada rekod pendaftaran / akaun bank yang dipautkan.</small>
+            {% endif %}
           </div>
           <div class="form-row" style="margin-bottom:0.7rem">
             <label class="form-label">Modal Asal (RM)</label>
@@ -649,15 +707,15 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </div>
           <div class="form-row" style="margin-bottom:0.7rem">
             <label class="form-label">Tukar Password (kosong = tak tukar)</label>
-            <input class="form-input" type="password" name="new_password" placeholder="Password baru" autocomplete="new-password">
+            <input class="form-input" type="password" name="new_password" placeholder="Kosongkan jika tidak ditukar (minimum 12 aksara)" minlength="12" maxlength="128" autocomplete="new-password">
           </div>
           <div class="checkbox-row" style="margin-bottom:0.85rem">
             <input type="checkbox" name="is_active" id="active-{{ u.id }}" {{ 'checked' if u.is_active }}>
             <label for="active-{{ u.id }}">Akaun Aktif</label>
           </div>
           <div class="checkbox-row" style="margin-bottom:0.85rem">
-            <input type="checkbox" name="is_matured" id="matured-{{ u.id }}" {{ 'checked' if u.is_matured }}>
-            <label for="matured-{{ u.id }}">Akaun Matang — benarkan pengeluaran modal</label>
+            <input type="checkbox" name="is_matured" id="matured-{{ u.id }}" {{ 'checked' if u.is_matured }} {{ 'disabled' if u.is_matured }}>
+            <label for="matured-{{ u.id }}">Akaun Matang — benarkan pengeluaran modal (tidak boleh ditarik balik)</label>
           </div>
           <div style="display:flex;gap:0.5rem;align-items:center">
             <button type="submit" class="btn btn-gold">Simpan</button>
@@ -720,37 +778,30 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   </div>
   {% endfor %}
 
-  <div class="panel" id="customReceiptPanel">
+  <div class="panel" id="receiptPanel">
     <div class="panel-header">
-      <span class="panel-title">Generator Resit Custom</span>
+      <span class="panel-title">Resit Pembayaran</span>
     </div>
-    <div class="custom-receipt-grid">
-      <div class="custom-receipt-form">
-        <div class="form-grid">
-          <div class="form-row form-full">
-            <label class="form-label">Nama Pelanggan</label>
-            <input class="form-input" type="text" id="customName" placeholder="cth: Natashah Imani Binti Lee" oninput="updateCustomReceipt()">
-          </div>
-          <div class="form-row">
-            <label class="form-label">Amaun (RM)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="customAmount" placeholder="0.00" oninput="updateCustomReceipt()">
-          </div>
-          <div class="form-row">
-            <label class="form-label">Baki Selepas Withdraw (RM)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="customAfter" placeholder="0.00" oninput="updateCustomReceipt()">
-          </div>
-          <div class="form-row">
-            <label class="form-label">Tarikh & Masa</label>
-            <input class="form-input" type="datetime-local" id="customDate" oninput="updateCustomReceipt()">
-          </div>
-          <div class="form-row form-full">
-            <label class="form-label">Jenis Transaksi</label>
-            <input class="form-input" type="text" value="Keuntungan" readonly>
-          </div>
+    {% if completed_withdrawals %}
+      <form method="GET" action="{{ url_for('admin_dashboard') }}" class="form-row" style="max-width:520px;margin-bottom:1rem">
+        <label class="form-label" for="receiptWithdrawal">Pilih transaksi yang sudah selesai</label>
+        <select class="form-input" id="receiptWithdrawal" name="receipt_id" onchange="this.form.submit()">
+          <option value="">Pilih permohonan pengeluaran</option>
+          {% for item in completed_withdrawals %}
+            <option value="{{ item.id }}" {{ 'selected' if receipt_withdrawal and item.id == receipt_withdrawal.id }}>
+              {{ item.user.nova_id }} · RM {{ '%.2f'|format(item.amount) }} · {{ item.processed_at.strftime('%d/%m/%Y') if item.processed_at else 'Tarikh tidak direkodkan' }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+    {% if receipt_withdrawal %}
+      <div class="receipt-grid">
+        <div class="receipt-note" style="color:var(--muted);font-size:0.82rem;line-height:1.6">
+          Resit ini dijana daripada rekod bayaran yang telah disahkan selesai. Semak maklumat transaksi sebelum muat turun dan hantar kepada user.
         </div>
-      </div>
-      <div class="custom-receipt-preview">
-        <div id="customReceiptCard">
+        <div class="receipt-preview">
+          <div id="paymentReceiptCard">
           <div class="rc-wm">TradeNex</div>
           <div class="rc-head">
             <div class="rc-logo">Trade<span>Nex</span> Capital</div>
@@ -760,34 +811,53 @@ tr:hover td{background:rgba(255,255,255,0.015)}
             </div>
           </div>
           <div class="rc-amount-sec">
-            <div class="rc-amount-label">Amaun Withdraw</div>
-            <div class="rc-amount" id="crcAmount">RM 0.00</div>
+            <div class="rc-amount-label">Bayaran Pengeluaran</div>
+            <div class="rc-amount">RM {{ '%.2f'|format(receipt_withdrawal.amount) }}</div>
           </div>
           <div class="rc-body">
             <div class="rc-row">
               <span class="rc-key">Nama Pelanggan</span>
-              <span class="rc-val" id="crcName">—</span>
+              <span class="rc-val">{{ receipt_withdrawal.user.full_name }}</span>
             </div>
             <div class="rc-row">
               <span class="rc-key">NOVA ID</span>
-              <span class="rc-val gold" id="crcNovaId">—</span>
+              <span class="rc-val gold">{{ receipt_withdrawal.user.nova_id }}</span>
+            </div>
+            {% if receipt_withdrawal.commission_amount or receipt_withdrawal.account_amount %}
+              <div class="rc-row">
+                <span class="rc-key">Komisen</span>
+                <span class="rc-val">RM {{ '%.2f'|format(receipt_withdrawal.commission_amount) }}</span>
+              </div>
+              <div class="rc-row">
+                <span class="rc-key">Baki akaun (modal/untung)</span>
+                <span class="rc-val">RM {{ '%.2f'|format(receipt_withdrawal.account_amount) }}</span>
+              </div>
+            {% else %}
+              <div class="rc-row">
+                <span class="rc-key">Pecahan amaun</span>
+                <span class="rc-val">Tidak direkodkan (permohonan lama)</span>
+              </div>
+            {% endif %}
+            <div class="rc-row">
+              <span class="rc-key">Tarikh Bayaran</span>
+              <span class="rc-val">{{ receipt_processed_at.strftime('%d/%m/%Y %H:%M MYT') if receipt_processed_at else '—' }}</span>
             </div>
             <div class="rc-row">
-              <span class="rc-key">Jenis Transaksi</span>
-              <span class="rc-val" id="crcType">Keuntungan</span>
+              <span class="rc-key">Bank Penerima</span>
+              <span class="rc-val">{{ receipt_withdrawal.bank_name or '—' }}</span>
             </div>
             <div class="rc-row">
-              <span class="rc-key">Baki Selepas Withdraw</span>
-              <span class="rc-val green" id="crcAfter">RM —</span>
-            </div>
-            <div class="rc-row">
-              <span class="rc-key">Tarikh &amp; Masa</span>
-              <span class="rc-val" id="crcDate">—</span>
+              <span class="rc-key">No. Akaun</span>
+              <span class="rc-val">{{ receipt_withdrawal.bank_account_number or '—' }}</span>
             </div>
             <hr class="rc-divider">
             <div class="rc-row">
-              <span class="rc-key">No. Rujukan</span>
-              <span class="rc-val gold" id="crcRef">—</span>
+              <span class="rc-key">Rujukan Bank</span>
+              <span class="rc-val gold">{{ receipt_withdrawal.payment_reference or '—' }}</span>
+            </div>
+            <div class="rc-row">
+              <span class="rc-key">ID Transaksi TradeNex</span>
+              <span class="rc-val gold">WD-{{ receipt_withdrawal.id }}</span>
             </div>
           </div>
           <div class="rc-foot">
@@ -796,16 +866,19 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               <span class="rc-seal-text">DISAHKAN OLEH TRADENEX CAPITAL</span>
               <div class="rc-seal-dot"></div>
             </div>
-            <div class="rc-ref" id="crcFootRef">tradenex.com.my</div>
+            <div class="rc-ref">REKOD PEMBAYARAN · WD-{{ receipt_withdrawal.id }}</div>
+          </div>
+          </div>
+          <div class="receipt-actions">
+            <button class="btn btn-gold" type="button" id="btnDownloadPaymentReceipt" data-nova-id="{{ receipt_withdrawal.user.nova_id }}" data-withdrawal-id="{{ receipt_withdrawal.id }}" onclick="downloadPaymentReceipt()">Muat turun resit PNG</button>
           </div>
         </div>
-        <div class="custom-receipt-actions">
-          <button class="btn btn-outline" type="button" onclick="regenCustomCodes()">Jana NOVA ID & Rujukan</button>
-          <button class="btn btn-outline" type="button" onclick="resetCustomReceipt()">Reset</button>
-          <button class="btn btn-gold" type="button" id="btnSaveCustomImg" onclick="saveCustomReceipt()">⬇ Simpan Resit Custom</button>
-        </div>
       </div>
-    </div>
+    {% elif not completed_withdrawals %}
+      <p style="color:var(--muted);font-size:0.82rem">Resit akan tersedia di sini selepas bayaran pengeluaran ditandakan selesai.</p>
+    {% else %}
+      <p style="color:var(--muted);font-size:0.82rem">Pilih transaksi selesai untuk melihat dan memuat turun resitnya.</p>
+    {% endif %}
   </div>
 
 </div>
@@ -840,11 +913,10 @@ document.addEventListener('DOMContentLoaded', function(){
     }, 4000);
   });
 
-  initCustomReceipt();
+  {% if receipt_withdrawal %}
+  document.getElementById('receiptPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  {% endif %}
 });
-
-var _customNovaId = '';
-var _customRef = '';
 
 /* ── CREATE PANEL ── */
 function toggleCreate(){
@@ -880,75 +952,58 @@ document.addEventListener('keydown',function(event){
   }
 });
 
-/* ── CUSTOM RECEIPT GENERATOR ── */
-function formatRm(value){
-  return 'RM ' + value.toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+/* ── USER LIST SEARCH AND FILTER ── */
+function filterUsers(){
+  var query=(document.getElementById('userSearch').value||'').trim().toLocaleLowerCase();
+  var status=document.getElementById('userStatusFilter').value;
+  var maturity=document.getElementById('userMaturityFilter').value;
+  var rows=Array.prototype.slice.call(document.querySelectorAll('[data-user-row]'));
+  var visibleCount=0;
+  rows.forEach(function(row){
+    var matches=row.dataset.search.indexOf(query)!==-1
+      &&(!status||row.dataset.status===status)
+      &&(!maturity||row.dataset.matured===maturity);
+    row.hidden=!matches;
+    if(matches) visibleCount++;
+  });
+  var count=document.getElementById('userListCount');
+  if(count) count.textContent=visibleCount+' daripada '+rows.length+' akaun';
+  var empty=document.getElementById('noUsersMatch');
+  if(empty) empty.hidden=visibleCount!==0||rows.length===0;
 }
-function genCustomNovaId(){
-  return 'TN' + String(Math.floor(Math.random()*10000)).padStart(4,'0');
-}
-function parseIsoDateToMs(iso){
-  if(!iso) return null;
-  var d = new Date(iso);
-  return isNaN(d.getTime()) ? null : d;
-}
-function initCustomReceipt(){
-  var now = new Date();
-  var pad = function(n){ return String(n).padStart(2,'0'); };
-  var local = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-  _customNovaId = genCustomNovaId();
-  _customRef = genRef();
-  document.getElementById('customDate').value = local;
-  updateCustomReceipt();
-}
-function regenCustomCodes(){
-  _customNovaId = genCustomNovaId();
-  _customRef = genRef();
-  updateCustomReceipt();
-}
-function updateCustomReceipt(){
-  var name = (document.getElementById('customName').value || '').trim();
-  var dateIso = document.getElementById('customDate').value;
-  var dateObj = parseIsoDateToMs(dateIso) || new Date();
-  var amount = parseFloat(document.getElementById('customAmount').value);
-  var after = parseFloat(document.getElementById('customAfter').value);
+['userSearch','userStatusFilter','userMaturityFilter'].forEach(function(id){
+  var control=document.getElementById(id);
+  if(control) control.addEventListener('input',filterUsers);
+  if(control&&control.tagName==='SELECT') control.addEventListener('change',filterUsers);
+});
 
-  if(!_customNovaId) _customNovaId = genCustomNovaId();
-  if(!_customRef) _customRef = genRef();
-
-  document.getElementById('crcName').textContent = name || '—';
-  document.getElementById('crcNovaId').textContent = _customNovaId;
-  document.getElementById('crcType').textContent = 'Keuntungan';
-  document.getElementById('crcDate').textContent = fmtDate(dateObj);
-  document.getElementById('crcRef').textContent = _customRef;
-  document.getElementById('crcFootRef').textContent = 'tradenex.com.my  ·  Ref: ' + _customRef;
-  document.getElementById('crcAmount').textContent = isFinite(amount) ? formatRm(amount) : 'RM 0.00';
-  document.getElementById('crcAfter').textContent = isFinite(after) ? formatRm(after) : 'RM —';
-}
-function resetCustomReceipt(){
-  document.getElementById('customName').value = '';
-  document.getElementById('customAmount').value = '';
-  document.getElementById('customAfter').value = '';
-  initCustomReceipt();
-}
-function saveCustomReceipt(){
-  updateCustomReceipt();
-  var btn = document.getElementById('btnSaveCustomImg');
-  var customRef = (document.getElementById('crcRef').textContent || '').replace(/[^A-Za-z0-9-]/g,'') || 'Custom';
-  var customNova = (_customNovaId || 'NOID').replace(/[^A-Za-z0-9-]/g,'');
-
-  btn.textContent = '⏳ Menjana...';
-  btn.disabled = true;
-  html2canvas(document.getElementById('customReceiptCard'),{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(function(canvas){
-    var a = document.createElement('a');
-    a.download = 'Resit-Custom-' + customNova + '-' + customRef + '.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
-    btn.textContent = '✓ Tersimpan!';
-    setTimeout(function(){ btn.textContent = '⬇ Simpan Resit Custom'; btn.disabled = false; }, 2500);
+/* ── VERIFIED PAYMENT RECEIPT ── */
+function downloadPaymentReceipt(){
+  var btn=document.getElementById('btnDownloadPaymentReceipt');
+  var card=document.getElementById('paymentReceiptCard');
+  if(!btn||!card) return;
+  if(typeof html2canvas!=='function'){
+    alert('Resit tidak dapat dijana kerana pustaka imej gagal dimuatkan. Muat semula halaman dan cuba lagi.');
+    return;
+  }
+  var novaId=(btn.dataset.novaId||'user').replace(/[^A-Za-z0-9-]/g,'');
+  var withdrawalId=(btn.dataset.withdrawalId||'').replace(/[^0-9]/g,'');
+  btn.disabled=true;
+  btn.textContent='Menjana resit...';
+  html2canvas(card,{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(function(canvas){
+    var link=document.createElement('a');
+    link.download='Resit-Pengeluaran-'+novaId+'-WD-'+withdrawalId+'.png';
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+    btn.textContent='Resit berjaya dimuat turun';
+    window.setTimeout(function(){
+      btn.textContent='Muat turun resit PNG';
+      btn.disabled=false;
+    },2500);
   }).catch(function(){
-    btn.textContent = '⬇ Simpan Resit Custom';
-    btn.disabled = false;
+    btn.textContent='Muat turun resit PNG';
+    btn.disabled=false;
+    alert('Resit tidak berjaya dijana. Cuba muat semula halaman.');
   });
 }
 
