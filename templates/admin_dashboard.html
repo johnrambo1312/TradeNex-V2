@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+*:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}}
 :root{
   --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
   --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
@@ -236,8 +238,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   .user-table td[data-label]::before{content:attr(data-label);color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;flex:none}
   .user-table td>span{text-align:right}
   .user-table td.col-actions{display:block;padding-top:0.6rem;margin-top:0.3rem;border-top:1px solid var(--border)}
-  .user-table .actions{gap:0.4rem}
-  .user-table .actions .btn{padding:0.45rem 0.7rem}
+  .user-table .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.5rem}
+  .user-table .actions>form,.user-table .actions>.btn{width:100%;min-width:0}
+  .user-table .actions .btn{width:100%;min-height:44px;justify-content:center;padding:0.45rem}
 }
 </style>
 </head>

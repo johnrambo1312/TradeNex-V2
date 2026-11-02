@@ -573,6 +573,20 @@ def home():
     )
 
 
+@app.route("/health")
+def health_check():
+    try:
+        db.session.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Application health check could not reach the database.")
+        return jsonify({"status": "unavailable"}), 503
+
+    response = jsonify({"status": "ok"})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # ---------------------------------------------------------------------------
 # USER: Login & Dashboard
 # ---------------------------------------------------------------------------
@@ -649,7 +663,7 @@ def api_registration():
         if not User.query.filter_by(referral_code=referral_code, is_active=True).first():
             return jsonify({"ok": False, "message": "Kod referral tidak dijumpai atau tidak aktif."}), 400
 
-    full_name = fields["full_name"].strip()
+    full_name = fields["full_name"].strip().upper()
     email = fields["email"].strip().lower()
     phone = fields["phone"].strip()
     bank_name = fields["bank_name"].strip()
@@ -744,7 +758,7 @@ def api_login():
     password = data.get("password", "")
     if not isinstance(nova_id, str) or not isinstance(password, str):
         return jsonify({"ok": False, "message": "ID atau kata laluan tidak sah."}), 400
-    nova_id = nova_id.strip()
+    nova_id = nova_id.strip().upper()
 
     user = User.query.filter_by(nova_id=nova_id).first()
 
@@ -1795,11 +1809,13 @@ def init_db():
 @app.cli.command("process-referral-commissions")
 def process_referral_commissions_command():
     """Kredit komisen yang sudah melepasi tarikh bayaran berjadual."""
-    paid_count = process_due_referral_commissions()
-    if paid_count:
-        print(f"{paid_count} komisen referral berjaya dikreditkan ke Wallet.")
-    else:
-        print("Tiada komisen referral tertunggak yang layak dibayar.")
+    run_at = now_myt()
+    paid_count = process_due_referral_commissions(run_at)
+    app.logger.info(
+        "Referral commission job completed: paid_count=%s run_at_myt=%s",
+        paid_count,
+        run_at.isoformat(),
+    )
 
 
 if __name__ == "__main__":

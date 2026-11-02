@@ -10,6 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+*:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}}
 :root{
   --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
   --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
@@ -24,6 +26,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 .subtitle{text-align:center;color:var(--text-muted);font-size:0.8rem;margin-bottom:2rem}
 .label{display:block;font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:0.4rem;letter-spacing:0.5px;text-transform:uppercase}
 .input{width:100%;background:#162033;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;color:var(--white);font-size:1rem;font-family:'IBM Plex Sans',sans-serif;outline:none;transition:border-color 0.2s;margin-bottom:1.1rem;-webkit-appearance:none}
+.input.username-input{text-transform:uppercase}
 .input:focus{border-color:var(--gold)}
 .btn{width:100%;background:var(--gold);border:none;color:#0B1629;padding:0.9rem;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;min-height:48px}
 .btn:hover{background:var(--gold2)}
@@ -48,7 +51,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
   <div class="error" id="loginError">ID atau kata laluan tidak sah.</div>
 
   <label class="label" for="novaId">NOVA ID</label>
-  <input class="input" type="text" id="novaId" placeholder="Masukkan NOVA ID anda" autocomplete="username">
+  <input class="input username-input" type="text" id="novaId" placeholder="Masukkan NOVA ID anda" autocomplete="username" autocapitalize="characters" autocorrect="off" spellcheck="false">
 
   <label class="label" for="novaPw">Kata Laluan</label>
   <input class="input" type="password" id="novaPw" placeholder="Masukkan kata laluan" autocomplete="current-password">
@@ -61,8 +64,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 {% include "_registration_modal.html" %}
 
 <script>
+var novaIdInput=document.getElementById('novaId');
+novaIdInput.addEventListener('input',function(){this.value=this.value.toUpperCase();});
+
 function handleLogin(){
-  var id=document.getElementById('novaId').value.trim();
+  var id=novaIdInput.value.trim().toUpperCase();
   var pw=document.getElementById('novaPw').value;
   var err=document.getElementById('loginError');
   if(!id||!pw){err.textContent='Sila isi NOVA ID dan kata laluan.';err.classList.add('show');return;}

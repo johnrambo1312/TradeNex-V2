@@ -11,7 +11,7 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 - **English** ialah bahasa lalai. Pengguna boleh memilih **Bahasa Malaysia** pada halaman pelanggan; pilihan disimpan pada akaun dan digunakan semula selepas log masuk
 - **Dashboard user** — papar baki akaun, untung/rugi, graf trading, profil dengan kod referral unik berformat `E-` diikuti tujuh digit, dan genealogi referral dua level dengan carian serta penapis
 - Borang pendaftaran menerima kod referral pilihan; kod yang dimasukkan mesti milik akaun aktif
-- Komisen referral sekali bagi setiap akaun yang diterima selepas ciri ini dipasang: RM30 untuk Level 1 dan RM15 untuk Level 2. Komisen dijadual pada 30hb (hari terakhir Februari); akaun penerima dan akaun referral mesti aktif ketika kredit dibuat. Komisen berstatus dibayar masuk ke Wallet, tidak mengubah modal akaun. Akaun referral lama tidak menerima backfill.
+- Komisen referral dijadual sekali bagi setiap akaun yang diterima melalui referral selepas ciri ini dipasang. Kadarnya mengikut rank penerima komisen: No Rank RM15 (Level 1) / RM5 (Level 2), Elite Member RM30/RM15, Ambassador Member RM50/RM25, Senior Ambassador RM80/RM40, dan Territory Partner RM100/RM50. Komisen dibayar pada 00:05 MYT pada hari terakhir bulan; akaun penerima dan akaun referral mesti aktif ketika kredit dibuat. Komisen yang dibayar masuk ke Wallet dan tidak mengubah modal akaun. Komisen tertangguh dikira semula apabila rank penerima dinaikkan. Akaun referral lama tidak menerima backfill.
 - Semasa sesi dagangan berjalan, akaun belum matang hanya boleh mengeluarkan komisen referral yang sudah dibayar. Akaun matang boleh mengeluarkan semua baki termasuk modal dan komisen tanpa menutup sesi dagangan. Selepas sesi ditutup, untung/rugi juga boleh dimohon.
 - Dashboard memaparkan komisen setiap referral, status akaun dan sebab komisen masih tertangguh, serta sejarah kredit Wallet. Popup admin menunjukkan laluan referral dan status payout untuk semakan.
 - Render Cron menjalankan `flask --app app process-referral-commissions` setiap hari pada 16:05 UTC (00:05 MYT) dan mengejar bayaran tertunggak jika satu jadual terlepas.
@@ -31,8 +31,8 @@ tradenex-demo/
 ├── app.py                  # Logic utama Flask (semua routes)
 ├── models.py               # Model database (User, AdminUser, TradeEntry)
 ├── requirements.txt        # Dependency Python
-├── Procfile                # Arahan untuk Railway/gunicorn
-├── railway.json            # Config Railway
+├── Procfile                # Arahan server Gunicorn
+├── railway.json            # Config deployment Railway alternatif
 ├── .env.example            # Contoh fail .env (copy jadi .env)
 ├── .gitignore
 └── templates/
@@ -91,11 +91,21 @@ Buka browser:
 - Login user: `http://localhost:5000/login`
 - Login admin: `http://localhost:5000/admin/login`
 
+## Ujian Automatik
+
+Jalankan ujian aliran pengeluaran dan komisen menggunakan SQLite sementara:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+GitHub Actions menjalankan ujian yang sama secara automatik pada setiap push dan pull request. Ujian tidak menggunakan database production.
+
 ---
 
 ## 2. Cara Guna Panel Admin
 
-1. Pergi ke `http://localhost:5000/admin/login` (atau `https://domain-anda.up.railway.app/admin/login` selepas deploy)
+1. Pergi ke `http://localhost:5000/admin/login` (atau `/admin/login` pada URL Render selepas deploy)
 2. Log masuk dengan akaun admin (`admin` / password dalam `.env`)
 3. Di panel admin, anda boleh:
    - **Cipta User Baru** — isi NOVA ID (untuk login user), nama, password, dan baki awal
@@ -125,32 +135,52 @@ git push -u origin main
 
 ---
 
-## 4. Deploy ke Railway
+## 4. Deploy ke Render (utama)
 
-1. Pergi ke [railway.app](https://railway.app) → log masuk dengan GitHub
-2. **New Project** → **Deploy from GitHub repo** → pilih repo yang baru di-push
-3. Railway akan auto-detect Python (Nixpacks) dan install `requirements.txt`
-4. **Tambah Database (disyorkan untuk production):**
-   - Dalam project Railway → **+ New** → **Database** → **PostgreSQL**
-   - Railway automatik akan masukkan `DATABASE_URL` ke environment variables app anda
-5. **Set Environment Variables** (tab *Variables* dalam service app):
-   - `SECRET_KEY` = rentetan rawak panjang
-   - `DEFAULT_ADMIN_PASSWORD` = password admin pilihan anda
-   - `WHATSAPP_NUMBER` = nombor WhatsApp pegawai dalam format antarabangsa tanpa `+` atau ruang, contoh `60123456789`
-6. **Jalankan migration/init-db sekali** selepas deploy pertama:
-   - Buka tab **Settings → Deploy**, atau guna Railway CLI:
-     ```bash
-     railway run flask init-db
-     ```
-   - (Procfile sudah ada baris `release: flask init-db` supaya ini auto-jalan setiap deploy — selamat untuk dijalankan berulang kali sebab kod check dulu sebelum cipta admin baru)
-7. Railway akan bagi URL awam (contoh `https://nama-projek.up.railway.app`)
-   - Laman utama: `/`
-   - Login user: `/login`
-   - Login admin: `/admin/login`
+Fail `render.yaml` ialah Blueprint projek ini. Ia mentakrifkan Web Service,
+PostgreSQL dan Cron Job untuk komisen referral di region Singapore.
+
+1. Push kod ke GitHub dan pastikan `render.yaml` ada di root repository.
+2. Dalam [Render Dashboard](https://dashboard.render.com/), pilih **New**
+   → **Blueprint**, sambungkan repository, kemudian deploy Blueprint.
+3. Semak resources yang akan dibuat daripada `render.yaml`. Fail itu menetapkan
+   `start.sh` sebagai arahan web, `/health` sebagai health check, serta
+   PostgreSQL untuk `DATABASE_URL`.
+4. Selepas resources dibuat, isi environment variables yang ditandakan manual
+   dalam Web Service:
+   - `DEFAULT_ADMIN_PASSWORD` — password admin pertama, sekurang-kurangnya 12 aksara.
+   - `WHATSAPP_NUMBER` — nombor antarabangsa tanpa `+` atau ruang, contoh `60123456789`.
+   `SECRET_KEY` dijana oleh Blueprint dan `DATABASE_URL` dipautkan kepada
+   PostgreSQL. Jangan tukar `APP_ENV=production` atau `FLASK_DEBUG=0`.
+5. Tunggu Web Service berstatus **Live** dan health check `/health` berjaya.
+   Endpoint ini menguji sambungan database; status HTTP 503 bermaksud
+   perkhidmatan belum sihat dan butiran ralat ada dalam log aplikasi.
+6. Aplikasi menyemak skema database dan mencipta admin pertama semasa startup.
+   Buka URL Web Service untuk laman utama, kemudian `/admin/login` untuk log
+   masuk. Tukar password admin melalui panel selepas login pertama.
+7. Semak Cron Job `tradenex-referral-commissions`. Ia berjalan setiap hari
+   pada 16:05 UTC (00:05 MYT). Buka log job untuk mengesahkan
+   `Referral commission job completed` dan nilai `paid_count`; job memproses
+   payout yang sudah sampai tarikh bayar, termasuk yang tertangguh.
+
+Semak harga, had dan sokongan resource semasa dalam Render Dashboard sebelum
+deploy; pelan `starter` dan `basic-1gb` yang dinyatakan dalam Blueprint mungkin
+melibatkan caj mengikut tawaran akaun dan polisi Render semasa.
 
 ---
 
-## 5. Deploy ke Northflank
+## 5. Deploy ke Railway (alternatif)
+
+Konfigurasi Railway masih disimpan dalam repository, tetapi Render ialah
+platform deploy utama projek ini. Di Railway, deploy repository, tambah
+PostgreSQL, kemudian tetapkan `SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD` dan
+`WHATSAPP_NUMBER`. Pastikan `DATABASE_URL` dipautkan kepada PostgreSQL. Aplikasi
+menyemak skema dan mencipta admin pertama semasa startup; jika setup manual
+diperlukan, jalankan `railway run flask init-db`.
+
+---
+
+## 6. Deploy ke Northflank (alternatif)
 
 Projek ini sudah boleh deploy di Northflank menggunakan `Dockerfile`.
 
@@ -196,7 +226,7 @@ Nota:
 
 ---
 
-## 6. Nota Keselamatan (Penting untuk Projek Sekolah)
+## 7. Nota Keselamatan (Penting untuk Projek Sekolah)
 
 - Ini **demo/latihan** — *jangan* gunakan untuk data kewangan sebenar atau letak akaun ini secara terbuka untuk orang awam guna sebagai produk sebenar.
 - Production wajib mempunyai `DEFAULT_ADMIN_PASSWORD`, `SECRET_KEY` dan `DATABASE_URL`; jangan gunakan nilai development.
@@ -206,27 +236,36 @@ Nota:
 
 ---
 
-## 7. Render: Pangkalan Data dan Sandaran
+## 8. Pangkalan Data, Sandaran dan Pemulihan
 
-Blueprint `render.yaml` memautkan `DATABASE_URL` Web Service kepada pangkalan data PostgreSQL `tradenex-postgres`. Selepas deploy, semak di Render Dashboard bahawa:
+Blueprint `render.yaml` memautkan `DATABASE_URL` Web Service kepada pangkalan
+data PostgreSQL `tradenex-postgres`. Selepas deploy, semak di Render Dashboard bahawa:
 
 - Web Service menggunakan `DATABASE_URL` daripada pangkalan data yang betul, bukan SQLite fallback.
 - Pangkalan data dan Web Service berada di region yang sama supaya sambungan dalaman digunakan.
-- Status pangkalan data tersedia dan migration berjaya dijalankan pada startup.
+- Status pangkalan data tersedia dan aplikasi berjaya melepasi health check.
 
-Sandaran PostgreSQL perlu diurus berasingan daripada kod aplikasi. Semak bahagian **Backups** pada halaman pangkalan data Render dan pastikan pelan anda menyediakan jadual sandaran/pemulihan yang sesuai. Untuk salinan tambahan, jalankan `pg_dump` dari persekitaran dipercayai yang mempunyai `DATABASE_URL`:
+Semak tab **Backups** pada halaman database Render untuk mengetahui sandaran
+automatik dan pilihan pemulihan yang tersedia bagi database/plan anda. Jangan
+anggap sandaran automatik tersedia tanpa menyemak tetapan akaun. Untuk salinan
+tambahan, jalankan `pg_dump` dari persekitaran dipercayai yang mempunyai
+`DATABASE_URL` dan PostgreSQL client tools:
 
 ```powershell
 pg_dump $env:DATABASE_URL --format=custom --file=tradenex-backup.dump
 ```
 
-Simpan fail sandaran di storan sulit yang berasingan daripada repository dan uji pemulihan secara berkala pada pangkalan data ujian. Jangan masukkan `DATABASE_URL`, sandaran, atau maklumat pelanggan ke Git.
+Simpan fail sandaran dalam storan sulit di luar repository. Uji pemulihan secara
+berkala ke database ujian yang berasingan—jangan restore terus ke production.
+Selepas restore, pastikan `/health` berjaya dan rekod yang dijangka wujud.
+Jangan masukkan `DATABASE_URL`, fail sandaran atau maklumat pelanggan ke Git.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Masalah | Penyelesaian |
 |---|---|
 | `flask init-db` error "No such command" | Pastikan `FLASK_APP=app.py` (biasanya auto-detect sebab nama fail `app.py`) |
 | Login user sentiasa "ID tidak sah" | Pastikan admin sudah cipta akaun user tersebut di panel admin |
 | Graf tidak muncul | Pastikan admin sudah tambah sekurang-kurangnya 1 entry untuk user itu |
-| Deploy Railway gagal | Semak log build — selalunya disebabkan `requirements.txt` atau environment variable yang tertinggal |
+| Render deploy atau health check gagal | Semak build/deploy logs, `DATABASE_URL`, dan sama ada `/health` boleh mencapai PostgreSQL |
+| Cron job Render tidak berjalan | Semak status job, jadual UTC dalam `render.yaml` dan log job untuk `paid_count` |

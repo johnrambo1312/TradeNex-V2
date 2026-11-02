@@ -1,8 +1,8 @@
 <style>
 .registration-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(5,12,25,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem}
 .registration-overlay.active{display:flex}
-.registration-box{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 2rem);overflow-y:auto;background:#0F1C32;border:1px solid #1E3050;border-radius:16px;padding:2rem}
-.registration-close{position:absolute;top:0.75rem;right:0.9rem;background:none;border:0;color:#8FA3BF;font-size:1.5rem;cursor:pointer}
+.registration-box{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#0F1C32;border:1px solid #1E3050;border-radius:16px;padding:2rem}
+.registration-close{position:absolute;top:0.35rem;right:0.4rem;display:grid;place-items:center;width:44px;height:44px;background:none;border:0;border-radius:6px;color:#8FA3BF;font-size:1.5rem;cursor:pointer}
 .registration-title{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:0.4rem}
 .registration-description{color:#8FA3BF;font-size:0.82rem;line-height:1.5;margin:0 1.5rem 1.25rem 0}
 .registration-label{display:block;color:#8FA3BF;font-size:0.72rem;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:0.35rem}
@@ -27,6 +27,7 @@
 .registration-whatsapp{display:block;background:#22C98A;color:#0B1629;border-radius:7px;padding:0.8rem;text-align:center;text-decoration:none;font-size:0.86rem;font-weight:700}
 .registration-whatsapp:hover{background:#4DDBA6}
 @media(max-width:480px){.registration-box{padding:1.5rem 1.1rem;border-radius:12px}}
+@media(prefers-reduced-motion:reduce){.registration-overlay,.registration-box,.registration-input,.registration-submit,.registration-whatsapp{scroll-behavior:auto!important;animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
 </style>
 
 <div class="registration-overlay" id="registrationModal" onclick="if(event.target===this)closeRegistrationModal()">
@@ -37,7 +38,7 @@
     <div class="registration-message" id="registrationMessage" role="status" aria-live="polite"></div>
     <form id="registrationForm" onsubmit="submitRegistration(event)">
       <label class="registration-label" for="registrationName">Nama penuh (mengikut IC)</label>
-      <input class="registration-input" id="registrationName" name="full_name" type="text" maxlength="120" autocomplete="name" pattern="[\p{L} ]+" title="Nama hanya boleh mengandungi huruf dan ruang." onbeforeinput="if(event.data&&!/^[\p{L} ]+$/u.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'')" required>
+      <input class="registration-input" id="registrationName" name="full_name" type="text" maxlength="120" autocomplete="name" autocapitalize="characters" autocorrect="off" spellcheck="false" pattern="[\p{L} ]+" title="Nama hanya boleh mengandungi huruf dan ruang." onbeforeinput="if(event.data&&!/^[\p{L} ]+$/u.test(event.data))event.preventDefault()" oninput="this.value=this.value.replace(/[^\p{L} ]/gu,'').toUpperCase()" required>
 
       <label class="registration-label" for="registrationEmail">Emel</label>
       <input class="registration-input" id="registrationEmail" name="email" type="email" maxlength="254" autocomplete="email" placeholder="nama@email.com" pattern="[^@\s]+@[^@\s]+\.[^@\s]+" title="Masukkan emel yang sah, contohnya nama@email.com atau nama@email.my." required>

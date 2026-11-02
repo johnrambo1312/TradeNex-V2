@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+*:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}}
 :root{
   --navy:#0B1629;--navy2:#111E35;--navy3:#192847;
   --gold:#D4A843;--gold2:#F0C96A;--white:#FFFFFF;
@@ -69,7 +71,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .withdraw-modal{position:relative;width:min(100%,460px);padding:1.5rem;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,0.45)}
 .withdraw-modal-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:0.35rem}
 .withdraw-modal-sub{color:var(--text-muted);font-size:0.8rem;line-height:1.55;margin-bottom:1.1rem}
-.withdraw-modal-close{position:absolute;top:0.85rem;right:0.9rem;border:0;background:transparent;color:var(--text-muted);font-size:1.4rem;cursor:pointer}
+.withdraw-modal-close{position:absolute;top:0.45rem;right:0.45rem;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);font-size:1.4rem;cursor:pointer}
 .withdraw-bank-details{padding:0.85rem 1rem;background:#0F1C32;border:1px solid var(--border);border-radius:10px;margin:0.9rem 0 1rem}
 .withdraw-bank-row{display:flex;justify-content:space-between;gap:1rem;padding:0.35rem 0;font-size:0.8rem}
 .withdraw-bank-row span:first-child{color:var(--text-muted)}
@@ -82,7 +84,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .profile-overlay.open{display:flex}
 .profile-modal{position:relative;width:min(100%,480px);max-height:calc(100vh - 2rem);overflow-y:auto;padding:1.5rem;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,0.45)}
 .profile-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:1rem}
-.profile-close{position:absolute;top:0.85rem;right:0.9rem;border:0;background:transparent;color:var(--text-muted);font-size:1.4rem;cursor:pointer}
+.profile-close{position:absolute;top:0.45rem;right:0.45rem;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);font-size:1.4rem;cursor:pointer}
 .profile-details{padding:0.85rem 1rem;background:#0F1C32;border:1px solid var(--border);border-radius:10px}
 .profile-row{display:flex;justify-content:space-between;gap:1rem;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem}
 .profile-row:last-child{border-bottom:0}
@@ -96,12 +98,13 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .profile-copy-message{min-height:1.1rem;margin-top:0.45rem;color:var(--green);font-size:0.75rem}
 .nav-menu{position:relative;flex-shrink:0}
 .nav-menu-toggle{display:flex;align-items:center;gap:0.5rem;background:transparent;border:1px solid var(--border);border-radius:7px;padding:0.45rem 0.75rem;color:var(--text-light);font:600 0.8rem 'IBM Plex Sans',sans-serif;cursor:pointer}
+.nav-menu-toggle{min-width:44px;min-height:44px;justify-content:center}
 .nav-menu-toggle:hover,.nav-menu-toggle[aria-expanded="true"]{border-color:var(--gold);color:var(--gold2)}
 .nav-menu-caret{font-size:0.65rem;transition:transform 0.2s}
 .nav-menu-toggle[aria-expanded="true"] .nav-menu-caret{transform:rotate(180deg)}
 .nav-menu-panel{display:none;position:absolute;top:calc(100% + 0.55rem);right:0;z-index:150;width:190px;padding:0.4rem;background:var(--navy2);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.35)}
 .nav-menu-panel.open{display:block}
-.nav-menu-item{display:block;width:100%;padding:0.65rem 0.75rem;border:0;border-radius:6px;background:transparent;color:var(--text-light);text-align:left;text-decoration:none;font:500 0.82rem 'IBM Plex Sans',sans-serif;cursor:pointer}
+.nav-menu-item{display:flex;align-items:center;width:100%;min-height:44px;padding:0.65rem 0.75rem;border:0;border-radius:6px;background:transparent;color:var(--text-light);text-align:left;text-decoration:none;font:500 0.82rem 'IBM Plex Sans',sans-serif;cursor:pointer}
 .nav-menu-item:hover{background:var(--navy3);color:var(--gold2)}
 .nav-menu-divider{height:1px;margin:0.25rem 0;background:var(--border)}
 .nav-menu-language{padding:0.45rem 0.75rem}
@@ -272,7 +275,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 .footer-brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .footer-brand-desc{color:#607a99;font-size:0.8rem;line-height:1.75;max-width:270px;margin-bottom:1.25rem}
 .footer-contact{display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.25rem}
-.footer-contact a{color:#8fa3bf;font-size:0.78rem;text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s}
+.footer-contact a{min-width:0;overflow-wrap:anywhere;color:#8fa3bf;font-size:0.78rem;text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s}
 .footer-contact a:hover{color:var(--gold)}
 .footer-contact svg{width:14px;height:14px;flex-shrink:0;opacity:0.6}
 .footer-social{display:flex;gap:0.5rem}
@@ -295,6 +298,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   nav{padding:0 1rem;height:56px}
   .nav-user{display:none}
   .nav-menu-toggle{padding:0.4rem 0.65rem;font-size:0.75rem}
+  .footer-logo{font-size:1.05rem}
   .wrap{padding:1.25rem 1rem}
   body{overflow-x:hidden}
   h1{font-size:1.2rem;margin-bottom:0.2rem}
@@ -325,7 +329,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   .edu-card{padding:1rem}
   .edu-box{padding:1.25rem;border-radius:12px}
   .edu-box h2{font-size:1rem}
-  .footer-top{grid-template-columns:1fr}
+  .footer-top{grid-template-columns:minmax(0,1fr)}
   footer{padding:2rem 1rem 1.5rem}
   .footer-legal-bar{flex-direction:column;gap:0.5rem}
   .market-section-title{font-size:0.7rem}
