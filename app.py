@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -72,7 +72,13 @@ def inject_contact_settings():
         character for character in os.environ.get("WHATSAPP_NUMBER", "60312345678")
         if character.isdigit()
     )
-    return {"whatsapp_number": whatsapp_number}
+    language = session.get("language", "en")
+    user_id = session.get("user_id")
+    if user_id is not None:
+        user = db.session.get(User, user_id)
+        if user and user.preferred_language in {"en", "ms"}:
+            language = user.preferred_language
+    return {"whatsapp_number": whatsapp_number, "language": language}
 
 # MYT = UTC+8 — semua masa dalam DB disimpan sebagai naive MYT
 MYT = timezone(timedelta(hours=8))
@@ -330,7 +336,7 @@ def ensure_database_ready():
 
 
 def ensure_user_schema():
-    """Tambah medan baki Wallet pada pangkalan data user sedia ada."""
+    """Tambah medan user yang diperlukan pada pangkalan data sedia ada."""
     inspector = sqlalchemy_inspect(db.engine)
     if "users" not in inspector.get_table_names():
         return
@@ -341,6 +347,7 @@ def ensure_user_schema():
         "withdrawn_total": "FLOAT NOT NULL DEFAULT 0",
         "realized_profit_loss": "FLOAT NOT NULL DEFAULT 0",
         "is_matured": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "preferred_language": "VARCHAR(2) NOT NULL DEFAULT 'en'",
         "referral_code": "VARCHAR(9)",
         "referred_by_id": "INTEGER REFERENCES users(id) ON DELETE SET NULL",
         "registration_request_id": (
@@ -554,6 +561,38 @@ def login_page():
     return render_template("login.html")
 
 
+@app.route("/language", methods=["POST"])
+def update_language():
+    language = request.form.get("language", "")
+    if language not in {"en", "ms"}:
+        abort(400)
+
+    user_id = session.get("user_id")
+    if user_id is not None:
+        user = db.session.get(User, user_id)
+        if user and user.is_active:
+            user.preferred_language = language
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.logger.exception("Tidak dapat menyimpan pilihan bahasa pengguna.")
+                return "Pilihan bahasa tidak dapat disimpan. Sila cuba lagi.", 500
+        else:
+            session.pop("user_id", None)
+            session["language"] = language
+            session["language_selected_before_login"] = True
+    else:
+        session["language"] = language
+        session["language_selected_before_login"] = True
+
+    session["language"] = language
+    next_path = request.form.get("next", "")
+    if next_path.startswith("/") and not next_path.startswith("//") and "\\" not in next_path:
+        return redirect(next_path)
+    return redirect(url_for("home"))
+
+
 def normalized_phone(value):
     """Nombor telefon dalam digit sahaja; +60 dan 0 dianggap sama."""
     digits = re.sub(r"\D", "", value or "")
@@ -694,8 +733,25 @@ def api_login():
     if not user.is_active:
         return jsonify({"ok": False, "message": "Akaun anda telah dinyahaktifkan. Sila hubungi admin."}), 403
 
+    language = user.preferred_language if user.preferred_language in {"en", "ms"} else "en"
+    if session.pop("language_selected_before_login", False):
+        selected_language = session.get("language")
+        if selected_language in {"en", "ms"}:
+            user.preferred_language = selected_language
+            language = selected_language
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.logger.exception("Tidak dapat menyimpan pilihan bahasa pengguna semasa log masuk.")
+                return jsonify({
+                    "ok": False,
+                    "message": "Pilihan bahasa tidak dapat disimpan. Sila cuba lagi.",
+                }), 500
+
     session.permanent = True
     session["user_id"] = user.id
+    session["language"] = language
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
 

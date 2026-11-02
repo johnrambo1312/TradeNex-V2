@@ -59,6 +59,9 @@ class User(db.Model):
     referred_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
+    preferred_language = db.Column(
+        db.String(2), nullable=False, default="en", server_default="en"
+    )
 
     # Modal yang ditetapkan admin; sistem tidak mengubahnya semasa trade atau withdraw.
     balance = db.Column(db.Float, default=0.0)

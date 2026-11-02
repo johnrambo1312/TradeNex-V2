@@ -8,6 +8,7 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 
 - `index.html` (dalam `templates/`) — laman utama (landing page) asal anda
 - Sistem **login user** — user log masuk dengan ID & password yang **admin** bagi (tiada daftar sendiri)
+- **English** ialah bahasa lalai. Pengguna boleh memilih **Bahasa Malaysia** pada halaman pelanggan; pilihan disimpan pada akaun dan digunakan semula selepas log masuk
 - **Dashboard user** — papar baki akaun, untung/rugi, graf trading, profil dengan kod referral unik berformat `E-` diikuti tujuh digit, dan genealogi referral dua level dengan carian serta penapis
 - Borang pendaftaran menerima kod referral pilihan; kod yang dimasukkan mesti milik akaun aktif
 - Komisen referral sekali bagi setiap akaun yang diterima selepas ciri ini dipasang: RM30 untuk Level 1 dan RM15 untuk Level 2. Komisen dijadual pada 30hb (hari terakhir Februari); akaun penerima dan akaun referral mesti aktif ketika kredit dibuat. Komisen berstatus dibayar masuk ke Wallet, tidak mengubah modal akaun. Akaun referral lama tidak menerima backfill.

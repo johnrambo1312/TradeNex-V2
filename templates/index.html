@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="{{ 'en' if language == 'en' else 'ms' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,12 +41,14 @@ nav{
   backdrop-filter:blur(8px);
 }
 .logo{display:inline-flex;align-items:center;gap:0.45rem;font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--white);letter-spacing:-0.5px;text-decoration:none}
-.logo span{color:var(--gold)}
+.logo .brand-wordmark{display:inline-flex;gap:0;white-space:nowrap;color:var(--white)}
+.logo .brand-wordmark span{color:var(--gold)}
 .brand-mark{width:38px;height:38px;object-fit:contain;mix-blend-mode:screen}
 .nav-links{display:flex;gap:2.25rem;list-style:none}
 .nav-links a{color:var(--text-muted);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s}
 .nav-links a:hover{color:var(--white)}
 .nav-btns{display:flex;gap:0.75rem;align-items:center}
+.nav-mobile-actions{display:none;align-items:center;gap:0.5rem}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.5rem 1.2rem;border-radius:6px;font-size:0.82rem;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s}
 .btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
 .btn-primary{background:var(--gold);border:none;color:#0B1629;padding:0.5rem 1.3rem;border-radius:6px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s}
@@ -326,8 +328,13 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 /* ===== RESPONSIVE ===== */
 @media(max-width:900px){
   nav{padding:0 1rem;height:60px}
+  nav .logo{gap:0.3rem;font-size:1.1rem}
+  nav .brand-mark{width:30px;height:30px}
+  .nav-mobile-actions{gap:0.35rem}
+  .nav-mobile-actions .language-switcher select{max-width:108px;padding:0.35rem;font-size:0.7rem}
   .nav-links{display:none !important}
   .nav-btns{display:none !important}
+  .nav-mobile-actions{display:flex}
   .nav-hamburger{display:flex !important}
   section{padding:3rem 1rem}
   .hero{padding:2.5rem 1rem 2rem;min-height:auto;overflow-x:hidden}
@@ -359,6 +366,9 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
   body{overflow-x:hidden}
 }
 @media(max-width:480px){
+  nav .logo{font-size:1rem}
+  nav .brand-mark{width:28px;height:28px}
+  .nav-mobile-actions .language-switcher select{max-width:84px;font-size:0.66rem}
   .referral-grid{grid-template-columns:1fr}
   .investment-grid{grid-template-columns:1fr}
   .edu-grid{grid-template-columns:1fr}
@@ -375,7 +385,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
 
 <!-- ===== NAVIGATION ===== -->
 <nav>
-  <a href="#" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span></a>
+  <a href="#" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt=""><span class="brand-wordmark">Trade<span>Nex</span></span></a>
   <ul class="nav-links">
     <li><a href="#affiliate">Affiliate</a></li>
     <li><a href="#about">Tentang Kami</a></li>
@@ -386,12 +396,16 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:5rem 4
     <li><a href="#promotions">Promosi</a></li>
   </ul>
   <div class="nav-btns">
+    {% include "_language_selector.html" %}
     <a href="#daftar-akaun" class="btn-ghost" style="text-decoration:none" onclick="openRegistrationModal(event)">Daftar Akaun</a>
     <a href="/login" class="btn-primary" style="text-decoration:none">Log Masuk</a>
   </div>
-  <button class="nav-hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
+  <div class="nav-mobile-actions">
+    {% with language_select_id="mobileNavLanguageSelect" %}{% include "_language_selector.html" %}{% endwith %}
+    <button class="nav-hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 </nav>
 
 <!-- Mobile Menu -->
@@ -992,5 +1006,6 @@ function closeMobileMenu(){
 <a class="whatsapp-float" href="https://wa.me/{{ whatsapp_number }}?text=Assalamualaikum%2C%20saya%20ingin%20bertanya%20tentang%20akaun%20TradeNex." target="_blank" rel="noopener" aria-label="Hubungi pegawai melalui WhatsApp" title="Hubungi pegawai melalui WhatsApp">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 12.08 0C5.55 0 .24 5.3.24 11.83c0 2.08.54 4.1 1.56 5.88L.14 24l6.43-1.64a11.83 11.83 0 0 0 5.51 1.36h.01c6.52 0 11.83-5.31 11.83-11.83 0-3.16-1.23-6.13-3.42-8.39ZM12.09 21.7h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.81.97 1.02-3.72-.23-.38a9.82 9.82 0 1 1 8.41 4.71Zm5.39-7.36c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.28-.47-2.44-1.5-.9-.8-1.5-1.78-1.68-2.08-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.49 1.7.63.72.23 1.38.2 1.9.12.58-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>
 </a>
+<script src="{{ url_for('static', filename='language.js') }}"></script>
 </body>
 </html>

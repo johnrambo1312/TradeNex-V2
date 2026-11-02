@@ -1,0 +1,17 @@
+<form class="language-switcher" method="POST" action="{{ url_for('update_language') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ request.path }}">
+  <label class="sr-only" for="{{ language_select_id|default('languageSelect') }}">{% if language == "en" %}Language{% else %}Bahasa{% endif %}</label>
+  <select id="{{ language_select_id|default('languageSelect') }}" name="language" aria-label="{% if language == 'en' %}Language{% else %}Bahasa{% endif %}" onchange="this.form.submit()">
+    <option value="en" {{ 'selected' if language == 'en' }}>English</option>
+    <option value="ms" {{ 'selected' if language == 'ms' }}>Bahasa Malaysia</option>
+  </select>
+</form>
+<style>
+.language-switcher{display:inline-flex;align-items:center;margin:0}
+.language-switcher select{background:#111E35;border:1px solid #1E3050;border-radius:6px;color:#C8D8EE;padding:0.45rem 0.6rem;font:inherit;font-size:0.78rem;cursor:pointer}
+.language-switcher select:focus{outline:2px solid #D4A843;outline-offset:2px}
+.language-switcher option{background:#111E35;color:#fff}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+body>.language-switcher{position:fixed;top:1rem;right:1rem;z-index:200}
+</style>

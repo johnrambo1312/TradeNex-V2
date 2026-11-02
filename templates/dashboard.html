@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="{{ 'en' if language == 'en' else 'ms' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -20,7 +20,8 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--w
 
 nav{background:rgba(11,22,41,0.97);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
 .logo{display:inline-flex;align-items:center;gap:0.4rem;font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;color:var(--white);text-decoration:none}
-.logo span{color:var(--gold)}
+.logo .brand-wordmark{display:inline-flex;gap:0;white-space:nowrap;color:var(--white)}
+.logo .brand-wordmark span{color:var(--gold)}
 .brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .nav-right{display:flex;align-items:center;gap:0.75rem;min-width:0}
 .nav-user{color:var(--text-light);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
@@ -42,9 +43,14 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800}
 .wallet-caption{color:var(--text-muted);font-size:0.75rem;margin-top:0.12rem}
 .wallet-cards{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
-.wallet-cards .wallet-total{background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
+.wallet-cards .wallet-total{order:3;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
 .wallet-total .card-val{font-size:2rem;color:var(--gold2)}
 .wallet-total .card-sub{margin-top:0.5rem}
+.dashboard-quick-actions{display:none}
+.dashboard-quick-action{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.45rem;padding:0.75rem 0.25rem;border:1px solid var(--border);border-radius:10px;background:#0F1C32;color:var(--text-light);font:600 0.72rem 'IBM Plex Sans',sans-serif;text-align:center;cursor:pointer}
+.dashboard-quick-action:hover{border-color:rgba(212,168,67,0.55);color:var(--gold2)}
+.dashboard-quick-action svg{width:21px;height:21px;color:var(--gold2)}
+.dashboard-quick-action span{max-width:100%;font-size:0.62rem;line-height:1.15;overflow-wrap:anywhere}
 .wallet-commission-breakdown{display:inline-block;margin-left:0.25rem;color:var(--green);font-size:0.62em;white-space:nowrap;letter-spacing:0}
 .wallet-commission-note{margin-top:0.45rem;color:var(--muted,#94a3b8);font-size:0.72rem;line-height:1.4}
 .wallet-feedback{padding:0.7rem 0.9rem;margin-bottom:0.8rem;border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:0.82rem}
@@ -98,6 +104,10 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .nav-menu-item{display:block;width:100%;padding:0.65rem 0.75rem;border:0;border-radius:6px;background:transparent;color:var(--text-light);text-align:left;text-decoration:none;font:500 0.82rem 'IBM Plex Sans',sans-serif;cursor:pointer}
 .nav-menu-item:hover{background:var(--navy3);color:var(--gold2)}
 .nav-menu-divider{height:1px;margin:0.25rem 0;background:var(--border)}
+.nav-menu-language{padding:0.45rem 0.75rem}
+.nav-menu-language-label{margin-bottom:0.35rem;color:var(--text-muted);font-size:0.7rem}
+.nav-menu-language .language-switcher{display:flex;width:100%}
+.nav-menu-language .language-switcher select{width:100%}
 .nav-menu-logout{margin:0}
 .genealogy-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(3,9,20,0.78);padding:1rem;align-items:center;justify-content:center}
 .genealogy-overlay.open{display:flex}
@@ -140,27 +150,41 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .cards.wallet-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 
 /* ===== CHART ===== */
-.chart-wrap{background:#FFFFFF;border:1px solid #E3E8EF;border-radius:16px;margin-bottom:2rem;overflow:hidden;position:relative}
-.chart-header{display:flex;justify-content:space-between;align-items:center;padding:0.85rem 1rem 0.6rem;border-bottom:1px solid #F0F3F7}
-.chart-ohlc{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#8C99AD;display:flex;gap:0.75rem}
+.chart-wrap{background:#0B1629;border:1px solid var(--border);border-radius:16px;margin-bottom:2rem;overflow:hidden;position:relative}
+.chart-header{display:flex;justify-content:space-between;align-items:center;gap:0.75rem;padding:0.85rem 1rem 0.6rem;border-bottom:1px solid var(--border)}
+.chart-ohlc{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-muted);display:flex;gap:0.75rem}
 .chart-ohlc span{white-space:nowrap}
-.ohlc-o{color:#8C99AD}.ohlc-h{color:#26a69a}.ohlc-l{color:#ef5350}.ohlc-c{color:#1A2236;font-weight:600}
+.ohlc-o{color:var(--text-muted)}.ohlc-h{color:#22C98A}.ohlc-l{color:#FF5B5B}.ohlc-c{color:var(--text-light);font-weight:600}
+.chart-price{font-size:1.05rem;font-weight:600;color:var(--text-light);margin-right:0.5rem}
 .chart-status-badge{font-size:0.68rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;letter-spacing:0.5px}
-.badge-live{background:rgba(38,166,154,0.1);color:#26a69a}
+.badge-live{background:rgba(34,201,138,0.12);color:var(--green)}
 .badge-live::before{content:'●';margin-right:0.35rem;animation:blink 1.4s infinite}
-.badge-closed{background:#F1F3F6;color:#64748B}
+.badge-closed{background:#192847;color:var(--text-muted)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.chart-canvas-wrap{position:relative;width:100%}
-#tvCandle{display:block;width:100%}
-#tvVolume{display:block;width:100%}
-.chart-xaxis{height:24px;position:relative;border-top:1px solid #F0F3F7}
+.chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.55rem 0.85rem;border-bottom:1px solid var(--border);background:#0F1C32}
+.chart-intervals{display:flex;align-items:center;gap:0.25rem}
+.chart-interval-button{min-width:36px;padding:0.35rem 0.55rem;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-muted);font:600 0.72rem 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chart-interval-button:hover,.chart-interval-button[aria-pressed="true"]{border-color:rgba(212,168,67,0.35);background:rgba(212,168,67,0.12);color:var(--gold2)}
+.chart-canvas-wrap{position:relative;width:100%;height:390px}
+#tvChart{width:100%;height:100%}
+.chart-error{padding:1.25rem;color:#FF8A8A;text-align:center;font-size:0.82rem}
 .chart-wrap.no-session{min-height:180px;display:flex;align-items:center;justify-content:center;background:#F8FAFC}
 .chart-wrap.no-session .chart-header{border-bottom:none;background:transparent;padding:2rem 1rem}
 .chart-wrap.no-session .chart-header div{width:100%;text-align:center}
 @media(max-width:800px){
   .chart-wrap{border-radius:10px;margin-bottom:1.25rem}
-  .chart-ohlc{display:none}
+  .chart-canvas-wrap{height:310px}
+}
+@media(max-width:480px){
+  .chart-header{align-items:flex-start;flex-direction:column;gap:0.45rem;padding:0.7rem 0.75rem}
+  .chart-header>div:last-child{margin-left:0!important}
+  .chart-ohlc{gap:0.55rem;font-size:0.66rem}
+  .chart-price{font-size:0.95rem}
+  .chart-toolbar{padding:0.45rem 0.55rem}
+  .chart-canvas-wrap{height:280px}
+  .chart-interval-button{min-width:32px;padding:0.32rem 0.42rem}
+  .chart-status-badge{font-size:0.62rem;padding:0.16rem 0.42rem}
 }
 .market-section{margin-bottom:2rem}
 .market-section-title{font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem}
@@ -243,7 +267,8 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 .footer-wrap{max-width:1200px;margin:0 auto}
 .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:2.5rem}
 .footer-logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;margin-bottom:0.85rem}
-.footer-logo span{color:var(--gold)}
+.footer-logo .brand-wordmark{color:#fff;white-space:nowrap}
+.footer-logo .brand-wordmark span{color:var(--gold)}
 .footer-brand-mark{width:34px;height:34px;object-fit:contain;mix-blend-mode:screen}
 .footer-brand-desc{color:#607a99;font-size:0.8rem;line-height:1.75;max-width:270px;margin-bottom:1.25rem}
 .footer-contact{display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.25rem}
@@ -279,8 +304,14 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   h1{font-size:1.2rem;margin-bottom:0.2rem}
   .sub{font-size:0.8rem;margin-bottom:1rem}
   .cards{grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem}
-  .cards.wallet-cards{grid-template-columns:1fr 1fr}
-  .wallet-total{grid-column:1/-1}
+  .wallet-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.55rem;padding:0.55rem;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.12),transparent 58%),linear-gradient(145deg,#172943,var(--navy2) 70%);border:1px solid rgba(212,168,67,0.22);border-radius:16px}
+  .wallet-heading{grid-column:1/-1;margin-bottom:0.1rem}
+  .cards.wallet-cards{display:contents}
+  .wallet-cards .wallet-total{grid-column:1/-1;order:1;background:rgba(11,22,41,0.42)}
+  .dashboard-quick-actions{grid-column:1/-1;order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0.5rem;padding:0.5rem;background:rgba(11,22,41,0.45);border:1px solid var(--border);border-radius:12px}
+  .wallet-cards .card:not(.wallet-total){order:3;min-width:0;padding:0.8rem}
+  .wallet-cards .card:not(.wallet-total) .card-val{font-size:clamp(0.82rem,3.8vw,1.3rem);letter-spacing:-0.8px;white-space:nowrap}
+  .wallet-request-button{display:none}
   .card{padding:1rem 1rem}
   .card-label{font-size:0.68rem}
   .card-val{font-size:1.3rem}
@@ -305,14 +336,14 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 }
 @media(max-width:480px){
   .cards{grid-template-columns:1fr}
-  .cards.wallet-cards{grid-template-columns:1fr}
-  .wallet-total{grid-column:auto}
+  nav .logo{gap:0.3rem;font-size:1rem}
+  nav .brand-mark{width:28px;height:28px}
   .card-val{font-size:1.5rem}
   .wallet-request{align-items:stretch;flex-direction:column}
   .wallet-request-button{width:100%}
   nav{padding:0 0.75rem}
-  .nav-right{gap:0.5rem}
-  .nav-menu-toggle{padding:0.42rem 0.6rem;font-size:0.74rem}
+  .nav-right{gap:0.35rem}
+  .nav-menu-toggle{padding:0.38rem 0.5rem;font-size:0.7rem}
   .mini-card{padding:0.85rem 0.85rem 0.5rem}
   .mini-head{flex-direction:column;align-items:flex-start;gap:0.25rem}
   .mini-price{font-size:0.8rem}
@@ -320,12 +351,20 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   .crypto-name{font-size:0.78rem}
   .crypto-price{font-size:0.78rem}
 }
+@media(max-width:360px){
+  nav{padding:0 0.5rem}
+  nav .logo{gap:0.2rem;font-size:0.88rem}
+  nav .brand-mark{width:24px;height:24px}
+  .nav-right{gap:0.2rem;flex-shrink:0}
+  .nav-menu-toggle{gap:0.25rem;padding:0.3rem 0.35rem;font-size:0.64rem}
+  .nav-menu-caret{display:none}
+}
 </style>
 </head>
 <body>
 
 <nav>
-  <a href="/" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span></a>
+  <a href="/" class="logo"><img class="brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt=""><span class="brand-wordmark">Trade<span>Nex</span></span></a>
   <div class="nav-right">
     <span class="nav-user">{{ user.full_name }} ({{ user.nova_id }})</span>
     <div class="nav-menu">
@@ -336,6 +375,11 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <button class="nav-menu-item" type="button" onclick="closeNavMenu();openProfileModal()">Profil</button>
         <button class="nav-menu-item" type="button" onclick="closeNavMenu();openGenealogyModal()">Insentif</button>
         <button class="nav-menu-item" type="button" onclick="closeNavMenu();openCommissionHistoryModal()">Sejarah Kredit &amp; Komisen</button>
+        <div class="nav-menu-divider"></div>
+        <div class="nav-menu-language">
+          <div class="nav-menu-language-label">{% if language == "en" %}Language{% else %}Bahasa{% endif %}</div>
+          {% with language_select_id='dashboardLanguageSelect' %}{% include "_language_selector.html" %}{% endwith %}
+        </div>
         <div class="nav-menu-divider"></div>
         <form class="nav-menu-logout" method="POST" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -522,14 +566,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
     </div>
     <div class="cards wallet-cards">
-      <div class="card">
-        <div class="card-label">Modal Akaun</div>
-        <div class="card-val num" id="modalVal">RM {{ "%.2f"|format(user.balance) }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Untung / Rugi Semasa</div>
-        <div class="card-val num" id="plVal">RM {{ "%+.2f"|format(user.current_profit_loss) }}</div>
-      </div>
       <div class="card wallet-total">
         <div class="card-label">Baki</div>
         {% set displayed_balance = user.wallet_display_balance %}
@@ -539,6 +575,32 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
             <span class="wallet-commission-breakdown" id="commissionBalance">(RM {{ "%.2f"|format(user.withdrawable_commission) }})</span>
           {% endif %}
         </div>
+      </div>
+      <div class="dashboard-quick-actions" aria-label="Pintasan dashboard">
+        <button class="dashboard-quick-action" type="button" onclick="openProfileModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+          <span>Profil</span>
+        </button>
+        <button class="dashboard-quick-action" type="button" onclick="openGenealogyModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4m0 0H5v5m7-5h7v5"/></svg>
+          <span>Insentif</span>
+        </button>
+        <button class="dashboard-quick-action" type="button" onclick="openWithdrawalModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5h15a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2z"/><path d="M3 8V5a2 2 0 0 1 2-2h13M20 12h-5a2 2 0 0 0 0 5h5"/><path d="m17 14 2 2 2-2"/></svg>
+          <span>Tarik Keluar</span>
+        </button>
+        <button class="dashboard-quick-action" type="button" onclick="openCommissionHistoryModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8M8 13h8M8 17h4"/><path d="M8 2v3m8-3v3"/></svg>
+          <span>Sejarah</span>
+        </button>
+      </div>
+      <div class="card">
+        <div class="card-label">Modal Akaun</div>
+        <div class="card-val num" id="modalVal">RM {{ "%.2f"|format(user.balance) }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Untung / Rugi Semasa</div>
+        <div class="card-val num" id="plVal">RM {{ "%+.2f"|format(user.current_profit_loss) }}</div>
       </div>
     </div>
     <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
@@ -599,6 +661,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     <div class="chart-header">
       <div style="display:flex;align-items:center;gap:1rem;flex:1">
         <div class="chart-ohlc">
+          <span id="ohlcTime">—</span>
           <span class="ohlc-o">O <span id="ohlcO">—</span></span>
           <span class="ohlc-h">H <span id="ohlcH">—</span></span>
           <span class="ohlc-l">L <span id="ohlcL">—</span></span>
@@ -606,18 +669,22 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.3rem;margin-left:auto;justify-content:flex-end">
-        <span class="num" id="priceNow" style="font-size:1.05rem;font-weight:600;color:#1A2236;margin-right:0.5rem">RM {{ "%.2f"|format(chart_values[0]) }}</span>
+        <span class="num chart-price" id="priceNow">RM {{ "%.2f"|format(chart_values[0]) }}</span>
         <span class="chart-status-badge badge-live" id="chartStatus">LIVE</span>
       </div>
     </div>
-    <div class="chart-canvas-wrap" style="position:relative">
-      <div id="chartSpinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;text-align:center">
-        <div style="width:40px;height:40px;border:3px solid #E2E8F0;border-top-color:#F59E0B;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 0.5rem"></div>
-        <div style="color:#64748B;font-size:0.85rem">Loading chart...</div>
+    <div class="chart-toolbar">
+      <div class="chart-intervals" role="group" aria-label="{% if language == 'en' %}Chart interval{% else %}Tempoh carta{% endif %}">
+        <button class="chart-interval-button" type="button" data-interval="60" aria-pressed="true">1m</button>
+        <button class="chart-interval-button" type="button" data-interval="300" aria-pressed="false">5m</button>
+        <button class="chart-interval-button" type="button" data-interval="900" aria-pressed="false">15m</button>
+        <button class="chart-interval-button" type="button" data-interval="3600" aria-pressed="false">1H</button>
       </div>
-      <canvas id="tvCandle" style="height:340px"></canvas>
-      <canvas id="tvVolume" style="height:70px;border-top:1px solid #F0F3F7"></canvas>
     </div>
+    <div class="chart-canvas-wrap" style="position:relative">
+      <div id="tvChart" role="img" aria-label="{% if language == 'en' %}Interactive candlestick chart{% else %}Carta candlestick interaktif{% endif %}"></div>
+    </div>
+    <div class="chart-error" id="chartLibraryError" hidden>{% if language == 'en' %}The chart library could not be loaded. Please check your connection and refresh the page.{% else %}Library carta tidak dapat dimuatkan. Sila semak sambungan internet dan muat semula halaman.{% endif %}</div>
   </div>
   {% else %}
   <div class="chart-wrap no-session" id="chartWrap">
@@ -843,7 +910,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   <div class="footer-wrap">
     <div class="footer-top">
       <div>
-        <a href="/" class="footer-logo"><img class="footer-brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt="">Trade<span>Nex</span> Capital</a>
+        <a href="/" class="footer-logo"><img class="footer-brand-mark" src="{{ url_for('static', filename='statictradenex logo.png', v=3) }}" alt=""><span class="brand-wordmark">Trade<span>Nex</span></span> Capital</a>
         <p class="footer-brand-desc">Platform niaga bertauliah untuk pasaran Malaysia dan global. Akses lebih 40 bursa antarabangsa dengan sokongan pakar 24/5.</p>
         <div class="footer-contact">
           <a href="tel:+60327830388">
@@ -935,6 +1002,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   </div>
 </div>
 
+{% if show_chart %}
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js" integrity="sha384-8J8e9bGIwf7e9BLO5rwf4zJwNRKcypGnvuGzORD/t4TrFA1gWbl3Hsi/RvyWwBKl" crossorigin="anonymous"></script>
+{% endif %}
 <script>
 // ===== TRADINGVIEW-STYLE CANDLESTICK CHART =====
 {% if chart_values|length > 0 %}
@@ -1051,6 +1121,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
           if(changed){
             allCandles = data.candles;
             tickStateCandleIdx = -1;
+            candlesRevision++;
+            draw();
+            updateHeader();
           }
         }
       })
@@ -1209,82 +1282,45 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   refreshServerCandles();
   setInterval(refreshServerCandles, 5000);
 
-  // ── CANVASES ─────────────────────────────────────────────────────────
-  var cvC = document.getElementById('tvCandle');
-  var cvV = document.getElementById('tvVolume');
-  var ctxC = cvC.getContext('2d');
-  var ctxV = cvV.getContext('2d');
-  var dpr  = window.devicePixelRatio || 1;
+  // LIGHTWEIGHT CHARTS
+  var chartHost = document.getElementById('tvChart');
+  var chartError = document.getElementById('chartLibraryError');
+  var library = window.LightweightCharts;
+  var chart = null;
+  var candleSeries = null;
+  var volumeSeries = null;
+  var activeInterval = 60;
+  var candlesRevision = 0;
+  var renderedRevision = -1;
+  var renderedInterval = 0;
+  var crosshairActive = false;
+  var MYT_OFFSET_SECONDS = 8 * 60 * 60;
+  var closedStatusLabel = {{ ("CLOSED" if language == "en" else "DITUTUP")|tojson }};
+  var BULL = '#22C98A', BEAR = '#FF5B5B';
 
-  var BULL = '#26a69a', BEAR = '#ef5350';
-  // Fixed candle slot width — NEVER changes, chart scrolls instead
-  var SLOT_W = 10;  // px per candle slot (fixed, immutable)
-  var BODY_W = 7;   // px candle body width (fixed)
-  var MAX_PRICE_RANGE = 10000; // Max zoom-out: show ~10,000 RM range
-  var MIN_Y_SCALE = 0.2;      // Max zoom-in: show ~0.2 RM per pixel
-
-  // Pan offset in candle units (float). Positive = scrolled left (older candles visible)
-  var panOffset = 0;   // 0 = latest candle at right edge
-  var userPanned = false;
-
-  // Y-axis pan: offset in price units. 0 = auto-center on current price
-  var yPanOffset = 0;
-  var userYPanned = false;
-
-  // Fixed Y scale: price units per pixel (determines zoom level of price axis)
-  // User can adjust with scroll wheel or touch pinch
-  var yScale = 1.8; // RM per pixel — ~10,000 RM visible range at default zoom
-
-  function resize(){
-    var w = cvC.clientWidth;
-    var hC = window.innerWidth<600 ? 220 : 340;
-    var hV = window.innerWidth<600 ? 50  : 70;
-    cvC.style.height=hC+'px'; cvV.style.height=hV+'px';
-    cvC.width=w*dpr; cvC.height=hC*dpr;
-    cvV.width=w*dpr; cvV.height=hV*dpr;
-    ctxC.setTransform(dpr,0,0,dpr,0,0);
-    ctxV.setTransform(dpr,0,0,dpr,0,0);
-  }
-  resize();
-  window.addEventListener('resize',function(){resize();draw();});
-
-  function niceStep(range,n){
-    var s=range/n, m=Math.pow(10,Math.floor(Math.log10(s))), r=s/m;
-    return (r<=1?1:r<=2?2:r<=5?5:10)*m;
+  function formatChartPrice(price){
+    return (window.innerWidth < 480 ? '' : 'RM ') + price.toFixed(2);
   }
 
-  function draw(){
-    var live = buildLiveCandle();
-    var shown = live ? allCandles.concat([live]) : allCandles;
-    if(!shown.length) return;
+  function aggregateCandles(candles, interval){
+    var result = [];
+    candles.forEach(function(candle){
+      var time = Math.floor(candle.t / interval) * interval;
+      var last = result[result.length - 1];
+      if(last && last.time === time){
+        last.high = Math.max(last.high, candle.h);
+        last.low = Math.min(last.low, candle.l);
+        last.close = candle.c;
+        last.volume += candle.v;
+      } else {
+        result.push({time:time,open:candle.o,high:candle.h,low:candle.l,close:candle.c,volume:candle.v});
+      }
+    });
+    return result;
+  }
 
-    var wC=cvC.clientWidth, hC=cvC.height/dpr;
-    var wV=cvV.clientWidth, hV=cvV.height/dpr;
-    var isMob=window.innerWidth<600;
-    var padL=0, padR=isMob?64:76, padT=8, padB=24;
-    var plotW=wC-padL-padR, plotH=hC-padT-padB;
-
-    var nTotal = shown.length;
-
-    // How many candles fit on screen
-    var perScreen = Math.floor(plotW / SLOT_W);
-
-    // panOffset = scroll left in candle units (0 = candle[0] at left edge)
-    // Auto-follow: keep latest candle near right edge
-    if(!userPanned){
-      panOffset = Math.max(0, nTotal - perScreen);
-    }
-    panOffset = Math.max(0, Math.min(panOffset, Math.max(0, nTotal - 1)));
-    var rightAlignSlots = Math.max(0, perScreen - nTotal);
-
-    // Visible candle indices
-    var startIdx = Math.floor(panOffset);
-    var endIdx   = Math.min(nTotal - 1, startIdx + perScreen + 1);
-    var vis = shown.slice(startIdx, endIdx + 1);
-
-    // Current price
-    var effClose = live ? live.c : shown[shown.length-1].c;
-    var liveProfitLoss = effClose - startingBalance;
+  function updateWalletValues(price){
+    var liveProfitLoss = price - startingBalance;
     var liveBalance = Math.max(0, walletModal - walletAccountWithdrawn + walletRealizedPL + liveProfitLoss)
       + walletWithdrawableCommission;
     var plEl = document.getElementById('plVal');
@@ -1297,305 +1333,127 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     if(balanceEl && Date.now()/1000 >= sessionEnd) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
     var commissionEl = document.getElementById('commissionBalance');
     if(commissionEl) commissionEl.textContent = '(RM ' + walletWithdrawableCommission.toFixed(2) + ')';
+  }
 
-    // ── Y AXIS: fixed scale, pan-able ─────────────────────────────────
-    var centerPrice = effClose + yPanOffset;
-    var halfRange   = (plotH / 2) * yScale;
-    var minV = centerPrice - halfRange;
-    var maxV = centerPrice + halfRange;
-
-    function yp(v){ return padT + plotH - ((v - minV) / (maxV - minV)) * plotH; }
-
-    // X position: candle[0] at left, grows rightward
-    function xp(absIdx){
-      return padL + (rightAlignSlots + absIdx - panOffset + 0.5) * SLOT_W;
-    }
-
-    // ── CANDLE CANVAS ─────────────────────────────────────────────────
-    ctxC.clearRect(0,0,wC,hC);
-    ctxC.fillStyle='#FFFFFF'; ctxC.fillRect(0,0,wC,hC);
-
-    // Grid lines (Y)
-    var step = niceStep(maxV - minV, 6);
-    var tickStart = Math.ceil(minV / step) * step;
-    ctxC.font='500 11px IBM Plex Mono,monospace';
-    ctxC.textAlign='right';
-    for(var tv=tickStart; tv<=maxV+step*0.01; tv+=step){
-      var gy = yp(tv);
-      if(gy < padT-2 || gy > padT+plotH+2) continue;
-      ctxC.strokeStyle='#F0F3F7'; ctxC.lineWidth=1;
-      ctxC.beginPath(); ctxC.moveTo(padL,gy); ctxC.lineTo(wC-padR,gy); ctxC.stroke();
-      ctxC.fillStyle='#9AA5B4';
-      ctxC.fillText(tv.toFixed(2), wC-2, gy+4);
-      ctxC.strokeStyle='#D0D7E2';
-      ctxC.beginPath(); ctxC.moveTo(wC-padR,gy); ctxC.lineTo(wC-padR+4,gy); ctxC.stroke();
-    }
-
-    // Right axis border
-    ctxC.strokeStyle='#E3E8EF'; ctxC.lineWidth=1;
-    ctxC.beginPath(); ctxC.moveTo(wC-padR,padT); ctxC.lineTo(wC-padR,padT+plotH); ctxC.stroke();
-
-    // Entry price dashed line
-    var yEntry = yp(firstPrice);
-    if(yEntry >= padT && yEntry <= padT+plotH){
-      ctxC.setLineDash([4,4]); ctxC.strokeStyle='#D0D7E2'; ctxC.lineWidth=1;
-      ctxC.beginPath(); ctxC.moveTo(padL,yEntry); ctxC.lineTo(wC-padR,yEntry); ctxC.stroke();
-      ctxC.setLineDash([]);
-    }
-
-    // Current price line
-    var yLast = yp(effClose);
-    var lineColor = effClose >= firstPrice ? BULL : BEAR;
-    if(yLast >= padT && yLast <= padT+plotH){
-      ctxC.setLineDash([3,3]); ctxC.strokeStyle=lineColor; ctxC.lineWidth=1;
-      ctxC.beginPath(); ctxC.moveTo(padL,yLast); ctxC.lineTo(wC-padR,yLast); ctxC.stroke();
-      ctxC.setLineDash([]);
-      // Price badge
-      var boxH=18, boxY=yLast-boxH/2;
-      ctxC.fillStyle=lineColor;
-      ctxC.beginPath();
-      if(ctxC.roundRect) ctxC.roundRect(wC-padR, boxY, padR-2, boxH, 2);
-      else ctxC.rect(wC-padR, boxY, padR-2, boxH);
-      ctxC.fill();
-      ctxC.fillStyle='#fff'; ctxC.font='600 11px IBM Plex Mono,monospace'; ctxC.textAlign='right';
-      ctxC.fillText(effClose.toFixed(2), wC-4, yLast+4);
-    }
-
-    // ── CANDLES ───────────────────────────────────────────────────────
-    for(var i=0; i<vis.length; i++){
-      var c = vis[i];
-      var absIdx = startIdx + i;
-      var isLast = (absIdx === shown.length - 1);
-
-      var x = xp(absIdx);
-      if(x + SLOT_W < padL || x - SLOT_W > wC - padR) continue;
-
-      var cOpen  = c.o;
-      var cClose = c.c;
-      var cHigh  = c.h;
-      var cLow   = c.l;
-
-      var up  = cClose >= cOpen;
-      var col = up ? BULL : BEAR;
-
-      var yO  = yp(cOpen);
-      var yC  = yp(cClose);
-      var yH  = yp(cHigh);
-      var yL2 = yp(cLow);
-
-      // Wick
-      ctxC.strokeStyle = col;
-      ctxC.lineWidth = 1;
-      ctxC.beginPath();
-      ctxC.moveTo(Math.round(x), yH);
-      ctxC.lineTo(Math.round(x), yL2);
-      ctxC.stroke();
-
-      // Body
-      var top = Math.min(yO, yC);
-      var bh  = Math.max(Math.abs(yC - yO), 2);
-      var bx  = Math.round(x - BODY_W/2);
-      ctxC.fillStyle = col;
-      ctxC.fillRect(bx, top, BODY_W, bh);
-
-      // Glow on live candle
-      if(isLast && live){
-        ctxC.save();
-        ctxC.shadowColor = col; ctxC.shadowBlur = 10; ctxC.globalAlpha = 0.35;
-        ctxC.fillRect(bx, top, BODY_W, bh);
-        ctxC.restore();
-      }
-    }
-
-    // ── X-AXIS TIME LABELS ────────────────────────────────────────────
-    ctxC.font='11px IBM Plex Mono,monospace'; ctxC.fillStyle='#9AA5B4'; ctxC.textAlign='center';
-    var labelEvery = Math.max(1, Math.round(300 / CANDLE_SEC)); // every ~5 min
-    for(var li=startIdx; li<=endIdx; li++){
-      if((li % labelEvery) !== 0) continue;
-      var lx = xp(li);
-      if(lx < padL+20 || lx > wC-padR-20) continue;
-      var lts = sessionStart + li * CANDLE_SEC;
-      var dd = new Date(lts * 1000);
-      var lbl = dd.getHours().toString().padStart(2,'0')+':'+dd.getMinutes().toString().padStart(2,'0');
-      ctxC.strokeStyle='#E3E8EF'; ctxC.lineWidth=1;
-      ctxC.beginPath(); ctxC.moveTo(lx, padT+plotH); ctxC.lineTo(lx, padT+plotH+4); ctxC.stroke();
-      ctxC.fillStyle='#9AA5B4';
-      ctxC.fillText(lbl, lx, hC-6);
-    }
-
-    // ── VOLUME CANVAS ─────────────────────────────────────────────────
-    ctxV.clearRect(0,0,wV,hV);
-    ctxV.fillStyle='#FFFFFF'; ctxV.fillRect(0,0,wV,hV);
-
-    // Y-axis border
-    ctxV.strokeStyle='#E3E8EF'; ctxV.lineWidth=1;
-    ctxV.beginPath(); ctxV.moveTo(wV-padR,0); ctxV.lineTo(wV-padR,hV); ctxV.stroke();
-
-    var maxVol = 0;
-    for(var vi2=0; vi2<vis.length; vi2++) if(vis[vi2].v > maxVol) maxVol = vis[vi2].v;
-    if(maxVol === 0) maxVol = 1;
-    var vPadT=4, vPadB=20, vPlotH=hV-vPadT-vPadB;
-
-    // Y-axis label (volume scale)
-    ctxV.font='500 10px IBM Plex Mono,monospace';
-    ctxV.fillStyle='#9AA5B4';
-    ctxV.textAlign='right';
-    ctxV.fillText(Math.round(maxVol), wV-padR-2, vPadT+10);
-
-    // Volume bars
-    for(var vi=0; vi<vis.length; vi++){
-      var vc   = vis[vi];
-      var absV = startIdx + vi;
-      var vx   = xp(absV);
-      if(vx + SLOT_W < padL || vx - SLOT_W > wV - padR) continue;
-      var up2  = vc.c >= vc.o;
-      var vcol = up2 ? 'rgba(38,166,154,0.6)' : 'rgba(239,83,80,0.6)';
-      var vh   = Math.max(1.5, (vc.v / maxVol) * vPlotH);
-      var vbx  = Math.round(vx - BODY_W/2);
-      ctxV.fillStyle = vcol;
-      ctxV.fillRect(vbx, hV - vPadB - vh, BODY_W, vh);
-    }
-
-    // X-axis time labels (match candle chart)
-    ctxV.font='10px IBM Plex Mono,monospace'; ctxV.fillStyle='#9AA5B4'; ctxV.textAlign='center';
-    var volLabelEvery = Math.max(1, Math.round(300 / CANDLE_SEC)); // every ~5 min
-    for(var vli=startIdx; vli<=endIdx; vli++){
-      if((vli % volLabelEvery) !== 0) continue;
-      var vlx = xp(vli);
-      if(vlx < padL+20 || vlx > wV-padR-20) continue;
-      var vlts = sessionStart + vli * CANDLE_SEC;
-      var dv = new Date(vlts * 1000);
-      var vlbl = dv.getHours().toString().padStart(2,'0')+':'+dv.getMinutes().toString().padStart(2,'0');
-      ctxV.strokeStyle='#E3E8EF'; ctxV.lineWidth=1;
-      ctxV.beginPath(); ctxV.moveTo(vlx, hV-vPadB); ctxV.lineTo(vlx, hV-vPadB+4); ctxV.stroke();
-      ctxV.fillStyle='#9AA5B4';
-      ctxV.fillText(vlbl, vlx, hV-2);
+  function showOhlc(candle, time){
+    if(!candle) return;
+    var oEl=document.getElementById('ohlcO'); if(oEl) oEl.textContent=candle.open.toFixed(2);
+    var hEl=document.getElementById('ohlcH'); if(hEl) hEl.textContent=candle.high.toFixed(2);
+    var lEl=document.getElementById('ohlcL'); if(lEl) lEl.textContent=candle.low.toFixed(2);
+    var cEl=document.getElementById('ohlcC'); if(cEl) cEl.textContent=candle.close.toFixed(2);
+    var tEl=document.getElementById('ohlcTime');
+    if(tEl && typeof time === 'number'){
+      var date = new Date(time * 1000);
+      tEl.textContent = String(date.getUTCHours()).padStart(2,'0') + ':' + String(date.getUTCMinutes()).padStart(2,'0');
     }
   }
 
   function updateHeader(){
     var live = buildLiveCandle();
     var shown = live ? allCandles.concat([live]) : allCandles;
-    var last  = shown[shown.length-1]; if(!last) return;
-    var eff   = last.c;
-    var up    = eff >= firstPrice;
-
+    var last = shown[shown.length-1];
+    if(!last) return;
+    var eff = last.c;
     var pEl=document.getElementById('priceNow');
-    if(pEl){pEl.textContent='RM '+eff.toFixed(2);pEl.style.color=up?BULL:BEAR;}
-
-    var lc = last;
-    var oEl=document.getElementById('ohlcO'); if(oEl) oEl.textContent=lc.o.toFixed(2);
-    var hEl=document.getElementById('ohlcH'); if(hEl) hEl.textContent=lc.h.toFixed(2);
-    var lEl=document.getElementById('ohlcL'); if(lEl) lEl.textContent=lc.l.toFixed(2);
-    var cEl=document.getElementById('ohlcC'); if(cEl) cEl.textContent=eff.toFixed(2);
-
-    var nowTs2=Date.now()/1000;
+    if(pEl){pEl.textContent='RM '+eff.toFixed(2);pEl.style.color=eff>=firstPrice?BULL:BEAR;}
+    if(!crosshairActive){
+      showOhlc({open:last.o,high:last.h,low:last.l,close:eff},last.t+MYT_OFFSET_SECONDS);
+    }
     var sEl=document.getElementById('chartStatus');
-    if(sEl&&nowTs2>=sessionEnd){
-      sEl.textContent='DITUTUP';
+    if(sEl&&Date.now()/1000>=sessionEnd){
+      sEl.textContent=closedStatusLabel;
       sEl.className='chart-status-badge badge-closed';
     }
   }
 
-  // ── ANIMATION LOOP (350ms tick) ──────────────────────────────────────
+  function draw(){
+    var live = buildLiveCandle();
+    var shown = live ? allCandles.concat([live]) : allCandles;
+    var last = shown[shown.length-1];
+    if(!last) return;
+    updateWalletValues(last.c);
+    if(!candleSeries || !volumeSeries) return;
+
+    var bars = aggregateCandles(shown,activeInterval);
+    if(!bars.length) return;
+    if(renderedRevision !== candlesRevision || renderedInterval !== activeInterval){
+      var visibleRange = chart.timeScale().getVisibleLogicalRange();
+      var shouldFit = renderedRevision < 0 || renderedInterval !== activeInterval || !visibleRange;
+      candleSeries.setData(bars.map(function(bar){return {time:bar.time+MYT_OFFSET_SECONDS,open:bar.open,high:bar.high,low:bar.low,close:bar.close};}));
+      volumeSeries.setData(bars.map(function(bar){
+        return {time:bar.time+MYT_OFFSET_SECONDS,value:bar.volume,color:bar.close>=bar.open?'rgba(34,201,138,0.42)':'rgba(255,91,91,0.42)'};
+      }));
+      if(shouldFit) chart.timeScale().fitContent();
+      else chart.timeScale().setVisibleLogicalRange(visibleRange);
+      renderedRevision = candlesRevision;
+      renderedInterval = activeInterval;
+    } else {
+      var latest = bars[bars.length-1];
+      candleSeries.update({time:latest.time+MYT_OFFSET_SECONDS,open:latest.open,high:latest.high,low:latest.low,close:latest.close});
+      volumeSeries.update({time:latest.time+MYT_OFFSET_SECONDS,value:latest.volume,color:latest.close>=latest.open?'rgba(34,201,138,0.42)':'rgba(255,91,91,0.42)'});
+    }
+  }
+
+  if(!library || !chartHost){
+    console.error('Lightweight Charts failed to load; the interactive chart is unavailable.');
+    if(chartError) chartError.hidden = false;
+  } else {
+    chart = library.createChart(chartHost,{
+      autoSize:true,
+      layout:{background:{type:library.ColorType.Solid,color:'#0B1629'},textColor:'#8FA3BF',fontFamily:'IBM Plex Mono, monospace',fontSize:window.innerWidth<480?10:12},
+      grid:{vertLines:{color:'#15233A'},horzLines:{color:'#15233A'}},
+      crosshair:{mode:library.CrosshairMode.Normal,vertLine:{color:'#D4A843',width:1,style:library.LineStyle.Dashed,labelBackgroundColor:'#D4A843'},horzLine:{color:'#D4A843',width:1,style:library.LineStyle.Dashed,labelBackgroundColor:'#D4A843'}},
+      rightPriceScale:{borderColor:'#1E3050',minimumWidth:window.innerWidth<480?48:64,scaleMargins:{top:0.08,bottom:0.2}},
+      timeScale:{borderColor:'#1E3050',timeVisible:true,secondsVisible:false,rightOffset:8,barSpacing:8},
+      handleScale:{axisPressedMouseMove:{time:true,price:true},mouseWheel:true,pinch:true},
+      handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true}
+    });
+    candleSeries = chart.addSeries(library.CandlestickSeries,{
+      upColor:BULL,downColor:BEAR,borderVisible:false,wickUpColor:BULL,wickDownColor:BEAR,
+      lastValueVisible:true,priceLineVisible:true,
+      priceFormat:{type:'custom',minMove:0.01,formatter:formatChartPrice}
+    });
+    volumeSeries = chart.addSeries(library.HistogramSeries,{
+      priceScaleId:'volume',priceFormat:{type:'volume'},
+      color:'rgba(34,201,138,0.42)',base:0
+    },1);
+    var panes = chart.panes();
+    if(panes.length > 1){
+      panes[1].setHeight(72);
+      volumeSeries.priceScale().applyOptions({visible:false,scaleMargins:{top:0.05,bottom:0}});
+    }
+    candleSeries.createPriceLine({price:firstPrice,color:'#D4A843',lineWidth:1,lineStyle:library.LineStyle.Dashed,axisLabelVisible:true,title:'ENTRY'});
+    chart.subscribeCrosshairMove(function(param){
+      if(!param.time){crosshairActive=false;updateHeader();return;}
+      var candle = param.seriesData.get(candleSeries);
+      if(candle){crosshairActive=true;showOhlc(candle,param.time);}
+      else {crosshairActive=false;updateHeader();}
+    });
+    chart.timeScale().fitContent();
+
+    document.querySelectorAll('.chart-interval-button').forEach(function(button){
+      button.addEventListener('click',function(){
+        activeInterval = Number(button.getAttribute('data-interval'));
+        document.querySelectorAll('.chart-interval-button').forEach(function(item){
+          item.setAttribute('aria-pressed',item===button?'true':'false');
+        });
+        draw();
+      });
+    });
+    window.addEventListener('resize',function(){
+      if(chart && chartHost.clientWidth){
+        chart.resize(chartHost.clientWidth,chartHost.clientHeight);
+        chart.applyOptions({layout:{fontSize:window.innerWidth<480?10:12},rightPriceScale:{minimumWidth:window.innerWidth<480?48:64}});
+      }
+    });
+  }
+
+  // ?? ANIMATION LOOP ???????????????????????????????????????????????????
   setInterval(function(){
     stepTick(); draw(); updateHeader();
   }, 350);
-
-  var spinnerShown = true;
-  requestAnimationFrame(function(){resize();draw();updateHeader();
-    if(spinnerShown){
-      var spinner = document.getElementById('chartSpinner');
-      if(spinner) spinner.style.display = 'none';
-      spinnerShown = false;
-    }
-  });
-
-  // ── PAN (X) with mouse drag ──────────────────────────────────────────
-  var isMousePan=false, mPanX=0, mPanOff=0;
-  cvC.addEventListener('mousedown',function(e){
-    isMousePan=true; mPanX=e.clientX; mPanOff=panOffset;
-    cvC.style.cursor='grabbing';
-    e.preventDefault();
-  });
-  window.addEventListener('mousemove',function(e){
-    if(!isMousePan) return;
-    var dx = e.clientX - mPanX;
-    // drag right = see older (smaller index) candles = decrease panOffset
-    panOffset = mPanOff - dx / SLOT_W;
-    var nTotal = allCandles.length + 1;
-    var perScreen = Math.floor((cvC.clientWidth - (window.innerWidth<600?64:76)) / SLOT_W);
-    panOffset = Math.max(0, Math.min(panOffset, Math.max(0, nTotal - 1)));
-    // resume auto-follow only when scrolled all the way to newest candle
-    userPanned = panOffset < (nTotal - perScreen - 0.5);
-    draw();
-  });
-  window.addEventListener('mouseup',function(){
-    isMousePan=false; cvC.style.cursor='default';
-  });
-
-  // ── SCROLL WHEEL: Y-axis zoom (price scale) ──────────────────────────
-  cvC.addEventListener('wheel',function(e){
-    e.preventDefault();
-    // Ctrl+wheel or plain wheel: adjust Y scale (zoom price axis)
-    if(e.shiftKey){
-      // Shift+scroll: pan Y axis
-      yPanOffset += e.deltaY * yScale * 0.5;
-      userYPanned = true;
-    } else {
-      // Plain scroll: zoom Y (price scale)
-      var factor = e.deltaY > 0 ? 1.12 : 1/1.12;
-      var hC = cvC.height/dpr;
-      var maxYScale = MAX_PRICE_RANGE / hC; // Allow viewing full 10k range
-      yScale = Math.max(MIN_Y_SCALE, Math.min(maxYScale, yScale * factor));
-    }
-    draw();
-  },{passive:false});
-
-  // ── TOUCH PINCH ZOOM: Y-axis zoom (price scale) on mobile ──────────────────
-  var lastPinchDist = 0;
-  cvC.addEventListener('touchmove',function(e){
-    if(e.touches.length === 2){
-      e.preventDefault();
-      var p1 = e.touches[0];
-      var p2 = e.touches[1];
-      var dx = p2.clientX - p1.clientX;
-      var dy = p2.clientY - p1.clientY;
-      var dist = Math.sqrt(dx*dx + dy*dy);
-      if(lastPinchDist > 0){
-        var rawFactor = dist / lastPinchDist; // >1 = spreading (zoom in), <1 = pinching (zoom out)
-        var factor = Math.pow(rawFactor, 0.6); // Dampened for smoother feel
-        var hC = cvC.height/dpr;
-        var maxYScale = MAX_PRICE_RANGE / hC;
-        yScale = Math.max(MIN_Y_SCALE, Math.min(maxYScale, yScale / factor));
-        draw();
-      }
-      lastPinchDist = dist;
-    }
-  },{passive:false});
-  cvC.addEventListener('touchend',function(){
-    lastPinchDist = 0;
-  },{passive:true});
-
-  // ── TOUCH: pan X ─────────────────────────────────────────────────────
-  var isPan=false, panX=0, panOff0=0;
-  cvC.addEventListener('touchstart',function(e){
-    if(e.touches.length===1){isPan=true;panX=e.touches[0].clientX;panOff0=panOffset;}
-  },{passive:true});
-  cvC.addEventListener('touchmove',function(e){
-    if(e.touches.length===1&&isPan){
-      e.preventDefault();
-      var dx=e.touches[0].clientX-panX;
-      panOffset=panOff0-dx/SLOT_W;
-      var nTotal=allCandles.length+1;
-      var perScreen=Math.floor((cvC.clientWidth-(window.innerWidth<600?64:76))/SLOT_W);
-      panOffset=Math.max(0,Math.min(panOffset,Math.max(0,nTotal-1)));
-      userPanned=panOffset<(nTotal-perScreen-0.5);
-      draw();
-    }
-  },{passive:false});
-  cvC.addEventListener('touchend',function(){isPan=false;});
-
+  draw();
+  updateHeader();
 })();
 
 {% endif %}
@@ -1968,5 +1826,6 @@ document.addEventListener('click',function(event){
   if(menu&&!menu.contains(event.target)) closeNavMenu();
 });
 </script>
+<script src="{{ url_for('static', filename='language.js') }}"></script>
 </body>
 </html>
