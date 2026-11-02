@@ -11,14 +11,14 @@ adalah rekaan. Jangan gunakan untuk transaksi kewangan sebenar.
 - **Dashboard user** — papar baki akaun, untung/rugi, graf trading, profil dengan kod referral unik berformat `E-` diikuti tujuh digit, dan genealogi referral dua level dengan carian serta penapis
 - Borang pendaftaran menerima kod referral pilihan; kod yang dimasukkan mesti milik akaun aktif
 - Komisen referral sekali bagi setiap akaun yang diterima selepas ciri ini dipasang: RM30 untuk Level 1 dan RM15 untuk Level 2. Komisen dijadual pada 30hb (hari terakhir Februari); akaun penerima dan akaun referral mesti aktif ketika kredit dibuat. Komisen berstatus dibayar masuk ke Wallet, tidak mengubah modal akaun. Akaun referral lama tidak menerima backfill.
-- Semasa sesi dagangan berjalan, pengeluaran terhad kepada komisen referral yang sudah dibayar. Selepas sesi ditutup, untung/rugi boleh dimohon; modal hanya boleh dimohon jika akaun sudah matang.
+- Semasa sesi dagangan berjalan, akaun belum matang hanya boleh mengeluarkan komisen referral yang sudah dibayar. Akaun matang boleh mengeluarkan semua baki termasuk modal dan komisen tanpa menutup sesi dagangan. Selepas sesi ditutup, untung/rugi juga boleh dimohon.
 - Dashboard memaparkan komisen setiap referral, status akaun dan sebab komisen masih tertangguh, serta sejarah kredit Wallet. Popup admin menunjukkan laluan referral dan status payout untuk semakan.
 - Render Cron menjalankan `flask --app app process-referral-commissions` setiap hari pada 16:05 UTC (00:05 MYT) dan mengejar bayaran tertunggak jika satu jadual terlepas.
 - **Panel admin** (`/admin`) — admin login sendiri, boleh:
   - Cipta / kemaskini / nyahaktifkan akaun user; butang Padam memadam akaun dan sejarah berkait secara kekal
   - Pautkan akaun kepada rekod pendaftaran dan maklumat bank yang tepat
   - Semak permohonan pengeluaran serta simpan nombor rujukan transaksi bayaran
-  - Tandakan akaun matang untuk membenarkan pengeluaran modal selepas sesi dagangan ditutup
+  - Tandakan akaun matang untuk membenarkan pengeluaran semua baki termasuk modal dan komisen walaupun sesi masih berjalan
   - Tetapkan baki & untung-rugi setiap user
   - Tambah/padam "entry" data untuk graf trading setiap user
 - Database **SQLite** (local) / **PostgreSQL** (Render)
