@@ -1101,6 +1101,13 @@ def admin_dashboard():
     page_users, user_page, user_pages = paginate(
         filtered_users, page_number("u_page"), ADMIN_USERS_PER_PAGE
     )
+    manage_user_id = request.args.get("manage_user", "").strip()
+    try:
+        manage_user = db.session.get(User, int(manage_user_id))
+    except ValueError:
+        manage_user = None
+    if manage_user and manage_user not in page_users:
+        page_users = [manage_user] + page_users
     user_statuses = {account.id: user_list_status(account) for account in page_users}
 
     registration_query = request.args.get("r_q", "").strip()[:80]
@@ -1602,6 +1609,17 @@ def admin_delete_user(user_id):
 @admin_required
 def admin_add_entry(user_id):
     user = db.get_or_404(User, user_id)
+
+    def redirect_to_dashboard(keep_chart_open=True):
+        query_args = {}
+        for key in ("u_q", "u_status", "u_mat", "u_page", "r_q", "r_status", "r_page"):
+            value = request.form.get(key, "").strip()
+            if value:
+                query_args[key] = value
+        if keep_chart_open:
+            query_args["manage_user"] = user.id
+        return redirect(url_for("admin_dashboard", **query_args))
+
     value = request.form.get("value")
     note = request.form.get("note", "").strip()
     entry_time_str = request.form.get("entry_time", "").strip()  # format: YYYY-MM-DDTHH:MM
@@ -1610,24 +1628,24 @@ def admin_add_entry(user_id):
 
     if entry_type not in {"entry", "close"}:
         flash("Jenis entry tidak sah.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect_to_dashboard()
 
     if not value:
         flash("Sila masukkan nilai untuk entry graf.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect_to_dashboard()
 
     # Validasi & parse value (float)
     try:
         value_float = float(value)
         if not math.isfinite(value_float):
             flash("Nilai entry mesti nombor yang sah.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect_to_dashboard()
         if value_float < 0:
             flash("Nilai entry tidak boleh negatif.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect_to_dashboard()
     except ValueError:
         flash("Format nilai tidak sah (mesti angka).", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect_to_dashboard()
 
     # Parse entry_time (MYT naive datetime)
     if entry_time_str:
@@ -1636,7 +1654,7 @@ def admin_add_entry(user_id):
             # Assume input sudah dalam MYT (Railway safe: DB always MYT naive)
         except ValueError:
             flash("Format waktu tidak sah. Guna format: YYYY-MM-DDTHH:MM", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect_to_dashboard()
     else:
         # Kalau admin tak specify, auto guna MYT sekarang
         entry_date = now_myt()
@@ -1647,14 +1665,14 @@ def admin_add_entry(user_id):
         last_entry = entries[0]
         if entry_date < last_entry.entry_date:
             flash("⚠ Waktu entry mesti selepas entry terakhir! Masukkan waktu yang betul.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect_to_dashboard()
 
     # Close tidak dibenarkan jika belum ada sebarang Entry.
     if entry_type == "close":
         has_entry = any((e.note or "").startswith("[Entry]") for e in entries)
         if not has_entry:
             flash("Sila tambah sekurang-kurangnya satu Entry sebelum set Close.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect_to_dashboard()
 
     if entry_type == "close":
         auto_note = f"[Close] {note}" if note else "[Close]"
@@ -1677,7 +1695,7 @@ def admin_add_entry(user_id):
 
     label = "Close" if entry_type == "close" else "Entry"
     flash(f"{label} graf ditambah untuk '{user.nova_id}' — RM {value_float:,.2f}.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect_to_dashboard(keep_chart_open=entry_type == "entry")
 
 
 def _preserve_displayed_balance(user, before_balance):

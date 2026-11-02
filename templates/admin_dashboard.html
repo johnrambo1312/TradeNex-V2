@@ -774,6 +774,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         <div class="detail-section-title">Tambah Entry Graf</div>
         <form method="POST" action="{{ url_for('admin_add_entry', user_id=u.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% for key in ['u_q', 'u_status', 'u_mat', 'u_page', 'r_q', 'r_status', 'r_page'] %}
+            {% if request.args.get(key) %}<input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">{% endif %}
+          {% endfor %}
           <input type="hidden" name="entry_type" id="entryType-{{ u.id }}" value="entry">
           <div class="form-row" style="margin-bottom:0.7rem">
             <label class="form-label">Masa (kosong = sekarang)</label>
@@ -959,6 +962,9 @@ document.addEventListener('DOMContentLoaded', function(){
   {% if receipt_withdrawal %}
   document.getElementById('receiptPanel').scrollIntoView({behavior:'smooth',block:'start'});
   {% endif %}
+
+  var manageUserId = new URLSearchParams(window.location.search).get('manage_user');
+  if(manageUserId && /^\d+$/.test(manageUserId)) selectUser(Number(manageUserId), true);
 });
 
 /* ── CREATE PANEL ── */
