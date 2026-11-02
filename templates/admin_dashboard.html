@@ -578,7 +578,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
               </form>
               <button type="button" class="btn btn-outline" onclick="selectUser({{ u.id }}, true)">Urus Chart</button>
               {% if not u.is_matured %}
-                <form method="POST" action="{{ url_for('admin_mark_user_mature', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Tandakan akaun {{ u.nova_id }} sebagai matang dan benarkan pengeluaran modal?');">
+                <form method="POST" action="{{ url_for('admin_mark_user_mature', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Tandakan akaun {{ u.nova_id }} sebagai matang? Modal boleh dimohon selepas sesi dagangan ditutup.');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-gold">Matang</button>
                 </form>
@@ -758,7 +758,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </div>
           <div class="checkbox-row" style="margin-bottom:0.85rem">
             <input type="checkbox" name="is_matured" id="matured-{{ u.id }}" {{ 'checked' if u.is_matured }} {{ 'disabled' if u.is_matured }}>
-            <label for="matured-{{ u.id }}">Akaun Matang — benarkan pengeluaran modal (tidak boleh ditarik balik)</label>
+            <label for="matured-{{ u.id }}">Akaun Matang — modal boleh dimohon selepas sesi dagangan ditutup (tidak boleh ditarik balik)</label>
           </div>
           <div style="display:flex;gap:0.5rem;align-items:center">
             <button type="submit" class="btn btn-gold">Simpan</button>

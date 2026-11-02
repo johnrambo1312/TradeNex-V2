@@ -1341,10 +1341,13 @@ def user_withdrawal_request():
     )
     if amount > available:
         if not trade_closed:
-            message = (
+            restriction = (
                 "Semasa sesi dagangan berjalan, pengeluaran terhad kepada komisen "
-                f"yang telah dibayar (RM {available:,.2f})."
+                "yang telah dibayar"
             )
+            if user.is_matured:
+                restriction += "; modal akaun hanya boleh dimohon selepas sesi ditutup"
+            message = f"{restriction} (RM {available:,.2f})."
         elif user.is_matured:
             message = f"Jumlah melebihi baki yang boleh dikeluarkan (RM {available:,.2f})."
         else:
@@ -1645,7 +1648,10 @@ def admin_mark_user_mature(user_id):
     else:
         user.is_matured = True
         db.session.commit()
-        flash(f"Akaun '{user.nova_id}' kini matang. Pengeluaran modal telah dibenarkan.", "success")
+        flash(
+            f"Akaun '{user.nova_id}' kini matang. Modal boleh dimohon selepas sesi dagangan ditutup.",
+            "success",
+        )
     return redirect(url_for("admin_dashboard"))
 
 
