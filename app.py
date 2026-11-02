@@ -150,11 +150,18 @@ def next_referral_commission_payable_at(now=None):
     return payout_date(next_year, next_month)
 
 
-def monthly_referral_commission_breakdowns(commissions, now=None):
+def monthly_referral_commission_breakdowns(commissions, now=None, language="ms"):
     now = now or now_myt()
     month_names = (
-        "Januari", "Februari", "Mac", "April", "Mei", "Jun",
-        "Julai", "Ogos", "September", "Oktober", "November", "Disember",
+        (
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        )
+        if language == "en"
+        else (
+            "Januari", "Februari", "Mac", "April", "Mei", "Jun",
+            "Julai", "Ogos", "September", "Oktober", "November", "Disember",
+        )
     )
     breakdowns = []
     for month_offset in range(3):
@@ -164,9 +171,9 @@ def monthly_referral_commission_breakdowns(commissions, now=None):
             month_number += 12
             year -= 1
         if month_offset == 0:
-            label = "Bulan ini"
+            label = "This month" if language == "en" else "Bulan ini"
         elif month_offset == 1:
-            label = "Bulan lepas"
+            label = "Last month" if language == "en" else "Bulan lepas"
         else:
             label = f"{month_names[month_number - 1]} {year}"
         month_start = datetime(year, month_number, 1)
@@ -312,6 +319,20 @@ def process_due_referral_commissions(now=None):
 
 def ensure_database_ready():
     """Pastikan jadual dan akaun admin tersedia sebelum aplikasi menerima trafik."""
+    if db.engine.dialect.name == "postgresql":
+        # Gunicorn workers must not run schema checks and migrations concurrently.
+        with db.engine.connect() as lock_connection:
+            lock_connection.exec_driver_sql("SELECT pg_advisory_lock(73120419)")
+            try:
+                _ensure_database_ready()
+            finally:
+                lock_connection.exec_driver_sql("SELECT pg_advisory_unlock(73120419)")
+        return
+
+    _ensure_database_ready()
+
+
+def _ensure_database_ready():
     db.create_all()
     ensure_registration_request_schema()
     ensure_user_schema()
@@ -803,15 +824,34 @@ def dashboard():
     paid_commission_history = [
         commission for commission in user_commissions if commission.status == "paid"
     ]
+    language = (
+        user.preferred_language
+        if user.preferred_language in {"en", "ms"}
+        else "en"
+    )
     monthly_incentive_breakdowns = monthly_referral_commission_breakdowns(
-        user_commissions
+        user_commissions, language=language
     )
     active_referral_count = sum(
         1 for referral in level_one_referrals + level_two_referrals if referral.is_active
     )
-    rank_names = {0: "No Rank"}
-    rank_names.update({rank: name for rank, name, _ in INCENTIVE_RANKS})
+    rank_names = (
+        {
+            0: "Tiada Pangkat",
+            1: "Ahli Elit",
+            2: "Ahli Duta",
+            3: "Duta Kanan",
+            4: "Rakan Wilayah",
+        }
+        if language == "ms"
+        else {0: "No Rank", **{rank: name for rank, name, _ in INCENTIVE_RANKS}}
+    )
     next_rank = next_incentive_rank(user.current_rank)
+    next_rank_name = (
+        rank_names[next_rank[0]]
+        if next_rank
+        else ("Tiada — pangkat tertinggi" if language == "ms" else "No higher rank")
+    )
     incentive_target = next_rank[2] if next_rank else INCENTIVE_RANKS[-1][2]
     incentive_progress = min(
         100,
@@ -861,8 +901,11 @@ def dashboard():
         commission_by_referral_level=commission_by_referral_level,
         paid_commission_history=paid_commission_history,
         monthly_incentive_breakdowns=monthly_incentive_breakdowns,
-        current_rank_name=rank_names.get(user.current_rank, "No Rank"),
-        next_rank_name=next_rank[1] if next_rank else "Tiada — rank tertinggi",
+        current_rank_name=rank_names.get(
+            user.current_rank,
+            "Tiada Pangkat" if language == "ms" else "No Rank",
+        ),
+        next_rank_name=next_rank_name,
         active_referral_count=active_referral_count,
         incentive_target=incentive_target,
         incentive_progress=incentive_progress,

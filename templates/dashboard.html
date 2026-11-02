@@ -291,10 +291,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 .footer-legal-links{display:flex;gap:1.5rem;flex-wrap:wrap}
 .footer-legal-links a{color:#435a75;font-size:0.72rem;text-decoration:none;transition:color 0.2s}
 .footer-legal-links a:hover{color:#8fa3bf}
-.footer-disclaimer{background:#071020;border-top:1px solid #1a2f50;padding:1.25rem 2rem}
-.footer-disclaimer-inner{max-width:1200px;margin:0 auto}
-.footer-disclaimer p{color:#3d5470;font-size:0.7rem;line-height:1.7}
-
 @media(max-width:800px){
   nav{padding:0 1rem;height:56px}
   .nav-user{display:none}
@@ -421,56 +417,56 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     <div class="incentive-summary">
       <div class="incentive-ranks">
         <div>
-          <div class="incentive-rank-label">Current Rank</div>
+          <div class="incentive-rank-label">{% if language == "en" %}Current Rank{% else %}Pangkat Semasa{% endif %}</div>
           <div class="incentive-rank-value">{{ current_rank_name }}</div>
         </div>
         <div>
-          <div class="incentive-rank-label">Next Rank</div>
+          <div class="incentive-rank-label">{% if language == "en" %}Next Rank{% else %}Pangkat Seterusnya{% endif %}</div>
           <div class="incentive-rank-value">{{ next_rank_name }}</div>
         </div>
       </div>
       <div class="incentive-progress">
         <div class="incentive-progress-heading">
-          <span>Progress ke rank seterusnya</span>
+          <span>{% if language == "en" %}Progress to the next rank{% else %}Kemajuan ke pangkat seterusnya{% endif %}</span>
           {% if has_next_rank %}
-            <span>{{ active_referral_count }} daripada {{ incentive_target }} referral aktif</span>
+            <span>{% if language == "en" %}{{ active_referral_count }} of {{ incentive_target }} active referrals{% else %}{{ active_referral_count }} daripada {{ incentive_target }} rujukan aktif{% endif %}</span>
           {% else %}
-            <span>Rank tertinggi telah dicapai</span>
+            <span>{% if language == "en" %}Highest rank achieved{% else %}Pangkat tertinggi telah dicapai{% endif %}</span>
           {% endif %}
         </div>
-        <div class="incentive-progress-track" role="progressbar" aria-label="Current Incentive progress" aria-valuemin="0" aria-valuemax="{{ incentive_target }}" aria-valuenow="{{ [active_referral_count, incentive_target]|min }}">
+        <div class="incentive-progress-track" role="progressbar" aria-label="{% if language == 'en' %}Incentive progress{% else %}Kemajuan insentif{% endif %}" aria-valuemin="0" aria-valuemax="{{ incentive_target }}" aria-valuenow="{{ [active_referral_count, incentive_target]|min }}">
           <div class="incentive-progress-fill" style="width:{{ incentive_progress }}%"></div>
         </div>
         {% if has_next_rank %}
           {% if incentive_remaining %}
-            <div class="incentive-progress-note">Perlu {{ incentive_remaining }} referral aktif lagi untuk capai {{ next_rank_name }}.</div>
+            <div class="incentive-progress-note">{% if language == "en" %}Need {{ incentive_remaining }} more active referrals to reach {{ next_rank_name }}.{% else %}Perlu {{ incentive_remaining }} lagi rujukan aktif untuk mencapai {{ next_rank_name }}.{% endif %}</div>
           {% else %}
-            <div class="incentive-progress-note">Target dicapai. Admin akan menyemak dan mengemas kini rank anda.</div>
+            <div class="incentive-progress-note">{% if language == "en" %}Target reached. The administrator will review and update your rank.{% else %}Sasaran dicapai. Admin akan menyemak dan mengemas kini pangkat anda.{% endif %}</div>
           {% endif %}
         {% else %}
-          <div class="incentive-progress-note">Anda sudah mencapai rank tertinggi.</div>
+          <div class="incentive-progress-note">{% if language == "en" %}You have reached the highest rank.{% else %}Anda telah mencapai pangkat tertinggi.{% endif %}</div>
         {% endif %}
       </div>
       <section class="monthly-incentive" aria-labelledby="monthlyIncentiveTitle">
         <div class="monthly-incentive-header">
           <div>
-            <h3 class="monthly-incentive-title" id="monthlyIncentiveTitle">Komisen referral bulanan</h3>
+            <h3 class="monthly-incentive-title" id="monthlyIncentiveTitle">{% if language == "en" %}Monthly Referral Commission{% else %}Komisen Rujukan Bulanan{% endif %}</h3>
             <div class="monthly-incentive-total">
-              Jumlah: <strong id="monthlyIncentiveTotal">RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
+              {% if language == "en" %}Total:{% else %}Jumlah:{% endif %} <strong id="monthlyIncentiveTotal">RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
               <span aria-hidden="true"> · </span>
-              <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> ahli
+              <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> {% if language == "en" %}members{% else %}ahli{% endif %}
             </div>
             <div class="monthly-incentive-status">
-              <span id="monthlyIncentivePaid">Sudah diterima RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].paid_total) }}</span>
+              <span id="monthlyIncentivePaid">{% if language == "en" %}Received{% else %}Diterima{% endif %} RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].paid_total) }}</span>
               <span aria-hidden="true"> · </span>
-              <span id="monthlyIncentivePending">Belum diterima RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
+              <span id="monthlyIncentivePending">{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
             </div>
             {% if user.next_commission_payable_at %}
-              <div class="wallet-commission-note">Komisen menunggu RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
+              <div class="wallet-commission-note">{% if language == "en" %}Pending commission of RM {{ "%.2f"|format(user.pending_referral_commission) }} will be paid on{% else %}Komisen tertunggak RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada{% endif %} {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
             {% endif %}
           </div>
           <label>
-            <span class="sr-only">Pilih tempoh insentif</span>
+            <span class="sr-only">{% if language == "en" %}Select incentive period{% else %}Pilih tempoh insentif{% endif %}</span>
             <select class="monthly-incentive-select" id="monthlyIncentivePeriod">
               {% for breakdown in monthly_incentive_breakdowns %}
                 <option value="{{ loop.index0 }}">{{ breakdown.label }}</option>
@@ -479,12 +475,12 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
           </label>
         </div>
         {% for breakdown in monthly_incentive_breakdowns %}
-          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-paid-total="Sudah diterima RM {{ '%.2f'|format(breakdown.paid_total) }}" data-pending-total="Belum diterima RM {{ '%.2f'|format(breakdown.pending_total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
+          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-paid-total="{% if language == 'en' %}Received{% else %}Diterima{% endif %} RM {{ '%.2f'|format(breakdown.paid_total) }}" data-pending-total="{% if language == 'en' %}Pending{% else %}Menunggu{% endif %} RM {{ '%.2f'|format(breakdown.pending_total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
             {% for level in breakdown.levels %}
               <div class="monthly-incentive-level">
-                <div class="monthly-incentive-badge">Level {{ level.level }}</div>
+                <div class="monthly-incentive-badge">{% if language == "en" %}Level{% else %}Tahap{% endif %} {{ level.level }}</div>
                 <div>
-                  <div class="monthly-incentive-members">{{ level.contributors }} ahli</div>
+                  <div class="monthly-incentive-members">{{ level.contributors }} {% if language == "en" %}members{% else %}ahli{% endif %}</div>
                 </div>
                 <div class="monthly-incentive-amount">+RM{{ '%.2f'|format(level.amount) }}</div>
               </div>
@@ -996,11 +992,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     </div>
   </div>
 </footer>
-<div class="footer-disclaimer">
-  <div class="footer-disclaimer-inner">
-  <p>Pelaburan melibatkan risiko. Nilai pelaburan boleh naik dan turun. Prestasi lepas bukan jaminan hasil masa hadapan. Maklumat di laman web ini adalah untuk tujuan umum sahaja dan bukan nasihat pelaburan. Sila baca Pendedahan Risiko sebelum membuat sebarang keputusan pelaburan. TradeNex Capital Sdn Bhd dilesenkan oleh Suruhanjaya Sekuriti Malaysia.</p>
-  </div>
-</div>
 
 {% if show_chart %}
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js" integrity="sha384-8J8e9bGIwf7e9BLO5rwf4zJwNRKcypGnvuGzORD/t4TrFA1gWbl3Hsi/RvyWwBKl" crossorigin="anonymous"></script>
@@ -1756,8 +1747,8 @@ function updateMonthlyIncentivePeriod(){
   if(selectedPeriod){
     total.textContent=selectedPeriod.getAttribute('data-total')||'RM 0.00';
     contributors.textContent=selectedPeriod.getAttribute('data-contributors')||'0';
-    paidTotal.textContent=selectedPeriod.getAttribute('data-paid-total')||'Sudah diterima RM 0.00';
-    pendingTotal.textContent=selectedPeriod.getAttribute('data-pending-total')||'Belum diterima RM 0.00';
+    paidTotal.textContent=selectedPeriod.getAttribute('data-paid-total')||'{% if language == "en" %}Received{% else %}Diterima{% endif %} RM 0.00';
+    pendingTotal.textContent=selectedPeriod.getAttribute('data-pending-total')||'{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM 0.00';
   }
 }
 
