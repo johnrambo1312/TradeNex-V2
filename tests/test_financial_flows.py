@@ -93,6 +93,21 @@ class FinancialFlowTests(unittest.TestCase):
             session["admin_id"] = self.admin_id
             session["admin_seen"] = int(time.time())
 
+    def test_admin_dashboard_shows_newest_users_first(self):
+        with app.app_context():
+            older_user = self.create_user("TN-OLDER")
+            older_user.created_at = datetime(2025, 1, 1)
+            newer_user = self.create_user("TN-NEWER")
+            newer_user.created_at = datetime(2025, 2, 1)
+            db.session.commit()
+
+        self.login_admin()
+        response = self.client.get("/admin")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertLess(html.index("TN-NEWER"), html.index("TN-OLDER"))
+
     def test_health_endpoint_checks_database_and_disables_caching(self):
         response = self.client.get("/health")
 

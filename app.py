@@ -999,7 +999,7 @@ def admin_logout():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    users = User.query.order_by(User.created_at.asc()).all()
+    users = User.query.order_by(User.created_at.desc(), User.id.desc()).all()
     all_registration_requests = RegistrationRequest.query.order_by(
         RegistrationRequest.created_at.desc()
     ).all()
