@@ -166,6 +166,7 @@
     'No. akaun bank': 'Bank account number',
     'Saya bersetuju maklumat ini disimpan dan digunakan oleh admin untuk memproses permohonan pendaftaran akaun.': 'I agree that this information may be stored and used by the administrator to process my account registration.',
     'HANTAR PERMOHONAN': 'SUBMIT APPLICATION',
+    'SEDANG MENGHANTAR...': 'SUBMITTING...',
     'Permohonan anda berjaya direkodkan.': 'Your application has been recorded successfully.',
     'NOVA ID anda': 'Your NOVA ID',
     'Pakej dipilih': 'Selected package',
