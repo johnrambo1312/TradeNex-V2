@@ -716,8 +716,8 @@ footer{margin-top:2rem}
         <button class="chart-interval-button" type="button" id="chartResetScale" title="{% if language == 'en' %}Reset price scale{% else %}Tetapkan semula skala harga{% endif %}">Auto</button>
       </div>
       <div class="chart-intervals" role="group" aria-label="{% if language == 'en' %}Chart type{% else %}Jenis carta{% endif %}">
-        <button class="chart-interval-button" type="button" data-chart-type="candle" aria-pressed="true">{% if language == 'en' %}Candles{% else %}Candle{% endif %}</button>
-        <button class="chart-interval-button" type="button" data-chart-type="line" aria-pressed="false">{% if language == 'en' %}Line{% else %}Garisan{% endif %}</button>
+        <button class="chart-interval-button" type="button" data-chart-type="candle" aria-pressed="true" aria-label="{% if language == 'en' %}Candles{% else %}Candle{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block;margin:0 auto"><path d="M7 3v3M7 16v4M17 6v3M17 18v3"/><rect x="4.5" y="6" width="5" height="10" rx="1"/><rect x="14.5" y="9" width="5" height="9" rx="1"/></svg></button>
+        <button class="chart-interval-button" type="button" data-chart-type="line" aria-pressed="false" aria-label="{% if language == 'en' %}Line{% else %}Garisan{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto"><path d="M3 17l5-6 4 3 8-9"/></svg></button>
       </div>
     </div>
     <div class="chart-canvas-wrap" style="position:relative">
@@ -1299,7 +1299,7 @@ footer{margin-top:2rem}
   } else {
     chart = library.createChart(chartHost,{
       autoSize:true,
-      layout:{background:{type:library.ColorType.Solid,color:'#0B1629'},textColor:'#8FA3BF',fontFamily:'IBM Plex Mono, monospace',fontSize:window.innerWidth<480?10:12},
+      layout:{background:{type:library.ColorType.Solid,color:'#0B1629'},textColor:'#8FA3BF',attributionLogo:false,fontFamily:'IBM Plex Mono, monospace',fontSize:window.innerWidth<480?10:12},
       grid:{vertLines:{color:'#15233A'},horzLines:{color:'#15233A'}},
       crosshair:{mode:library.CrosshairMode.Normal,vertLine:{color:'#D4A843',width:1,style:library.LineStyle.Dashed,labelBackgroundColor:'#D4A843'},horzLine:{color:'#D4A843',width:1,style:library.LineStyle.Dashed,labelBackgroundColor:'#D4A843'}},
       rightPriceScale:{borderColor:'#1E3050',minimumWidth:window.innerWidth<480?48:64,scaleMargins:{top:0.08,bottom:0.2}},
