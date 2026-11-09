@@ -165,7 +165,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .badge-closed{background:#192847;color:var(--text-muted)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.55rem 0.85rem;border-bottom:1px solid var(--border);background:#0F1C32}
+.chart-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.55rem 0.85rem;border-bottom:1px solid var(--border);background:#0F1C32}
 .chart-intervals{display:flex;align-items:center;gap:0.25rem}
 .chart-interval-button{min-width:36px;padding:0.35rem 0.55rem;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-muted);font:600 0.72rem 'IBM Plex Sans',sans-serif;cursor:pointer}
 .chart-interval-button:hover,.chart-interval-button[aria-pressed="true"]{border-color:rgba(212,168,67,0.35);background:rgba(212,168,67,0.12);color:var(--gold2)}
@@ -681,6 +681,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <button class="chart-interval-button" type="button" data-interval="3600" aria-pressed="false">1H</button>
         <button class="chart-interval-button" type="button" id="chartResetScale" title="{% if language == 'en' %}Reset price scale{% else %}Tetapkan semula skala harga{% endif %}">Auto</button>
       </div>
+      <div class="chart-intervals" role="group" aria-label="{% if language == 'en' %}Chart type{% else %}Jenis carta{% endif %}">
+        <button class="chart-interval-button" type="button" data-chart-type="candle" aria-pressed="true">{% if language == 'en' %}Candles{% else %}Candle{% endif %}</button>
+        <button class="chart-interval-button" type="button" data-chart-type="line" aria-pressed="false">{% if language == 'en' %}Line{% else %}Garisan{% endif %}</button>
+      </div>
     </div>
     <div class="chart-canvas-wrap" style="position:relative">
       <div id="tvChart" role="img" aria-label="{% if language == 'en' %}Interactive candlestick chart{% else %}Carta candlestick interaktif{% endif %}"></div>
@@ -1007,114 +1011,33 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 {% if chart_values|length > 0 %}
 (function(){
   var anchorValues    = {{ chart_values|tojson }};
-  var anchorTimes     = {{ chart_timestamps|tojson }};
   // Modal awal sentiasa nilai Entry pertama, bukan baki akaun selepas Close.
   var startingBalance = anchorValues[0];
-  var SEED_BASE       = {{ user.id }};
   var walletModal     = {{ (user.balance or 0)|float|tojson }};
   var walletRealizedPL = {{ (user.realized_profit_loss or 0)|float|tojson }};
   var walletAccountWithdrawn = {{ user.withdrawn_account_amount|float|tojson }};
   var walletWithdrawableCommission = {{ user.withdrawable_commission|float|tojson }};
-  var sessionStart    = anchorTimes[0];
-  // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
-  var entryTime       = anchorTimes[0];
-  var closeTime       = anchorTimes[anchorTimes.length - 1];
-  var sessionDuration = Math.max(60, closeTime - entryTime);
-  var sessionEnd      = closeTime; // Stop tepat pada masa Close
-
-  // ── AGGRESSIVENESS PROFILE BY TRADE DURATION ───────────────────────
-  var tradeMinutes = sessionDuration / 60;
-  var profile;
-  if(tradeMinutes <= 30){
-    profile = {
-      baseVolPct: 0.030, moveMul: 2.35, momentumMul: 1.90,
-      highSpikeTh: 0.80, midSpikeTh: 0.55,
-      highSpikeMin: 3.8, highSpikeRange: 2.8,
-      midSpikeMin: 2.5, midSpikeRange: 2.0,
-      medSpikeMin: 1.4, medSpikeRange: 1.0,
-      shockTh: 0.90, shockMin: 0.012, shockRange: 0.020,
-      clampHigh: 0.20, clampNorm: 0.12,
-      liveImpulseBull: 0.011, liveImpulseBear: 0.011,
-      liveImpulseFlat: 0.0040, liveImpulseShock: 0.045,
-      liveShockTh: 0.955, liveShockMin: 0.013, liveShockRange: 0.021,
-      liveVelKeep: 0.45, liveVelImpulse: 0.75
-    };
-  } else if(tradeMinutes <= 120){
-    profile = {
-      baseVolPct: 0.027, moveMul: 2.15, momentumMul: 1.75,
-      highSpikeTh: 0.84, midSpikeTh: 0.62,
-      highSpikeMin: 3.5, highSpikeRange: 2.6,
-      midSpikeMin: 2.3, midSpikeRange: 1.8,
-      medSpikeMin: 1.3, medSpikeRange: 0.9,
-      shockTh: 0.93, shockMin: 0.010, shockRange: 0.018,
-      clampHigh: 0.18, clampNorm: 0.10,
-      liveImpulseBull: 0.009, liveImpulseBear: 0.009,
-      liveImpulseFlat: 0.0035, liveImpulseShock: 0.038,
-      liveShockTh: 0.965, liveShockMin: 0.012, liveShockRange: 0.020,
-      liveVelKeep: 0.48, liveVelImpulse: 0.72
-    };
-  } else if(tradeMinutes <= 360){
-    profile = {
-      baseVolPct: 0.023, moveMul: 1.95, momentumMul: 1.55,
-      highSpikeTh: 0.88, midSpikeTh: 0.68,
-      highSpikeMin: 3.1, highSpikeRange: 2.2,
-      midSpikeMin: 2.0, midSpikeRange: 1.5,
-      medSpikeMin: 1.2, medSpikeRange: 0.7,
-      shockTh: 0.95, shockMin: 0.008, shockRange: 0.014,
-      clampHigh: 0.16, clampNorm: 0.09,
-      liveImpulseBull: 0.007, liveImpulseBear: 0.007,
-      liveImpulseFlat: 0.0028, liveImpulseShock: 0.030,
-      liveShockTh: 0.972, liveShockMin: 0.010, liveShockRange: 0.016,
-      liveVelKeep: 0.52, liveVelImpulse: 0.66
-    };
-  } else {
-    profile = {
-      baseVolPct: 0.020, moveMul: 1.75, momentumMul: 1.35,
-      highSpikeTh: 0.91, midSpikeTh: 0.74,
-      highSpikeMin: 2.8, highSpikeRange: 1.8,
-      midSpikeMin: 1.7, midSpikeRange: 1.2,
-      medSpikeMin: 1.1, medSpikeRange: 0.5,
-      shockTh: 0.97, shockMin: 0.006, shockRange: 0.010,
-      clampHigh: 0.14, clampNorm: 0.08,
-      liveImpulseBull: 0.0055, liveImpulseBear: 0.0055,
-      liveImpulseFlat: 0.0022, liveImpulseShock: 0.024,
-      liveShockTh: 0.982, liveShockMin: 0.007, liveShockRange: 0.012,
-      liveVelKeep: 0.56, liveVelImpulse: 0.60
-    };
-  }
-
-  // ── RNG ──────────────────────────────────────────────────────────────
-  function hashSeed(s){ var h=2166136261; for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);} return h>>>0; }
-  function mulberry32(seed){ return function(){ seed|=0;seed=(seed+0x6D2B79F5)|0;var t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;}; }
-  function seededRng(idx){ return mulberry32(hashSeed(SEED_BASE+'_c'+idx)); }
-
-  // ── WAYPOINT INTERPOLATION ───────────────────────────────────────────
-  var waypoints = [{ts:sessionStart, val:startingBalance}];
-  for(var wi=0;wi<anchorTimes.length;wi++) waypoints.push({ts:anchorTimes[wi], val:anchorValues[wi]});
-
   // ── 1-MINUTE CANDLES (dijana oleh server) ────────────────────────────
   // Server ialah satu-satunya sumber candle yang sudah lengkap; baki dan had
   // pengeluaran dikira daripada candle yang sama. Pelayar hanya melukis.
-  var CANDLE_SEC = 60;
   var allCandles = {{ chart_candles|tojson }};
+  var serverLiveCandle = {{ chart_live|tojson }};
   var candleFeedClosed = {{ chart_closed|tojson }};
   var candleRevision = {{ chart_revision|tojson }};
   var candleFeedBusy = false;
+  var lastClosedPoll = 0;
 
   function refreshServerCandles(){
     if(candleFeedBusy) return;
-    var nowTs = Date.now()/1000;
-    var expected = Math.min(
-      Math.ceil((sessionEnd - sessionStart) / CANDLE_SEC),
-      Math.floor((Math.min(nowTs, sessionEnd) - sessionStart) / CANDLE_SEC)
-    );
-    var sessionEnded = nowTs >= sessionEnd;
-    if(!sessionEnded && !candleFeedClosed && allCandles.length >= expected) return;
+    if(candleFeedClosed && Date.now() - lastClosedPoll < 5000) return;
+    if(candleFeedClosed) lastClosedPoll = Date.now();
     candleFeedBusy = true;
     var start = Math.max(0, allCandles.length - 1);
     var query = '?start=' + start + '&revision=' + encodeURIComponent(candleRevision)
-      + '&closed=' + (candleFeedClosed ? '1' : '0');
-    fetch('{{ url_for("chart_candles") }}' + query, {credentials:'same-origin', cache:'no-store'})
+      + '&closed=' + (candleFeedClosed ? '1' : '0') + '&live=1';
+    var controller = new AbortController();
+    var timeout = setTimeout(function(){controller.abort();}, 10000);
+    fetch('{{ url_for("chart_candles") }}' + query, {credentials:'same-origin', cache:'no-store', signal:controller.signal})
       .then(function(response){
         if(!response.ok) throw new Error('Candle feed HTTP ' + response.status);
         return response.json();
@@ -1125,21 +1048,26 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
           if(feedError) feedError.hidden = true;
           return;
         }
+        if(data && typeof data.revision === 'string' && data.revision !== candleRevision){
+          window.location.reload();
+          return;
+        }
         if(data && Number.isInteger(data.start) && data.start >= 0
             && data.start <= start && typeof data.revision === 'string'
-            && Array.isArray(data.candles)){
+            && Array.isArray(data.candles) && typeof data.closed === 'boolean'
+            && (data.live === null || (data.live && ['t','dur','o','h','l','c','v'].every(function(key){
+              return Number.isFinite(data.live[key]);
+            })))){
           var updated = allCandles.slice(0, data.start).concat(data.candles);
           var changed = data.revision !== candleRevision || updated.length !== allCandles.length
             || (updated.length > 0 && updated[updated.length-1].c !== allCandles[allCandles.length-1].c);
-          if(changed){
-            allCandles = updated;
-            tickStateCandleIdx = -1;
-            candlesRevision++;
-            draw();
-            updateHeader();
-          }
+          allCandles = updated;
+          if(changed) candlesRevision++;
+          serverLiveCandle = data.live;
           candleFeedClosed = data.closed === true;
           candleRevision = data.revision;
+          draw();
+          updateHeader();
           if(feedError) feedError.hidden = true;
         } else {
           throw new Error('Invalid candle feed response');
@@ -1150,151 +1078,11 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         var feedError = document.getElementById('candleFeedError');
         if(feedError) feedError.hidden = false;
       })
-      .then(function(){ candleFeedBusy = false; });
+      .then(function(){ clearTimeout(timeout); candleFeedBusy = false; });
   }
-
-  // ── LIVE CANDLE (current forming minute) ────────────────────────────
-  // tickRng dibuat deterministik berdasarkan timestamp tick (bukan stateful)
-  // supaya nilai yang sama dihasilkan walaupun page di-reload
-  function tickRngAt(ts){
-    // Quantize kepada 350ms slot supaya setiap tick slot ada seed unik & konsisten
-    var slot = Math.floor(ts / 0.35);
-    return mulberry32(hashSeed(SEED_BASE+'_tick_'+slot));
-  }
-
-  // ── LIVE CANDLE — fully deterministik ──────────────────────────────
-  // Setiap kali buildLiveCandle dipanggil, kita simulate semua tick dari
-  // permulaan candle semasa hingga nowTs, guna seed timestamp.
-  // Ini bermakna reload = hasil yang SAMA untuk timestamp yang sama.
-
-  function simulateLiveCandle(prevClose, candleStartTs, nowTs){
-    var TICK_MS = 350;
-    var state = {price: prevClose, vel: 0, hi: prevClose, lo: prevClose, open: prevClose};
-    var finalTarget = waypoints[waypoints.length-1].val;
-
-    // Simulate setiap tick dari candleStartTs hingga nowTs
-    var t = candleStartTs;
-    while(t < nowTs - 0.001){
-      var ts = t;
-      var rng = tickRngAt(ts);
-      var impRoll = rng();
-      var imp;
-      if(impRoll < 0.30)       imp =  rng() * state.price * profile.liveImpulseBull;
-      else if(impRoll < 0.60)  imp = -rng() * state.price * profile.liveImpulseBear;
-      else if(impRoll < 0.82)  imp =  (rng() - 0.5) * state.price * profile.liveImpulseFlat;
-      else                     imp =  (rng() - 0.5) * state.price * profile.liveImpulseShock;
-
-      // Rare intrabar shock untuk live candle (deterministik).
-      var shockLive = rng();
-      if(shockLive > profile.liveShockTh){
-        var liveDir = rng() > 0.5 ? 1 : -1;
-        imp += liveDir * state.price * (profile.liveShockMin + rng() * profile.liveShockRange);
-      }
-
-      var sessionRemain = Math.max(1, sessionEnd - ts);
-      var ticksRemain   = Math.max(1, sessionRemain / (TICK_MS/1000));
-      var remainGap     = finalTarget - state.price;
-      var gap           = (remainGap / ticksRemain) * 0.30 * 0.025;
-
-      state.vel   = state.vel * profile.liveVelKeep + imp * profile.liveVelImpulse + gap;
-      state.price += state.vel;
-      var minPrice = Math.max(1, startingBalance * 0.05);
-      if(state.price < minPrice) state.price = minPrice;
-      if(state.price > state.hi) state.hi = state.price;
-      if(state.price < state.lo) state.lo = state.price;
-
-      t += TICK_MS / 1000;
-    }
-    return state;
-  }
-
-  // tickState masih dipakai untuk live draw tick-by-tick (untuk animasi smooth)
-  // tapi akan di-resync dari simulateLiveCandle bila perlu
-  var tickState = {price: startingBalance, vel: 0, hi: null, lo: null, open: startingBalance};
-  var tickStateCandleIdx = -1; // track candle mana tickState ni
 
   function buildLiveCandle(){
-    var nowTs = Date.now()/1000;
-    if(nowTs >= sessionEnd) return null;
-    var elapsed = nowTs - sessionStart;
-    if(elapsed < 0) return null;
-
-    var ci = Math.floor(elapsed / CANDLE_SEC);
-    var tOpen = sessionStart + ci * CANDLE_SEC;
-    var prevClose = allCandles.length > 0 ? allCandles[allCandles.length-1].c : startingBalance;
-
-    // Kalau candle baru atau tickState belum diinit untuk candle ini, resync
-    if(tickState.hi === null || tickStateCandleIdx !== ci){
-      var sim = simulateLiveCandle(prevClose, tOpen, nowTs);
-      tickState.price = sim.price;
-      tickState.vel   = sim.vel;
-      tickState.hi    = sim.hi;
-      tickState.lo    = sim.lo;
-      tickState.open  = sim.open;
-      tickStateCandleIdx = ci;
-    }
-
-    return {
-      t: tOpen, dur: CANDLE_SEC,
-      o: tickState.open,
-      c: tickState.price,
-      h: Math.max(tickState.hi, tickState.price),
-      l: Math.min(tickState.lo, tickState.price),
-      v: Math.abs(tickState.price - tickState.open) * 30 + 20,
-      isLive: true
-    };
-  }
-
-  function stepTick(){
-    var nowTs = Date.now()/1000;
-    if(nowTs >= sessionEnd) return;
-    var elapsed = nowTs - sessionStart;
-    if(elapsed < 0) return;
-
-    var ci = Math.floor(elapsed / CANDLE_SEC);
-
-    // Detect candle boundary — resync tickState untuk candle baru
-    if(ci !== tickStateCandleIdx){
-      var tOpen = sessionStart + ci * CANDLE_SEC;
-      var prevClose = allCandles.length > 0 ? allCandles[allCandles.length-1].c : startingBalance;
-      var sim = simulateLiveCandle(prevClose, tOpen, nowTs);
-      tickState.price = sim.price;
-      tickState.vel   = sim.vel;
-      tickState.hi    = sim.hi;
-      tickState.lo    = sim.lo;
-      tickState.open  = sim.open;
-      tickStateCandleIdx = ci;
-      return;
-    }
-
-    // Tick biasa — guna RNG deterministik berdasarkan timestamp
-    var finalTarget = waypoints[waypoints.length-1].val;
-    var remainGap   = finalTarget - tickState.price;
-    var sessionRemain = Math.max(1, sessionEnd - nowTs);
-    var ticksRemain   = Math.max(1, sessionRemain / 0.35);
-    var gap = (remainGap / ticksRemain) * 0.30 * 0.025;
-
-    var rng = tickRngAt(nowTs);
-    var impRoll = rng();
-    var imp;
-    if(impRoll < 0.30)       imp =  rng() * tickState.price * profile.liveImpulseBull;
-    else if(impRoll < 0.60)  imp = -rng() * tickState.price * profile.liveImpulseBear;
-    else if(impRoll < 0.82)  imp =  (rng() - 0.5) * tickState.price * profile.liveImpulseFlat;
-    else                     imp =  (rng() - 0.5) * tickState.price * profile.liveImpulseShock;
-
-    var shockTick = rng();
-    if(shockTick > profile.liveShockTh){
-      var tickDir = rng() > 0.5 ? 1 : -1;
-      imp += tickDir * tickState.price * (profile.liveShockMin + rng() * profile.liveShockRange);
-    }
-
-    tickState.vel   = tickState.vel * profile.liveVelKeep + imp * profile.liveVelImpulse + gap;
-    tickState.price += tickState.vel;
-
-    var minPrice = Math.max(1, startingBalance * 0.05);
-    if(tickState.price < minPrice) tickState.price = minPrice;
-    if(tickState.price > tickState.hi) tickState.hi = tickState.price;
-    if(tickState.price < tickState.lo) tickState.lo = tickState.price;
+    return serverLiveCandle;
   }
 
   // ── INIT ─────────────────────────────────────────────────────────────
@@ -1302,7 +1090,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 
   // Ambil candle lengkap baharu daripada server setiap 5s
   refreshServerCandles();
-  setInterval(refreshServerCandles, 5000);
+  setInterval(refreshServerCandles, 1000);
 
   // LIGHTWEIGHT CHARTS
   var chartHost = document.getElementById('tvChart');
@@ -1310,7 +1098,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   var library = window.LightweightCharts;
   var chart = null;
   var candleSeries = null;
+  var lineSeries = null;
   var volumeSeries = null;
+  var activeChartType = 'candle';
+  var renderedLineBars = [];
   var activeInterval = 60;
   var candlesRevision = 0;
   var renderedRevision = -1;
@@ -1341,6 +1132,56 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     return result;
   }
 
+  function createGradientLinePrimitive(){
+    var renderer = {
+      draw:function(target){
+        if(activeChartType !== 'line' || renderedLineBars.length < 2) return;
+        var timeScale = chart.timeScale();
+        var visible = timeScale.getVisibleRange();
+        if(!visible) return;
+
+        function lowerBound(time){
+          var left = 0, right = renderedLineBars.length;
+          while(left < right){
+            var middle = Math.floor((left + right) / 2);
+            if(renderedLineBars[middle].time + MYT_OFFSET_SECONDS < time) left = middle + 1;
+            else right = middle;
+          }
+          return left;
+        }
+
+        var first = Math.max(0, lowerBound(visible.from) - 1);
+        var last = Math.min(renderedLineBars.length - 1, lowerBound(visible.to) + 1);
+        if(first >= last) return;
+        target.useMediaCoordinateSpace(function(scope){
+          var context = scope.context;
+          var gradient = context.createLinearGradient(0, 0, 0, scope.mediaSize.height);
+          gradient.addColorStop(0, '#A855F7');
+          gradient.addColorStop(1, '#3B82F6');
+          context.save();
+          context.strokeStyle = gradient;
+          context.lineWidth = 2.5;
+          context.lineJoin = 'round';
+          context.lineCap = 'round';
+          context.beginPath();
+          var started = false;
+          for(var i = first; i <= last; i++){
+            var bar = renderedLineBars[i];
+            var x = timeScale.timeToCoordinate(bar.time + MYT_OFFSET_SECONDS);
+            var y = lineSeries.priceToCoordinate(bar.close);
+            if(x === null || y === null){started = false;continue;}
+            if(started) context.lineTo(x, y);
+            else {context.moveTo(x, y);started = true;}
+          }
+          context.stroke();
+          context.restore();
+        });
+      }
+    };
+    var view = {renderer:function(){return renderer;}};
+    return {paneViews:function(){return [view];}};
+  }
+
   function updateWalletValues(price){
     var liveProfitLoss = price - startingBalance;
     var liveBalance = Math.max(0, walletModal - walletAccountWithdrawn + walletRealizedPL + liveProfitLoss)
@@ -1352,7 +1193,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       plEl.classList.toggle('pl-pos', liveProfitLoss >= 0);
       plEl.classList.toggle('pl-neg', liveProfitLoss < 0);
     }
-    if(balanceEl && Date.now()/1000 >= sessionEnd) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
+    if(balanceEl && candleFeedClosed) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
     var commissionEl = document.getElementById('commissionBalance');
     if(commissionEl) commissionEl.textContent = '(RM ' + walletWithdrawableCommission.toFixed(2) + ')';
   }
@@ -1382,7 +1223,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       showOhlc({open:last.o,high:last.h,low:last.l,close:eff},last.t+MYT_OFFSET_SECONDS);
     }
     var sEl=document.getElementById('chartStatus');
-    if(sEl&&Date.now()/1000>=sessionEnd){
+    if(sEl&&candleFeedClosed){
       sEl.textContent=closedStatusLabel;
       sEl.className='chart-status-badge badge-closed';
     }
@@ -1394,14 +1235,16 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     var last = shown[shown.length-1];
     if(!last) return;
     updateWalletValues(last.c);
-    if(!candleSeries || !volumeSeries) return;
+    if(!candleSeries || !lineSeries || !volumeSeries) return;
 
     var bars = aggregateCandles(shown,activeInterval);
     if(!bars.length) return;
     if(renderedRevision !== candlesRevision || renderedInterval !== activeInterval){
       var visibleRange = chart.timeScale().getVisibleLogicalRange();
       var shouldFit = renderedRevision < 0 || renderedInterval !== activeInterval || !visibleRange;
+      renderedLineBars = aggregateCandles(allCandles,activeInterval);
       candleSeries.setData(bars.map(function(bar){return {time:bar.time+MYT_OFFSET_SECONDS,open:bar.open,high:bar.high,low:bar.low,close:bar.close};}));
+      lineSeries.setData(renderedLineBars.map(function(bar){return {time:bar.time+MYT_OFFSET_SECONDS,value:bar.close};}));
       volumeSeries.setData(bars.map(function(bar){
         return {time:bar.time+MYT_OFFSET_SECONDS,value:bar.volume,color:bar.close>=bar.open?'rgba(34,201,138,0.42)':'rgba(255,91,91,0.42)'};
       }));
@@ -1435,6 +1278,11 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       lastValueVisible:true,priceLineVisible:true,
       priceFormat:{type:'custom',minMove:0.01,formatter:formatChartPrice}
     });
+    lineSeries = chart.addSeries(library.LineSeries,{
+      color:'#3B82F6',lineWidth:2,visible:false,lastValueVisible:true,priceLineVisible:true,
+      priceFormat:{type:'custom',minMove:0.01,formatter:formatChartPrice}
+    });
+    lineSeries.attachPrimitive(createGradientLinePrimitive());
     volumeSeries = chart.addSeries(library.HistogramSeries,{
       priceScaleId:'volume',priceFormat:{type:'volume'},
       color:'rgba(34,201,138,0.42)',base:0,
@@ -1459,8 +1307,9 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       var range = scale.getVisibleRange();
       var bounds = chartHost.getBoundingClientRect();
       var y = event.clientY - bounds.top;
-      var previousPrice = candleSeries.coordinateToPrice(y - delta);
-      var currentPrice = candleSeries.coordinateToPrice(y);
+      var priceSeries = activeChartType === 'line' ? lineSeries : candleSeries;
+      var previousPrice = priceSeries.coordinateToPrice(y - delta);
+      var currentPrice = priceSeries.coordinateToPrice(y);
       if(!range || previousPrice === null || currentPrice === null) return;
       var shift = previousPrice - currentPrice;
       scale.setVisibleRange({from:range.from + shift, to:range.to + shift});
@@ -1475,14 +1324,38 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       candleSeries.priceScale().setAutoScale(true);
     });
     candleSeries.createPriceLine({price:firstPrice,color:'#D4A843',lineWidth:1,lineStyle:library.LineStyle.Dashed,axisLabelVisible:true,title:'ENTRY'});
+    lineSeries.createPriceLine({price:firstPrice,color:'#D4A843',lineWidth:1,lineStyle:library.LineStyle.Dashed,axisLabelVisible:true,title:'ENTRY'});
     chart.subscribeCrosshairMove(function(param){
       if(!param.time){crosshairActive=false;updateHeader();return;}
       var candle = param.seriesData.get(candleSeries);
+      if(!candle && activeChartType === 'line'){
+        var target = param.time - MYT_OFFSET_SECONDS;
+        var left = 0, right = renderedLineBars.length - 1;
+        while(left <= right){
+          var middle = Math.floor((left + right) / 2);
+          if(renderedLineBars[middle].time === target){candle = renderedLineBars[middle];break;}
+          if(renderedLineBars[middle].time < target) left = middle + 1;
+          else right = middle - 1;
+        }
+      }
       if(candle){crosshairActive=true;showOhlc(candle,param.time);}
       else {crosshairActive=false;updateHeader();}
     });
     chart.timeScale().fitContent();
 
+    document.querySelectorAll('[data-chart-type]').forEach(function(button){
+      button.addEventListener('click',function(){
+        activeChartType = button.getAttribute('data-chart-type');
+        candleSeries.applyOptions({visible:activeChartType === 'candle'});
+        lineSeries.applyOptions({visible:activeChartType === 'line'});
+        document.querySelectorAll('[data-chart-type]').forEach(function(item){
+          item.setAttribute('aria-pressed',item === button ? 'true' : 'false');
+        });
+        chartHost.setAttribute('aria-label',activeChartType === 'line'
+          ? {{ ("Interactive line chart" if language == "en" else "Carta garisan interaktif")|tojson }}
+          : {{ ("Interactive candlestick chart" if language == "en" else "Carta candlestick interaktif")|tojson }});
+      });
+    });
     document.querySelectorAll('.chart-interval-button[data-interval]').forEach(function(button){
       button.addEventListener('click',function(){
         activeInterval = Number(button.getAttribute('data-interval'));
@@ -1502,7 +1375,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 
   // ?? ANIMATION LOOP ???????????????????????????????????????????????????
   setInterval(function(){
-    stepTick(); draw(); updateHeader();
+    draw(); updateHeader();
   }, 1000);
   draw();
   updateHeader();

@@ -470,6 +470,96 @@ class FinancialFlowTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/chart/candles?start=1").status_code, 400)
         self.assertEqual(self.client.get("/api/chart/candles?start=abc").status_code, 400)
 
+    def test_server_live_candle_meets_completed_candle_and_preserves_financial_close(self):
+        from candle_engine import build_candles, chart_candles, chart_live_candle
+
+        start = 1_767_196_800
+        for duration in (30, 120, 157, 180):
+            end = start + duration
+            key = (123, 500.0, 1000.0, start, end)
+            for boundary in range(60, duration, 60):
+                before = chart_live_candle(*key, start + boundary - 0.0001)
+                completed = chart_candles(*key, start + boundary)
+                self.assertAlmostEqual(before["c"], completed[-1]["c"], places=2)
+                self.assertAlmostEqual(before["h"], completed[-1]["h"], places=2)
+                self.assertAlmostEqual(before["l"], completed[-1]["l"], places=2)
+                after = chart_live_candle(*key, start + boundary)
+                self.assertEqual(after["o"], completed[-1]["c"])
+            before_end = chart_live_candle(*key, end - 0.0001)
+            finished = chart_candles(*key, end)
+            financial = build_candles(*key, end)
+            expected_final = financial[-1]["c"] if financial else 1000.0
+            self.assertAlmostEqual(before_end["c"], finished[-1]["c"], places=2)
+            self.assertEqual(finished[-1]["c"], expected_final)
+            self.assertLessEqual(abs(finished[-1]["c"] - 1000), 10)
+            if duration % 60:
+                previous = chart_candles(*key, end - 0.0001)
+                self.assertEqual(finished[:-1], previous)
+                self.assertEqual(finished[-1]["dur"], duration % 60)
+            self.assertIsNone(chart_live_candle(*key, end))
+            self.assertIsNone(chart_live_candle(*key, start - 1))
+
+    def test_live_feed_returns_current_only_and_tracks_partial_final(self):
+        start = datetime(2026, 1, 1)
+        end = start + timedelta(seconds=157)
+        with app.app_context():
+            user = self.create_user("TN-LIVE", balance=500)
+            db.session.add_all([
+                TradeEntry(user=user, value=500, entry_date=start, note="[Entry]"),
+                TradeEntry(user=user, value=1000, entry_date=end, note="[Close]"),
+            ])
+            db.session.commit()
+            user_id = user.id
+        self.login_user(user_id)
+        with patch("app.now_myt", return_value=start + timedelta(seconds=130)):
+            response = self.client.get("/api/chart/candles?live=1")
+            data = response.get_json()
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(data["closed"])
+            self.assertEqual(len(data["candles"]), 2)
+            self.assertEqual(data["live"]["dur"], 37)
+            self.assertEqual(data["live"]["o"], data["candles"][-1]["c"])
+            self.assertNotIn("target", data["live"])
+            self.assertNotEqual(data["live"]["c"], 1000)
+            dashboard = self.client.get("/dashboard").get_data(as_text=True)
+            self.assertIn("var anchorValues    = [500.0];", dashboard)
+            self.assertNotIn("var anchorValues    = [500.0, 1000.0]", dashboard)
+        with patch("app.now_myt", return_value=end):
+            final = self.client.get("/api/chart/candles?start=1&live=1").get_json()
+            self.assertTrue(final["closed"])
+            self.assertIsNone(final["live"])
+            self.assertEqual(final["candles"][0], data["candles"][-1])
+            self.assertLessEqual(abs(final["candles"][-1]["c"] - 1000), 10)
+            with app.app_context():
+                user = db.session.get(User, user_id)
+                with patch("models._now_myt", return_value=end):
+                    self.assertEqual(user.current_balance, final["candles"][-1]["c"])
+
+    def test_live_candle_warm_cache_only_generates_tail_and_matches_cold(self):
+        import candle_engine
+
+        start = 1_767_196_800
+        key = (193923, 500.0, 550.0, start, start + 30 * 24 * 3600)
+        now = start + 29 * 24 * 3600 + 29
+        with candle_engine._cache_lock:
+            candle_engine._cache.pop(key, None)
+        cold = candle_engine.chart_live_candle(*key, now)
+        with patch.object(candle_engine, "_hash_seed", wraps=candle_engine._hash_seed) as hash_seed:
+            warm = candle_engine.chart_live_candle(*key, now)
+        self.assertEqual(cold, warm)
+        self.assertLessEqual(hash_seed.call_count, 8)
+
+    def test_live_candles_match_when_read_concurrently(self):
+        from candle_engine import chart_live_candle
+
+        start = 1_767_196_800
+        key = (1442, 500.0, 1000.0, start, start + 157)
+        times = [start + seconds for seconds in (1, 59, 60, 90, 119, 120, 156)] * 4
+        expected = {timestamp: chart_live_candle(*key, timestamp) for timestamp in set(times)}
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(lambda timestamp: chart_live_candle(*key, timestamp), times))
+        self.assertEqual(results, [expected[timestamp] for timestamp in times])
+
     def test_30_day_candles_keep_existing_final_close(self):
         from candle_engine import build_candles, final_candle_close
 

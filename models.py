@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 
-from candle_engine import build_candles, final_candle_close
+from candle_engine import chart_candles, chart_live_candle, final_candle_close
 
 db = SQLAlchemy()
 
@@ -248,25 +248,36 @@ class User(db.Model):
             ZERO,
         )
 
-    def chart_candles(self, now_ts=None):
-        """Candle lengkap untuk carta; kosong jika sesi (Entry -> Close) belum lengkap."""
+    def chart_session(self):
         ordered = sorted(self.entries, key=lambda e: e.entry_date)
         if len(ordered) < 2:
-            return []
+            return None
         if not (ordered[0].note or "").startswith("[Entry]"):
-            return []
+            return None
         if not (ordered[-1].note or "").startswith("[Close]"):
+            return None
+        return (
+            self.id, ordered[0].value, ordered[-1].value,
+            _entry_timestamp(ordered[0].entry_date),
+            _entry_timestamp(ordered[-1].entry_date),
+        )
+
+    def chart_candles(self, now_ts=None):
+        """Candle lengkap untuk carta; kosong jika sesi belum lengkap."""
+        session = self.chart_session()
+        if session is None:
             return []
         if now_ts is None:
             now_ts = datetime.now(timezone.utc).timestamp()
-        return build_candles(
-            self.id,
-            ordered[0].value,
-            ordered[-1].value,
-            _entry_timestamp(ordered[0].entry_date),
-            _entry_timestamp(ordered[-1].entry_date),
-            now_ts,
-        )
+        return chart_candles(*session, now_ts)
+
+    def chart_live_candle(self, now_ts=None):
+        session = self.chart_session()
+        if session is None:
+            return None
+        if now_ts is None:
+            now_ts = datetime.now(timezone.utc).timestamp()
+        return chart_live_candle(*session, now_ts)
 
     @property
     def current_balance(self):

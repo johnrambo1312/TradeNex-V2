@@ -71,7 +71,7 @@ def _profile(trade_minutes):
 
 
 def _build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts,
-                   candles=None, resume=None):
+                   candles=None, resume=None, index_offset=0):
     session_secs = end_ts - start_ts
     elapsed = min(now_ts, end_ts) - start_ts
     if elapsed < 0:
@@ -93,7 +93,7 @@ def _build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts,
     candles = [] if candles is None else candles
     previous_state = (price, momentum)
 
-    for ci in range(len(candles), completed):
+    for ci in range(index_offset + len(candles), completed):
         previous_state = (price, momentum)
         r1, r2, r3, r4 = (
             _mulberry32(_hash_seed(f"{seed_base}_c{ci * 4 + offset}"))
@@ -228,6 +228,75 @@ def build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
         return list(candles)
     finally:
         _cache_lock.release()
+
+
+def chart_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
+    """Keep the original financial close while showing an unaligned final partial candle."""
+    key = (user_id, start_value, final_target, start_ts, end_ts)
+    if now_ts < end_ts or end_ts <= start_ts or (end_ts - start_ts) % CANDLE_SEC == 0:
+        return build_candles(*key, now_ts)
+    complete = build_candles(*key, end_ts - 0.000001)
+    final = final_candle_close(*key)
+    if final is None:
+        final = final_target
+    opening = complete[-1]["c"] if complete else start_value
+    complete.append({
+        "t": start_ts + len(complete) * CANDLE_SEC,
+        "dur": end_ts - (start_ts + len(complete) * CANDLE_SEC),
+        "o": opening, "c": final, "h": max(opening, final),
+        "l": min(opening, final), "v": abs(final - opening) * 30 + 20,
+        "ci": len(complete),
+    })
+    return complete
+
+
+def chart_live_candle(user_id, start_value, final_target, start_ts, end_ts, now_ts):
+    """Calculate the current point without returning the future candle."""
+    if not start_ts <= now_ts < end_ts:
+        return None
+    key = (user_id, start_value, final_target, start_ts, end_ts)
+    if not _cache_lock.acquire(timeout=_CACHE_LOCK_TIMEOUT):
+        raise CandleCacheBusy("Candle generation is temporarily saturated.")
+    try:
+        completed = build_candles(*key, now_ts)
+        count = len(completed)
+        candle_start = start_ts + count * CANDLE_SEC
+        boundary = min(candle_start + CANDLE_SEC, end_ts)
+        if count:
+            cached = _cache.get(key)
+            if cached and len(cached[0]) == count and not cached[2]:
+                previous_state = cached[1]
+            else:
+                _, previous_state = _build_candles(*key, now_ts)
+            offset = count - 1
+        else:
+            previous_state = (start_value, 0.0)
+            offset = 0
+        if boundary - candle_start < CANDLE_SEC:
+            tail, _ = _build_candles(
+                *key, end_ts, candles=[], resume=previous_state, index_offset=offset,
+            )
+            opening = completed[-1]["c"] if completed else start_value
+            closing = tail[-1]["c"] if tail else final_target
+            points = (opening, closing)
+        else:
+            tail, _ = _build_candles(
+                *key, boundary, candles=[], resume=previous_state, index_offset=offset,
+            )
+            target = tail[-1]
+            points = (target["o"], target["h"], target["l"], target["c"])
+    finally:
+        _cache_lock.release()
+    progress = (now_ts - candle_start) / (boundary - candle_start)
+    position = progress * (len(points) - 1)
+    segment = min(int(position), len(points) - 2)
+    price = points[segment] + (points[segment + 1] - points[segment]) * (position - segment)
+    visited = list(points[:segment + 1]) + [price]
+    return {
+        "t": candle_start, "dur": boundary - candle_start, "o": points[0],
+        "c": price, "h": max(visited), "l": min(visited),
+        "v": abs(price - points[0]) * 30 + 20, "isLive": True,
+    }
 
 
 @lru_cache(maxsize=4096)

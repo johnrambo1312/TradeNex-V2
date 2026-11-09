@@ -937,6 +937,7 @@ def chart_candles():
         "start": start,
         "closed": closed,
         "revision": revision,
+        "live": user.chart_live_candle(now_ts=chart_now_ts) if request.args.get("live") == "1" else None,
     })
     response.headers["Cache-Control"] = "no-store"
     return response
@@ -1024,8 +1025,8 @@ def dashboard():
 
     if session_ready:
         chart_labels = [e.entry_date.strftime("%H:%M") for e in entries]
-        chart_values = [e.value for e in entries]
-        chart_timestamps = [to_utc_ts(e.entry_date) for e in entries]
+        chart_values = [entries[0].value]
+        chart_timestamps = [to_utc_ts(entries[0].entry_date), to_utc_ts(entries[-1].entry_date)]
         show_chart = True
     else:
         # Chart hanya jalan bila sesi lengkap (Entry + Close).
@@ -1040,6 +1041,7 @@ def dashboard():
         "dashboard.html",
         user=user,
         chart_candles=user.chart_candles(now_ts=chart_now_ts) if show_chart else [],
+        chart_live=user.chart_live_candle(now_ts=chart_now_ts) if show_chart else None,
         chart_closed=user.is_trade_closed_at(chart_now),
         chart_revision=chart_revision(user),
         wallet_balance_before_session=user.wallet_balance_before_session,

@@ -285,7 +285,20 @@ data PostgreSQL `tradenex-postgres`. Selepas deploy, semak di Render Dashboard b
 - Sesi baharu Entry–Close dihadkan kepada 30 hari; sesi lama tidak dipotong.
 - Setiap worker menyimpan cache candle terhad dalam memori dan menyambung
   janaan pada hujung sesi. Cache akan diisi semula selepas restart atau apabila
-  ruang diperlukan; formula, sejarah dan nilai Close tidak berubah.
+  ruang diperlukan; formula kewangan dan nilai Close tidak berubah.
+- Candle live dikira di server dan dihantar setiap saat tanpa menghantar candle
+  masa depan. Ia bergerak menuju candle lengkap yang sama selepas refresh.
+  Jika sambungan terganggu, paparan mengekalkan nilai terakhir dan cuba semula.
+  Jika Close jatuh di tengah minit, carta menambah candle separa menggunakan
+  penutup kewangan sedia ada tanpa mengubah candle lengkap sebelumnya. Pengiraan
+  baki dan untung/rugi akhir tidak berubah; bentuk carta sesi lama yang tamat
+  di tengah minit boleh berbeza.
+- Harga minimum candle kekal RM1 atau 5% Entry (mana lebih tinggi). Jika Close
+  admin terlalu rendah, harga minimum ini boleh mengatasi toleransi Close.
+- Carta boleh ditukar antara candle dan garisan bergradien ungu ke biru; garisan memaparkan nilai
+  candle lengkap terakhir dalam setiap tempoh yang dipilih dan dikemas kini
+  apabila candle satu minit lengkap diterima. Header dan untung/rugi live
+  masih mengikuti candle live. Pilihan paparan tidak mengubah kiraan kewangan.
 - Ketika janaan carta terlalu sibuk, request boleh menerima HTTP 503 sementara
   dan carta akan cuba lagi secara automatik. Semak amaran `Candle generation
   saturated` dalam log Render dan kapasiti memori/CPU jika kerap berlaku.
