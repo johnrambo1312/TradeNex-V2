@@ -679,6 +679,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         <button class="chart-interval-button" type="button" data-interval="300" aria-pressed="false">5m</button>
         <button class="chart-interval-button" type="button" data-interval="900" aria-pressed="false">15m</button>
         <button class="chart-interval-button" type="button" data-interval="3600" aria-pressed="false">1H</button>
+        <button class="chart-interval-button" type="button" id="chartResetScale" title="{% if language == 'en' %}Reset price scale{% else %}Tetapkan semula skala harga{% endif %}">Auto</button>
       </div>
     </div>
     <div class="chart-canvas-wrap" style="position:relative">
@@ -1436,13 +1437,43 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     });
     volumeSeries = chart.addSeries(library.HistogramSeries,{
       priceScaleId:'volume',priceFormat:{type:'volume'},
-      color:'rgba(34,201,138,0.42)',base:0
-    },1);
-    var panes = chart.panes();
-    if(panes.length > 1){
-      panes[1].setHeight(72);
-      volumeSeries.priceScale().applyOptions({visible:false,scaleMargins:{top:0.05,bottom:0}});
+      color:'rgba(34,201,138,0.42)',base:0,
+      lastValueVisible:false,priceLineVisible:false
+    });
+    volumeSeries.priceScale().applyOptions({scaleMargins:{top:0.8,bottom:0}});
+    var panPointer = null;
+    chartHost.addEventListener('pointerdown',function(event){
+      if(!event.isPrimary){panPointer = null;return;}
+      if(event.pointerType === 'mouse' && event.button !== 0) return;
+      var bounds = chartHost.getBoundingClientRect();
+      if(event.clientX - bounds.left >= bounds.width - chart.priceScale('right').width()
+          || event.clientY - bounds.top >= bounds.height - chart.timeScale().height()) return;
+      panPointer = {id:event.pointerId, y:event.clientY};
+    });
+    window.addEventListener('pointermove',function(event){
+      if(!panPointer || event.pointerId !== panPointer.id) return;
+      var delta = event.clientY - panPointer.y;
+      panPointer.y = event.clientY;
+      if(!delta) return;
+      var scale = candleSeries.priceScale();
+      var range = scale.getVisibleRange();
+      var bounds = chartHost.getBoundingClientRect();
+      var y = event.clientY - bounds.top;
+      var previousPrice = candleSeries.coordinateToPrice(y - delta);
+      var currentPrice = candleSeries.coordinateToPrice(y);
+      if(!range || previousPrice === null || currentPrice === null) return;
+      var shift = previousPrice - currentPrice;
+      scale.setVisibleRange({from:range.from + shift, to:range.to + shift});
+    });
+    function endChartPan(event){
+      if(panPointer && event.pointerId === panPointer.id) panPointer = null;
     }
+    window.addEventListener('pointerup',endChartPan);
+    window.addEventListener('pointercancel',endChartPan);
+    window.addEventListener('blur',function(){panPointer = null;});
+    document.getElementById('chartResetScale').addEventListener('click',function(){
+      candleSeries.priceScale().setAutoScale(true);
+    });
     candleSeries.createPriceLine({price:firstPrice,color:'#D4A843',lineWidth:1,lineStyle:library.LineStyle.Dashed,axisLabelVisible:true,title:'ENTRY'});
     chart.subscribeCrosshairMove(function(param){
       if(!param.time){crosshairActive=false;updateHeader();return;}
@@ -1452,10 +1483,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     });
     chart.timeScale().fitContent();
 
-    document.querySelectorAll('.chart-interval-button').forEach(function(button){
+    document.querySelectorAll('.chart-interval-button[data-interval]').forEach(function(button){
       button.addEventListener('click',function(){
         activeInterval = Number(button.getAttribute('data-interval'));
-        document.querySelectorAll('.chart-interval-button').forEach(function(item){
+        document.querySelectorAll('.chart-interval-button[data-interval]').forEach(function(item){
           item.setAttribute('aria-pressed',item===button?'true':'false');
         });
         draw();
