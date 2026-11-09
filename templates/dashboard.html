@@ -44,6 +44,14 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-cards .wallet-total{order:3;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
 .wallet-total .card-val{font-size:2rem;color:var(--gold2)}
 .balance-cents{font-size:0.55em}
+.balance-mask{display:none}
+.balance-toggle{display:inline-grid;place-items:center;width:36px;height:36px;margin-left:0.35rem;vertical-align:middle;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer}
+.balance-toggle:hover{color:var(--gold2)}
+.balance-toggle svg{width:20px;height:20px}
+.balance-toggle .eye-closed,.balance-hidden .balance-toggle .eye-open{display:none}
+.balance-hidden .balance-toggle .eye-closed{display:block}
+.balance-hidden #balanceAmount,.balance-hidden .wallet-commission-breakdown{display:none}
+.balance-hidden .balance-mask{display:inline}
 .wallet-total .card-sub{margin-top:0.5rem}
 .dashboard-quick-actions{display:none}
 .dashboard-quick-action{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.45rem;padding:0.75rem 0.25rem;border:1px solid var(--border);border-radius:10px;background:#0F1C32;color:var(--text-light);font:600 0.72rem 'IBM Plex Sans',sans-serif;text-align:center;cursor:pointer}
@@ -607,9 +615,14 @@ footer{margin-top:2rem}
         <div class="card-val num" id="balanceVal">
           {% set balance_text = "%.2f"|format(displayed_balance) %}
           <span id="balanceAmount">RM{{ balance_text[:-3] }}<span class="balance-cents">{{ balance_text[-3:] }}</span></span>
+          <span class="balance-mask" aria-hidden="true">RM•••••</span>
           {% if user.withdrawable_commission > 0 %}
             <span class="wallet-commission-breakdown" id="commissionBalance">(RM{{ "%.2f"|format(user.withdrawable_commission) }})</span>
           {% endif %}
+          <button class="balance-toggle" id="balanceToggle" type="button" aria-pressed="false" aria-label="{% if language == 'en' %}Hide balance{% else %}Sembunyikan baki{% endif %}">
+            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 19C5.6 19 2 12 2 12a18.5 18.5 0 0 1 5.1-5.9M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a18.6 18.6 0 0 1-2.2 3.2M1 1l22 22"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+          </button>
         </div>
       </div>
       <div class="dashboard-quick-actions" aria-label="Pintasan dashboard">
@@ -1743,6 +1756,26 @@ function closeCommissionHistoryModal(){
   modal.classList.remove('open');
   document.body.style.overflow='';
 }
+
+(function(){
+  var toggle=document.getElementById('balanceToggle');
+  var box=document.getElementById('balanceVal');
+  if(!toggle||!box) return;
+  var en=document.documentElement.lang==='en';
+  function apply(hidden){
+    box.classList.toggle('balance-hidden',hidden);
+    toggle.setAttribute('aria-pressed',hidden?'true':'false');
+    toggle.setAttribute('aria-label',hidden?(en?'Show balance':'Tunjukkan baki'):(en?'Hide balance':'Sembunyikan baki'));
+  }
+  var stored=false;
+  try{stored=localStorage.getItem('balanceHidden')==='1';}catch(e){}
+  apply(stored);
+  toggle.addEventListener('click',function(){
+    var hidden=!box.classList.contains('balance-hidden');
+    apply(hidden);
+    try{localStorage.setItem('balanceHidden',hidden?'1':'0');}catch(e){}
+  });
+})();
 
 function copyReferralCode(){
   var code=document.getElementById('profileReferralCode');
