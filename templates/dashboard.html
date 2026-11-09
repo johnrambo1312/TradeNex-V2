@@ -43,6 +43,7 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .wallet-cards{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
 .wallet-cards .wallet-total{order:3;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
 .wallet-total .card-val{font-size:2rem;color:var(--gold2)}
+.balance-cents{font-size:0.55em}
 .wallet-total .card-sub{margin-top:0.5rem}
 .dashboard-quick-actions{display:none}
 .dashboard-quick-action{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.45rem;padding:0.75rem 0.25rem;border:1px solid var(--border);border-radius:10px;background:#0F1C32;color:var(--text-light);font:600 0.72rem 'IBM Plex Sans',sans-serif;text-align:center;cursor:pointer}
@@ -368,7 +369,7 @@ h1{font-size:1.55rem}
 .wallet-cards .card:not(.wallet-total){border-left:1px solid #29384b}
 .card-label{font-size:0.7rem;letter-spacing:0.05em;margin-bottom:0.6rem}
 .wallet-cards .card-val{font-size:1.4rem;letter-spacing:-0.03em;overflow-wrap:anywhere}
-.wallet-total .card-val{font-size:1.8rem;color:var(--white)}
+.wallet-total .card-val{font-size:2.6rem;color:var(--white)}
 .wallet-request-button{margin-top:1.4rem;padding:0.65rem 1rem;border-radius:5px}
 .chart-wrap{border-radius:10px;margin-bottom:1.5rem}
 .chart-wrap.no-session{background:#101d2e;border-color:#29384b}
@@ -394,7 +395,7 @@ footer{margin-top:2rem}
   .wallet-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:1.15rem}
   .cards.wallet-cards{display:contents}
   .wallet-cards .wallet-total{grid-column:1/-1;order:1;padding:0 0 1rem;background:transparent}
-  .wallet-total .card-val{font-size:1.7rem}
+  .wallet-total .card-val{font-size:2.4rem}
   .dashboard-quick-actions{grid-column:1/-1;order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0.5rem 0;background:transparent;border:0;border-top:1px solid #29384b;border-bottom:1px solid #29384b;border-radius:0}
   .dashboard-quick-action{min-height:64px;gap:0.3rem;padding:0.45rem 0.15rem;background:transparent;border:0;border-radius:5px}
   .dashboard-quick-action svg{width:19px;height:19px;color:var(--gold)}
@@ -502,17 +503,17 @@ footer{margin-top:2rem}
           <div>
             <h3 class="monthly-incentive-title" id="monthlyIncentiveTitle">{% if language == "en" %}Monthly Referral Commission{% else %}Komisen Rujukan Bulanan{% endif %}</h3>
             <div class="monthly-incentive-total">
-              {% if language == "en" %}Total:{% else %}Jumlah:{% endif %} <strong id="monthlyIncentiveTotal">RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
+              {% if language == "en" %}Total:{% else %}Jumlah:{% endif %} <strong id="monthlyIncentiveTotal">RM{{ '%.2f'|format(monthly_incentive_breakdowns[0].total) }}</strong>
               <span aria-hidden="true"> · </span>
               <span id="monthlyIncentiveContributors">{{ monthly_incentive_breakdowns[0].contributors }}</span> {% if language == "en" %}members{% else %}ahli{% endif %}
             </div>
             <div class="monthly-incentive-status">
-              <span id="monthlyIncentivePaid">{% if language == "en" %}Received{% else %}Diterima{% endif %} RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].paid_total) }}</span>
+              <span id="monthlyIncentivePaid">{% if language == "en" %}Received{% else %}Diterima{% endif %} RM{{ '%.2f'|format(monthly_incentive_breakdowns[0].paid_total) }}</span>
               <span aria-hidden="true"> · </span>
-              <span id="monthlyIncentivePending">{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM {{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
+              <span id="monthlyIncentivePending">{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM{{ '%.2f'|format(monthly_incentive_breakdowns[0].pending_total) }}</span>
             </div>
             {% if user.next_commission_payable_at %}
-              <div class="wallet-commission-note">{% if language == "en" %}Pending commission of RM {{ "%.2f"|format(user.pending_referral_commission) }} will be paid on{% else %}Komisen tertunggak RM {{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada{% endif %} {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
+              <div class="wallet-commission-note">{% if language == "en" %}Pending commission of RM{{ "%.2f"|format(user.pending_referral_commission) }} will be paid on{% else %}Komisen tertunggak RM{{ "%.2f"|format(user.pending_referral_commission) }} akan dibayar pada{% endif %} {{ user.next_commission_payable_at.strftime('%d/%m/%Y') }}</div>
             {% endif %}
           </div>
           <label>
@@ -525,7 +526,7 @@ footer{margin-top:2rem}
           </label>
         </div>
         {% for breakdown in monthly_incentive_breakdowns %}
-          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM {{ '%.2f'|format(breakdown.total) }}" data-paid-total="{% if language == 'en' %}Received{% else %}Diterima{% endif %} RM {{ '%.2f'|format(breakdown.paid_total) }}" data-pending-total="{% if language == 'en' %}Pending{% else %}Menunggu{% endif %} RM {{ '%.2f'|format(breakdown.pending_total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
+          <div class="monthly-incentive-period" data-monthly-incentive-period="{{ loop.index0 }}" data-total="RM{{ '%.2f'|format(breakdown.total) }}" data-paid-total="{% if language == 'en' %}Received{% else %}Diterima{% endif %} RM{{ '%.2f'|format(breakdown.paid_total) }}" data-pending-total="{% if language == 'en' %}Pending{% else %}Menunggu{% endif %} RM{{ '%.2f'|format(breakdown.pending_total) }}" data-contributors="{{ breakdown.contributors }}" {{ 'hidden' if not loop.first }}>
             {% for level in breakdown.levels %}
               <div class="monthly-incentive-level">
                 <div class="monthly-incentive-badge">{% if language == "en" %}Level{% else %}Tahap{% endif %} {{ level.level }}</div>
@@ -557,7 +558,7 @@ footer{margin-top:2rem}
                   <td>{{ commission.paid_at.strftime('%d/%m/%Y %H:%M') if commission.paid_at else '—' }}</td>
                   <td>{{ commission.referred_user.full_name }}<br><span class="genealogy-member-id">{{ commission.referred_user.nova_id }}</span></td>
                   <td>{{ commission.level }}</td>
-                  <td>RM {{ '%.2f'|format(commission.amount) }}</td>
+                  <td>RM{{ '%.2f'|format(commission.amount) }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -573,7 +574,7 @@ footer{margin-top:2rem}
         {% for withdrawal in withdrawal_requests %}
           <div class="withdrawal-row">
             <span>{{ withdrawal.created_at.strftime('%d/%m/%Y %H:%M') if withdrawal.created_at else '—' }}</span>
-            <span class="withdrawal-amount">RM {{ '%.2f'|format(withdrawal.amount) }}</span>
+            <span class="withdrawal-amount">RM{{ '%.2f'|format(withdrawal.amount) }}</span>
             {% if withdrawal.status == 'pending' %}
               <span class="withdrawal-status">Menunggu semakan</span>
             {% elif withdrawal.status == 'processed' %}
@@ -604,9 +605,10 @@ footer{margin-top:2rem}
         <div class="card-label">Baki</div>
         {% set displayed_balance = user.wallet_display_balance %}
         <div class="card-val num" id="balanceVal">
-          <span id="balanceAmount">RM {{ "%.2f"|format(displayed_balance) }}</span>
+          {% set balance_text = "%.2f"|format(displayed_balance) %}
+          <span id="balanceAmount">RM{{ balance_text[:-3] }}<span class="balance-cents">{{ balance_text[-3:] }}</span></span>
           {% if user.withdrawable_commission > 0 %}
-            <span class="wallet-commission-breakdown" id="commissionBalance">(RM {{ "%.2f"|format(user.withdrawable_commission) }})</span>
+            <span class="wallet-commission-breakdown" id="commissionBalance">(RM{{ "%.2f"|format(user.withdrawable_commission) }})</span>
           {% endif %}
         </div>
       </div>
@@ -630,11 +632,11 @@ footer{margin-top:2rem}
       </div>
       <div class="card">
         <div class="card-label">Modal Akaun</div>
-        <div class="card-val num" id="modalVal">RM {{ "%.2f"|format(user.balance) }}</div>
+        <div class="card-val num" id="modalVal">RM{{ "%.2f"|format(user.balance) }}</div>
       </div>
       <div class="card">
         <div class="card-label">Untung / Rugi Semasa</div>
-        <div class="card-val num" id="plVal">RM {{ "%+.2f"|format(user.current_profit_loss) }}</div>
+        <div class="card-val num" id="plVal">RM{{ "%+.2f"|format(user.current_profit_loss) }}</div>
       </div>
     </div>
     <button class="wallet-request-button" type="button" onclick="openWithdrawalModal()">Pengeluaran</button>
@@ -671,7 +673,7 @@ footer{margin-top:2rem}
             <div class="wallet-request-field">
               <label for="withdrawAmount">Jumlah Pengeluaran (RM)</label>
               <input id="withdrawAmount" name="amount" type="number"               min="0.01" step="0.01" inputmode="decimal" required>
-                            <small class="wallet-request-note">Maksimum: RM {{ '%.2f'|format(withdrawal_limit) }}</small>
+                            <small class="wallet-request-note">Maksimum: RM{{ '%.2f'|format(withdrawal_limit) }}</small>
                           </div>
             <div class="withdraw-bank-details" aria-label="Maklumat bank penerima">
               <div class="withdraw-bank-row"><span>Nama penama (nama pendaftaran)</span><span>{{ bank_registration.full_name }}</span></div>
@@ -703,7 +705,7 @@ footer{margin-top:2rem}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.3rem;margin-left:auto;justify-content:flex-end">
-        <span class="num chart-price" id="priceNow">RM {{ "%.2f"|format(chart_values[0]) }}</span>
+        <span class="num chart-price" id="priceNow">RM{{ "%.2f"|format(chart_values[0]) }}</span>
         <span class="chart-status-badge badge-live" id="chartStatus">{% if language == "en" %}LIVE{% else %}LANGSUNG{% endif %}</span>
       </div>
     </div>
@@ -1146,7 +1148,7 @@ footer{margin-top:2rem}
   var BULL = '#22C98A', BEAR = '#FF5B5B';
 
   function formatChartPrice(price){
-    return (window.innerWidth < 480 ? '' : 'RM ') + price.toFixed(2);
+    return (window.innerWidth < 480 ? '' : 'RM') + price.toFixed(2);
   }
 
   function aggregateCandles(candles, interval){
@@ -1223,13 +1225,16 @@ footer{margin-top:2rem}
     var plEl = document.getElementById('plVal');
     var balanceEl = document.getElementById('balanceAmount');
     if(plEl){
-      plEl.textContent = 'RM ' + (liveProfitLoss >= 0 ? '+' : '') + liveProfitLoss.toFixed(2);
+      plEl.textContent = 'RM' + (liveProfitLoss >= 0 ? '+' : '') + liveProfitLoss.toFixed(2);
       plEl.classList.toggle('pl-pos', liveProfitLoss >= 0);
       plEl.classList.toggle('pl-neg', liveProfitLoss < 0);
     }
-    if(balanceEl && candleFeedClosed) balanceEl.textContent = 'RM ' + liveBalance.toFixed(2);
+    if(balanceEl && candleFeedClosed){
+      var balanceText = liveBalance.toFixed(2);
+      balanceEl.innerHTML = 'RM' + balanceText.slice(0, -3) + '<span class="balance-cents">' + balanceText.slice(-3) + '</span>';
+    }
     var commissionEl = document.getElementById('commissionBalance');
-    if(commissionEl) commissionEl.textContent = '(RM ' + walletWithdrawableCommission.toFixed(2) + ')';
+    if(commissionEl) commissionEl.textContent = '(RM' + walletWithdrawableCommission.toFixed(2) + ')';
   }
 
   function showOhlc(candle, time){
@@ -1252,7 +1257,7 @@ footer{margin-top:2rem}
     if(!last) return;
     var eff = last.c;
     var pEl=document.getElementById('priceNow');
-    if(pEl){pEl.textContent='RM '+eff.toFixed(2);pEl.style.color=eff>=firstPrice?BULL:BEAR;}
+    if(pEl){pEl.textContent='RM'+eff.toFixed(2);pEl.style.color=eff>=firstPrice?BULL:BEAR;}
     if(!crosshairActive){
       showOhlc({open:last.o,high:last.h,low:last.l,close:eff},last.t+MYT_OFFSET_SECONDS);
     }
@@ -1713,10 +1718,10 @@ function updateMonthlyIncentivePeriod(){
     if(isSelected) selectedPeriod=period;
   });
   if(selectedPeriod){
-    total.textContent=selectedPeriod.getAttribute('data-total')||'RM 0.00';
+    total.textContent=selectedPeriod.getAttribute('data-total')||'RM0.00';
     contributors.textContent=selectedPeriod.getAttribute('data-contributors')||'0';
-    paidTotal.textContent=selectedPeriod.getAttribute('data-paid-total')||'{% if language == "en" %}Received{% else %}Diterima{% endif %} RM 0.00';
-    pendingTotal.textContent=selectedPeriod.getAttribute('data-pending-total')||'{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM 0.00';
+    paidTotal.textContent=selectedPeriod.getAttribute('data-paid-total')||'{% if language == "en" %}Received{% else %}Diterima{% endif %} RM0.00';
+    pendingTotal.textContent=selectedPeriod.getAttribute('data-pending-total')||'{% if language == "en" %}Pending{% else %}Menunggu{% endif %} RM0.00';
   }
 }
 
