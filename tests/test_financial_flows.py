@@ -340,6 +340,27 @@ class FinancialFlowTests(unittest.TestCase):
         with app.app_context():
             self.assertEqual(db.session.get(User, user_id).preferred_language, "ms")
 
+    def test_dashboard_withdrawal_labels_and_confirmation_use_selected_language(self):
+        with app.app_context():
+            user = self.create_user("TN-LANGUAGE", balance=500, is_matured=True)
+            self.link_bank_registration(user)
+            user.preferred_language = "ms"
+            db.session.commit()
+            user_id = user.id
+        self.login_user(user_id)
+        malay = self.client.get("/dashboard").get_data(as_text=True)
+        self.assertIn("<span>Pengeluaran</span>", malay)
+        self.assertNotIn("<span>Tarik Keluar</span>", malay)
+        self.assertIn("Belum ada sesi dagangan", malay)
+        self.assertIn("Sahkan permohonan ini? Jumlah akan ditolak daripada baki anda.", malay)
+        with app.app_context():
+            db.session.get(User, user_id).preferred_language = "en"
+            db.session.commit()
+        english = self.client.get("/dashboard").get_data(as_text=True)
+        self.assertIn("<span>Withdraw</span>", english)
+        self.assertIn("No trading session yet", english)
+        self.assertIn("Confirm this request? The amount will be deducted from your balance.", english)
+
     def test_admin_entry_keeps_chart_manager_open_until_close(self):
         with app.app_context():
             user = self.create_user("TN2701", balance=500)

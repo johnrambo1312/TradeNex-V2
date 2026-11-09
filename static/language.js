@@ -231,6 +231,7 @@
     'Jumlah Pengeluaran (RM)': 'Withdrawal Amount (RM)',
     'Maksimum: RM': 'Maximum: RM',
     'Nama penama (nama pendaftaran)': 'Account holder name (as registered)',
+    'Maklumat bank penerima': 'Recipient bank details',
     'Nama bank': 'Bank name',
     'No. akaun': 'Account number',
     'Pastikan nama penama sama seperti nama pemegang akaun bank. Admin akan menyemak permohonan ini sebelum pembayaran diproses.': 'Ensure the account holder name matches the bank account. The administrator will review this request before processing payment.',

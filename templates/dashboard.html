@@ -39,10 +39,6 @@ h1{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:
 .pl-pos{color:var(--green)}
 .pl-neg{color:var(--red)}
 .wallet-section{margin-bottom:2rem}
-.wallet-heading{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.9rem}
-.wallet-icon{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(212,168,67,0.28);border-radius:10px;background:rgba(212,168,67,0.1);color:var(--gold2);flex-shrink:0}
-.wallet-icon svg{width:19px;height:19px}
-.wallet-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800}
 .wallet-caption{color:var(--text-muted);font-size:0.75rem;margin-top:0.12rem}
 .wallet-cards{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
 .wallet-cards .wallet-total{order:3;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.16),transparent 58%),linear-gradient(135deg,#172943,var(--navy2) 70%);border-color:rgba(212,168,67,0.25)}
@@ -305,7 +301,6 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   .sub{font-size:0.8rem;margin-bottom:1rem}
   .cards{grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem}
   .wallet-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.55rem;padding:0.55rem;background:radial-gradient(ellipse at 100% 0%,rgba(212,168,67,0.12),transparent 58%),linear-gradient(145deg,#172943,var(--navy2) 70%);border:1px solid rgba(212,168,67,0.22);border-radius:16px}
-  .wallet-heading{grid-column:1/-1;margin-bottom:0.1rem}
   .cards.wallet-cards{display:contents}
   .wallet-cards .wallet-total{grid-column:1/-1;order:1;background:rgba(11,22,41,0.42)}
   .dashboard-quick-actions{grid-column:1/-1;order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0.5rem;padding:0.5rem;background:rgba(11,22,41,0.45);border:1px solid var(--border);border-radius:12px}
@@ -358,6 +353,57 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   .nav-right{gap:0.2rem;flex-shrink:0}
   .nav-menu-toggle{gap:0.25rem;padding:0.3rem 0.35rem;font-size:0.64rem}
   .nav-menu-caret{display:none}
+}
+
+/* Dashboard visual system */
+body{background:#0b1525}
+nav{background:#0d192a;border-color:#263447}
+.wrap{max-width:1120px;padding-top:2rem}
+h1,.edu-box h2,.profile-title,.genealogy-title,.withdraw-modal-title,.monthly-incentive-title{font-family:'IBM Plex Sans',sans-serif;font-weight:600;letter-spacing:-0.02em}
+h1{font-size:1.55rem}
+.sub{margin-bottom:1.75rem}
+.wallet-section{background:#101d2e;border:1px solid #29384b;border-radius:10px;padding:1.5rem;margin-bottom:1.5rem}
+.cards.wallet-cards{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:0;margin:0}
+.wallet-cards .card,.wallet-cards .wallet-total{min-width:0;order:initial;background:transparent;border:0;border-radius:0;padding:0 1.5rem;text-align:center}
+.wallet-cards .card:not(.wallet-total){border-left:1px solid #29384b}
+.card-label{font-size:0.7rem;letter-spacing:0.05em;margin-bottom:0.6rem}
+.wallet-cards .card-val{font-size:1.4rem;letter-spacing:-0.03em;overflow-wrap:anywhere}
+.wallet-total .card-val{font-size:1.8rem;color:var(--white)}
+.wallet-request-button{margin-top:1.4rem;padding:0.65rem 1rem;border-radius:5px}
+.chart-wrap{border-radius:10px;margin-bottom:1.5rem}
+.chart-wrap.no-session{background:#101d2e;border-color:#29384b}
+.chart-wrap.no-session .no-session-title{color:#e5edf8}
+.chart-wrap.no-session .no-session-message{color:#aabbd0}
+.chart-toolbar{background:#101d2e}
+.chart-interval-button:hover,.chart-interval-button[aria-pressed="true"]{border-color:transparent;background:#26364b;color:#f1d48b}
+.market-section-title{font-size:0.75rem;letter-spacing:0.06em;margin-bottom:0.8rem}
+.market-grid,.mini-grid{gap:1rem}
+.market-panel,.mini-card{background:#101d2e;border-color:#29384b;border-radius:10px}
+.market-panel-title,.index-name,.index-price,.crypto-cap-val,.crypto-name,.crypto-price,.mini-name,.mini-price{color:#e5edf8}
+.market-panel-title .badge,.index-ticker,.crypto-ticker,.mini-period{background:#223148;color:#aabbd0}
+.index-row,.crypto-market-cap,.crypto-row{border-color:#29384b}
+.dom-label{color:#b4c2d4}
+.dom-label .dom-pct{color:#e5edf8}
+.edu-box{background:#101d2e;border-color:#29384b;border-radius:10px}
+.edu-grid{gap:0 1.5rem}
+.edu-card{background:transparent;border:0;border-top:1px solid #29384b;border-radius:0;padding:1rem 0}
+.edu-card h4{color:#e5edf8}
+.profile-modal,.genealogy-modal,.withdraw-modal{border-radius:10px}
+footer{margin-top:2rem}
+@media(max-width:800px){
+  .wallet-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:1.15rem}
+  .cards.wallet-cards{display:contents}
+  .wallet-cards .wallet-total{grid-column:1/-1;order:1;padding:0 0 1rem;background:transparent}
+  .wallet-total .card-val{font-size:1.7rem}
+  .dashboard-quick-actions{grid-column:1/-1;order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0.5rem 0;background:transparent;border:0;border-top:1px solid #29384b;border-bottom:1px solid #29384b;border-radius:0}
+  .dashboard-quick-action{min-height:64px;gap:0.3rem;padding:0.45rem 0.15rem;background:transparent;border:0;border-radius:5px}
+  .dashboard-quick-action svg{width:19px;height:19px;color:var(--gold)}
+  .dashboard-quick-action span{font-size:0.68rem}
+  .wallet-cards .card:not(.wallet-total){order:3;padding:1rem 0 0;min-width:0;border-left:0}
+  .wallet-cards .card:not(.wallet-total):last-child{border-left:1px solid #29384b}
+  .wallet-cards .card:not(.wallet-total) .card-val{font-size:clamp(0.85rem,3.8vw,1.2rem);letter-spacing:-0.03em;white-space:normal}
+  .market-panel,.mini-card,.edu-box{border-radius:10px}
+  .edu-card{padding:1rem 0}
 }
 </style>
 </head>
@@ -504,7 +550,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       {% if paid_commission_history %}
         <div class="genealogy-history-wrap">
           <table class="genealogy-history">
-            <thead><tr><th>Tarikh kredit</th><th>Referral</th><th>Level</th><th>Jumlah</th></tr></thead>
+            <thead><tr><th>Tarikh kredit</th><th>{% if language == "en" %}Referral{% else %}Rujukan{% endif %}</th><th>{% if language == "en" %}Level{% else %}Tahap{% endif %}</th><th>Jumlah</th></tr></thead>
             <tbody>
               {% for commission in paid_commission_history %}
                 <tr>
@@ -552,19 +598,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     {% endfor %}
   {% endwith %}
 
-  <section class="wallet-section" aria-labelledby="walletTitle">
-    <div class="wallet-heading">
-      <div class="wallet-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 6.5h15a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3v-12a3 3 0 0 1 3-3h13"/>
-          <path d="M21 11h-5a2 2 0 0 0 0 4h5"/>
-          <circle cx="16" cy="13" r=".7" fill="currentColor" stroke="none"/>
-        </svg>
-      </div>
-      <div>
-        <h2 class="wallet-title" id="walletTitle">Wallet</h2>
-      </div>
-    </div>
+  <section class="wallet-section" aria-label="{% if language == 'en' %}Wallet{% else %}Dompet{% endif %}">
     <div class="cards wallet-cards">
       <div class="card wallet-total">
         <div class="card-label">Baki</div>
@@ -587,7 +621,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
         </button>
         <button class="dashboard-quick-action" type="button" onclick="openWithdrawalModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5h15a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2z"/><path d="M3 8V5a2 2 0 0 1 2-2h13M20 12h-5a2 2 0 0 0 0 5h5"/><path d="m17 14 2 2 2-2"/></svg>
-          <span>Tarik Keluar</span>
+          <span>{% if language == "en" %}Withdraw{% else %}Pengeluaran{% endif %}</span>
         </button>
         <button class="dashboard-quick-action" type="button" onclick="openCommissionHistoryModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8M8 13h8M8 17h4"/><path d="M8 2v3m8-3v3"/></svg>
@@ -632,7 +666,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
               <p class="withdraw-modal-sub">Semasa sesi berjalan, hanya komisen referral yang telah dibayar boleh dikeluarkan. Untung dagangan boleh dimohon selepas sesi ditutup; modal akaun memerlukan status matang.</p>
             {% endif %}
           {% endif %}
-          <form method="POST" action="{{ url_for('user_withdrawal_request') }}" onsubmit="return confirm('Sahkan permohonan ini? Jumlah akan ditolak daripada baki anda.');">
+          <form method="POST" action="{{ url_for('user_withdrawal_request') }}" onsubmit='return confirm({{ ("Confirm this request? The amount will be deducted from your balance." if language == "en" else "Sahkan permohonan ini? Jumlah akan ditolak daripada baki anda.")|tojson }});'>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="wallet-request-field">
               <label for="withdrawAmount">Jumlah Pengeluaran (RM)</label>
@@ -670,7 +704,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       </div>
       <div style="display:flex;align-items:center;gap:0.3rem;margin-left:auto;justify-content:flex-end">
         <span class="num chart-price" id="priceNow">RM {{ "%.2f"|format(chart_values[0]) }}</span>
-        <span class="chart-status-badge badge-live" id="chartStatus">LIVE</span>
+        <span class="chart-status-badge badge-live" id="chartStatus">{% if language == "en" %}LIVE{% else %}LANGSUNG{% endif %}</span>
       </div>
     </div>
     <div class="chart-toolbar">
@@ -689,15 +723,15 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
     <div class="chart-canvas-wrap" style="position:relative">
       <div id="tvChart" role="img" aria-label="{% if language == 'en' %}Interactive candlestick chart{% else %}Carta candlestick interaktif{% endif %}"></div>
     </div>
-    <div class="chart-error" id="chartLibraryError" hidden>{% if language == 'en' %}The chart library could not be loaded. Please check your connection and refresh the page.{% else %}Library carta tidak dapat dimuatkan. Sila semak sambungan internet dan muat semula halaman.{% endif %}</div>
+    <div class="chart-error" id="chartLibraryError" hidden>{% if language == 'en' %}The chart library could not be loaded. Please check your connection and refresh the page.{% else %}Carta tidak dapat dimuatkan. Sila semak sambungan internet dan muat semula halaman.{% endif %}</div>
     <div class="chart-error" id="candleFeedError" role="status" hidden>{% if language == 'en' %}Chart updates are temporarily unavailable. Retrying automatically.{% else %}Kemas kini carta tidak tersedia buat sementara. Cubaan semula sedang dilakukan.{% endif %}</div>
   </div>
   {% else %}
   <div class="chart-wrap no-session" id="chartWrap">
     <div class="chart-header">
       <div>
-        <div style="font-size:1.05rem;font-weight:700;color:#1A2236">Tiada sesi trade lagi</div>
-        <div style="color:#64748B;margin-top:0.55rem;line-height:1.6">Harap bersabar &amp; Terima Kasih kerana menunggu.</div>
+        <div class="no-session-title" style="font-size:1.05rem;font-weight:700">{% if language == "en" %}No trading session yet{% else %}Belum ada sesi dagangan{% endif %}</div>
+        <div class="no-session-message" style="margin-top:0.55rem;line-height:1.6">{% if language == "en" %}Thank you for your patience.{% else %}Terima kasih kerana menunggu.{% endif %}</div>
       </div>
     </div>
   </div>
@@ -796,7 +830,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       <!-- Crypto Panel -->
       <div class="market-panel">
         <div class="market-panel-title">
-          <span>🔄</span> Crypto Market Cap <span class="badge">JUMLAH</span>
+          <span>🔄</span> {% if language == "en" %}Crypto Market Cap{% else %}Permodalan Pasaran Kripto{% endif %} <span class="badge">JUMLAH</span>
         </div>
         <div class="crypto-market-cap">
           <div>
@@ -880,7 +914,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
 
   <!-- ===== BAHAGIAN EDUKASI ===== -->
   <div class="edu-box">
-    <h2>Memahami Instrumen Trading</h2>
+    <h2>{% if language == "en" %}Understanding Trading Instruments{% else %}Memahami Instrumen Dagangan{% endif %}</h2>
     <p class="edu-intro">Sebelum melabur atau berniaga, penting untuk faham asas setiap instrumen kewangan. Berikut adalah penerangan ringkas untuk tujuan pembelajaran.</p>
     <div class="edu-grid">
       <div class="edu-card">
