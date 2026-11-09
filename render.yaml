@@ -14,6 +14,11 @@ services:
         fromDatabase:
           name: tradenex-postgres
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: tradenex-limiter
+          type: keyvalue
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: DEFAULT_ADMIN_PASSWORD
@@ -38,6 +43,11 @@ services:
         fromDatabase:
           name: tradenex-postgres
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: tradenex-limiter
+          type: keyvalue
+          property: connectionString
       - key: SECRET_KEY
         fromService:
           type: web
@@ -50,6 +60,13 @@ services:
           envVarKey: DEFAULT_ADMIN_PASSWORD
       - key: FLASK_DEBUG
         value: "0"
+
+  - type: keyvalue
+    name: tradenex-limiter
+    plan: starter
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
 
 databases:
   - name: tradenex-postgres

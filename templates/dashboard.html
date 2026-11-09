@@ -685,6 +685,7 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       <div id="tvChart" role="img" aria-label="{% if language == 'en' %}Interactive candlestick chart{% else %}Carta candlestick interaktif{% endif %}"></div>
     </div>
     <div class="chart-error" id="chartLibraryError" hidden>{% if language == 'en' %}The chart library could not be loaded. Please check your connection and refresh the page.{% else %}Library carta tidak dapat dimuatkan. Sila semak sambungan internet dan muat semula halaman.{% endif %}</div>
+    <div class="chart-error" id="candleFeedError" role="status" hidden>{% if language == 'en' %}Chart updates are temporarily unavailable. Retrying automatically.{% else %}Kemas kini carta tidak tersedia buat sementara. Cubaan semula sedang dilakukan.{% endif %}</div>
   </div>
   {% else %}
   <div class="chart-wrap no-session" id="chartWrap">
@@ -1009,10 +1010,10 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   // Modal awal sentiasa nilai Entry pertama, bukan baki akaun selepas Close.
   var startingBalance = anchorValues[0];
   var SEED_BASE       = {{ user.id }};
-  var walletModal     = {{ (user.balance or 0)|tojson }};
-  var walletRealizedPL = {{ (user.realized_profit_loss or 0)|tojson }};
-  var walletAccountWithdrawn = {{ user.withdrawn_account_amount|tojson }};
-  var walletWithdrawableCommission = {{ user.withdrawable_commission|tojson }};
+  var walletModal     = {{ (user.balance or 0)|float|tojson }};
+  var walletRealizedPL = {{ (user.realized_profit_loss or 0)|float|tojson }};
+  var walletAccountWithdrawn = {{ user.withdrawn_account_amount|float|tojson }};
+  var walletWithdrawableCommission = {{ user.withdrawable_commission|float|tojson }};
   var sessionStart    = anchorTimes[0];
   // Dynamic session duration based on entry-to-close gap (4-6 hours typical)
   var entryTime       = anchorTimes[0];
@@ -1095,6 +1096,8 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
   // pengeluaran dikira daripada candle yang sama. Pelayar hanya melukis.
   var CANDLE_SEC = 60;
   var allCandles = {{ chart_candles|tojson }};
+  var candleFeedClosed = {{ chart_closed|tojson }};
+  var candleRevision = {{ chart_revision|tojson }};
   var candleFeedBusy = false;
 
   function refreshServerCandles(){
@@ -1105,24 +1108,47 @@ footer{background:#0a1628;border-top:1px solid #1a2f50;padding:3.5rem 2rem 0;mar
       Math.floor((Math.min(nowTs, sessionEnd) - sessionStart) / CANDLE_SEC)
     );
     var sessionEnded = nowTs >= sessionEnd;
-    if(!sessionEnded && allCandles.length >= expected) return;
+    if(!sessionEnded && !candleFeedClosed && allCandles.length >= expected) return;
     candleFeedBusy = true;
-    fetch('{{ url_for("chart_candles") }}', {credentials:'same-origin', cache:'no-store'})
-      .then(function(response){ return response.ok ? response.json() : null; })
+    var start = Math.max(0, allCandles.length - 1);
+    var query = '?start=' + start + '&revision=' + encodeURIComponent(candleRevision)
+      + '&closed=' + (candleFeedClosed ? '1' : '0');
+    fetch('{{ url_for("chart_candles") }}' + query, {credentials:'same-origin', cache:'no-store'})
+      .then(function(response){
+        if(!response.ok) throw new Error('Candle feed HTTP ' + response.status);
+        return response.json();
+      })
       .then(function(data){
-        if(data && Array.isArray(data.candles) && data.candles.length >= allCandles.length){
-          var changed = data.candles.length !== allCandles.length
-            || (data.candles.length > 0 && data.candles[data.candles.length-1].c !== allCandles[allCandles.length-1].c);
+        var feedError = document.getElementById('candleFeedError');
+        if(data && data.unchanged === true && data.revision === candleRevision){
+          if(feedError) feedError.hidden = true;
+          return;
+        }
+        if(data && Number.isInteger(data.start) && data.start >= 0
+            && data.start <= start && typeof data.revision === 'string'
+            && Array.isArray(data.candles)){
+          var updated = allCandles.slice(0, data.start).concat(data.candles);
+          var changed = data.revision !== candleRevision || updated.length !== allCandles.length
+            || (updated.length > 0 && updated[updated.length-1].c !== allCandles[allCandles.length-1].c);
           if(changed){
-            allCandles = data.candles;
+            allCandles = updated;
             tickStateCandleIdx = -1;
             candlesRevision++;
             draw();
             updateHeader();
           }
+          candleFeedClosed = data.closed === true;
+          candleRevision = data.revision;
+          if(feedError) feedError.hidden = true;
+        } else {
+          throw new Error('Invalid candle feed response');
         }
       })
-      .catch(function(){})
+      .catch(function(error){
+        console.error('Candle feed failed:', error);
+        var feedError = document.getElementById('candleFeedError');
+        if(feedError) feedError.hidden = false;
+      })
       .then(function(){ candleFeedBusy = false; });
   }
 

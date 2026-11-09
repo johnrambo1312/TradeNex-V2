@@ -268,6 +268,20 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </nav>
     {% endif %}
   {% endmacro %}
+  {% macro registration_selector(user_id=0, linked=false) %}
+    <div class="registration-picker" data-user-id="{{ user_id }}">
+      <label class="form-label">Cari nama, NOVA ID atau telefon pendaftaran</label>
+      <input class="form-input registration-picker-search" type="search" maxlength="80" autocomplete="off">
+      <select class="form-input registration-picker-select" name="registration_request_id">
+        <option value="">{{ 'Kekalkan pautan semasa' if linked else 'Tidak dipautkan' }}</option>
+      </select>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem">
+        <button class="btn btn-outline registration-picker-prev" type="button" disabled>Sebelumnya</button>
+        <button class="btn btn-outline registration-picker-next" type="button" disabled>Seterusnya</button>
+        <small class="registration-picker-status" aria-live="polite">Klik carian untuk memuatkan rekod.</small>
+      </div>
+    </div>
+  {% endmacro %}
 
   <div class="page-header">
     <div class="page-title">Urus Akaun <span>{{ total_users }} user berdaftar</span></div>
@@ -391,9 +405,9 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   </div>
 
   <!-- ===== PERMOHONAN PENGELUARAN ===== -->
-  <div class="panel">
+  <div class="panel" id="withdrawalPanel">
     <div class="panel-header">
-      <span class="panel-title">Permohonan Pengeluaran <span style="color:var(--muted);font-weight:400">({{ withdrawal_requests|length }})</span></span>
+      <span class="panel-title">Permohonan Pengeluaran <span style="color:var(--muted);font-weight:400">({{ withdrawal_count }})</span></span>
     </div>
     {% if withdrawal_requests %}
       <div class="table-scroll">
@@ -470,6 +484,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </tbody>
         </table>
       </div>
+      {{ pager('w_page', withdrawal_page, withdrawal_pages, 'withdrawalPanel') }}
     {% else %}
       <p style="color:var(--muted);font-size:0.82rem">Tiada permohonan pengeluaran buat masa ini.</p>
     {% endif %}
@@ -498,14 +513,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
         </div>
         <div class="form-row form-full">
           <label class="form-label">Pautkan Rekod Pendaftaran (wajib untuk pengeluaran)</label>
-          <select class="form-input" name="registration_request_id">
-            <option value="">Tidak dipautkan</option>
-            {% for registration in all_registration_requests %}
-              {% if registration.id not in protected_registration_ids %}
-                <option value="{{ registration.id }}">{{ registration.request_code }} — {{ registration.full_name }} · {{ registration.bank_name }} · {{ registration.bank_account_number }}</option>
-              {% endif %}
-            {% endfor %}
-          </select>
+          {{ registration_selector() }}
           <small style="color:var(--muted)">Pautan tepat diperlukan sebelum user boleh memohon pengeluaran.</small>
         </div>
         <div class="form-full" style="display:flex;justify-content:flex-end;margin-top:0.25rem">
@@ -730,16 +738,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           </div>
           <div class="form-row" style="margin-bottom:0.7rem">
             <label class="form-label">Rekod Pendaftaran / Akaun Bank</label>
-            <select class="form-input" name="registration_request_id">
-              <option value="" selected>{{ 'Kekalkan pautan semasa' if u.registration_request_id else 'Tidak dipautkan' }}</option>
-              {% for registration in all_registration_requests %}
-                {% if registration.id not in protected_registration_ids or registration.id == u.registration_request_id %}
-                  <option value="{{ registration.id }}">
-                    {{ registration.request_code }} — {{ registration.full_name }} · {{ registration.bank_name }} · {{ registration.bank_account_number }}
-                  </option>
-                {% endif %}
-              {% endfor %}
-            </select>
+            {{ registration_selector(u.id, u.registration_request_id) }}
             <small style="color:var(--muted)">Kosong mengekalkan pautan semasa. Pilih rekod baharu hanya untuk menukar akaun bank; nama sahaja tidak digunakan untuk padanan pengeluaran.</small>
             {% if u.registration_request %}
               <small style="display:block;color:var(--light);margin-top:0.25rem">Pautan semasa: {{ u.registration_request.full_name }} · {{ u.registration_request.bank_name }} · {{ u.registration_request.bank_account_number }}</small>
@@ -843,6 +842,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
           {% endfor %}
         </select>
       </form>
+      {{ pager('receipt_page', receipt_page, receipt_pages, 'receiptPanel') }}
     {% endif %}
     {% if receipt_withdrawal %}
       <div class="receipt-grid">
@@ -952,6 +952,60 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+document.querySelectorAll('.registration-picker').forEach(function(picker){
+  var input = picker.querySelector('.registration-picker-search');
+  var select = picker.querySelector('.registration-picker-select');
+  var previous = picker.querySelector('.registration-picker-prev');
+  var next = picker.querySelector('.registration-picker-next');
+  var status = picker.querySelector('.registration-picker-status');
+  var page = 1, pages = 1, sequence = 0, timer;
+  function load(requestedPage){
+    var requestId = ++sequence;
+    status.textContent = 'Memuatkan rekod...';
+    previous.disabled = true;
+    next.disabled = true;
+    var query = new URLSearchParams({
+      q: input.value, page: String(requestedPage), user_id: picker.dataset.userId
+    });
+    fetch('{{ url_for("admin_registration_options") }}?' + query.toString(), {credentials:'same-origin'})
+      .then(function(response){
+        if(!response.ok || response.redirected) throw new Error('HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function(data){
+        if(requestId !== sequence) return;
+        var selectedValue = select.value;
+        var selectedLabel = select.selectedIndex > 0 ? select.options[select.selectedIndex].text : '';
+        while(select.options.length > 1) select.remove(1);
+        data.items.forEach(function(item){
+          select.add(new Option(item.label, String(item.id)));
+        });
+        if(selectedValue && !Array.from(select.options).some(function(option){return option.value === selectedValue;})){
+          select.add(new Option(selectedLabel, selectedValue));
+        }
+        select.value = selectedValue;
+        page = data.page;
+        pages = data.pages;
+        previous.disabled = page <= 1;
+        next.disabled = page >= pages;
+        status.textContent = data.count + ' rekod · halaman ' + page + ' / ' + pages;
+      })
+      .catch(function(error){
+        if(requestId !== sequence) return;
+        console.error('Registration options failed:', error);
+        status.textContent = 'Rekod tidak dapat dimuatkan. Klik carian untuk cuba lagi.';
+      });
+  }
+  input.addEventListener('focus', function(){ load(page); });
+  select.addEventListener('focus', function(){ if(select.options.length === 1) load(page); });
+  input.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){ load(1); }, 300);
+  });
+  previous.addEventListener('click', function(){ if(page > 1) load(page - 1); });
+  next.addEventListener('click', function(){ if(page < pages) load(page + 1); });
+});
+
 /* ── TOAST AUTO-DISMISS ── */
 document.addEventListener('DOMContentLoaded', function(){
   var toasts = document.querySelectorAll('.flash');

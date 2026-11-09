@@ -130,15 +130,17 @@ git remote add origin https://github.com/USERNAME-ANDA/NAMA-REPO.git
 git push -u origin main
 ```
 
-> `.env` dan `*.db` sudah disenaraikan dalam `.gitignore` supaya tidak ter-push
-> secara tidak sengaja (rahsia password tidak boleh ada dalam GitHub).
+> `.env` dan `*.db` disenaraikan dalam `.gitignore`. Jika `.env` pernah
+> ditrack, buang daripada index Git dan putarkan semua rahsia yang pernah
+> digunakan; `.gitignore` tidak memadam salinan dalam sejarah Git.
 
 ---
 
 ## 4. Deploy ke Render (utama)
 
 Fail `render.yaml` ialah Blueprint projek ini. Ia mentakrifkan Web Service,
-PostgreSQL dan Cron Job untuk komisen referral di region Singapore.
+PostgreSQL, Key Value untuk rate limiting, dan Cron Job untuk komisen referral
+di region Singapore.
 
 1. Push kod ke GitHub dan pastikan `render.yaml` ada di root repository.
 2. Dalam [Render Dashboard](https://dashboard.render.com/), pilih **New**
@@ -150,8 +152,9 @@ PostgreSQL dan Cron Job untuk komisen referral di region Singapore.
    dalam Web Service:
    - `DEFAULT_ADMIN_PASSWORD` — password admin pertama, sekurang-kurangnya 12 aksara.
    - `WHATSAPP_NUMBER` — nombor antarabangsa tanpa `+` atau ruang, contoh `60123456789`.
-   `SECRET_KEY` dijana oleh Blueprint dan `DATABASE_URL` dipautkan kepada
-   PostgreSQL. Jangan tukar `APP_ENV=production` atau `FLASK_DEBUG=0`.
+   `SECRET_KEY` dijana oleh Blueprint, `DATABASE_URL` dipautkan kepada
+   PostgreSQL dan `REDIS_URL` kepada Key Value. Pastikan Key Value tersedia
+   dan jangan tukar `APP_ENV=production` atau `FLASK_DEBUG=0`.
 5. Tunggu Web Service berstatus **Live** dan health check `/health` berjaya.
    Endpoint ini menguji sambungan database; status HTTP 503 bermaksud
    perkhidmatan belum sihat dan butiran ralat ada dalam log aplikasi.
@@ -166,6 +169,33 @@ PostgreSQL dan Cron Job untuk komisen referral di region Singapore.
 Semak harga, had dan sokongan resource semasa dalam Render Dashboard sebelum
 deploy; pelan `starter` dan `basic-1gb` yang dinyatakan dalam Blueprint mungkin
 melibatkan caj mengikut tawaran akaun dan polisi Render semasa.
+
+### Staging berasingan di Render
+
+`render-staging.yaml` mentakrifkan web, PostgreSQL, Key Value dan cron staging
+yang berasingan daripada Blueprint production. Pastikan perubahan kod dan fail
+Blueprint ini telah di-commit dan di-push ke branch GitHub yang dikhaskan untuk
+staging. Jangan commit fail `.env` atau rahsia lain.
+
+1. Dalam Render Dashboard, pilih **New** → **Blueprint** dan sambungkan
+   repository serta branch staging. Semasa setup, tetapkan path Blueprint
+   kepada `render-staging.yaml`, bukan `render.yaml`.
+2. Semak nama semua resource yang dicadangkan bermula dengan `tradenex-staging-`,
+   harga dan caj sebelum deploy. Jangan pautkan URL database, Key Value atau
+   rahsia production kepada staging.
+3. Isi `DEFAULT_ADMIN_PASSWORD` yang unik dan kuat serta `WHATSAPP_NUMBER` untuk
+   ujian sahaja melalui Render, bukan Git atau chat. `SECRET_KEY` staging dijana
+   secara berasingan. Kekalkan `APP_ENV=production` dan `FLASK_DEBUG=0` supaya
+   konfigurasi keselamatan dan storan sama seperti production.
+4. Selepas deploy, sahkan web dan `/health`, login admin, operasi Redis, dan log
+   cron staging. `/health` menguji database sahaja dan tidak membuktikan Redis
+   atau keseluruhan flow berfungsi. Uji pendaftaran, trade, referral dan
+   withdrawal dengan data serta transaksi simulasi sahaja.
+
+URL staging boleh diakses umum dan tidak mempunyai sekatan akses tambahan.
+Jangan gunakan data peribadi sebenar, nombor hubungan production, atau wang
+sebenar; cron staging akan memproses komisen pada database staging. Blueprint
+staging perlu dikemas kini seiring perubahan konfigurasi production.
 
 ---
 
@@ -231,7 +261,9 @@ Nota:
 - Ini **demo/latihan** — *jangan* gunakan untuk data kewangan sebenar atau letak akaun ini secara terbuka untuk orang awam guna sebagai produk sebenar.
 - Production wajib mempunyai `DEFAULT_ADMIN_PASSWORD`, `SECRET_KEY` dan `DATABASE_URL`; jangan gunakan nilai development.
 - Semua password user/admin disimpan dalam bentuk **hash** (bukan plain text) menggunakan `werkzeug.security`.
-- Login user/admin dan pendaftaran mempunyai had kadar; storan rate limiter lalai dalam memori tidak dikongsi antara worker. Untuk deployment berbilang worker, konfigurasi storan bersama seperti Redis.
+- Login user/admin dan pendaftaran mempunyai had kadar. Production memerlukan
+  `REDIS_URL` untuk storan kadar bersama; development menggunakan memori jika
+  URL tidak ditetapkan.
 - Pendaftaran demo menyimpan maklumat peribadi dan bank yang dihantar. Gunakan data rekaan sahaja sehingga notis privasi, asas pemprosesan, kawalan akses dan tempoh penyimpanan sebenar ditetapkan.
 
 ---
@@ -240,6 +272,30 @@ Nota:
 
 Blueprint `render.yaml` memautkan `DATABASE_URL` Web Service kepada pangkalan
 data PostgreSQL `tradenex-postgres`. Selepas deploy, semak di Render Dashboard bahawa:
+
+- Nilai wang akaun, pengeluaran dan komisen disimpan sebagai `NUMERIC(20,2)`
+  dan dikira dengan Decimal. Input wang dibundarkan ke sen menggunakan
+  round-half-even. Nilai candle kekal menggunakan formula asal.
+- Jika jadual kewangan PostgreSQL lama mengandungi data dan masih menggunakan
+  float, startup akan berhenti dan meminta migrasi disahkan. Jangan padam
+  data untuk mengatasi masalah ini; sandarkan, uji migrasi pada salinan,
+  semak pembundaran dan rekonsiliasi dahulu. Jadual lama yang kosong boleh
+  ditukar secara automatik. SQLite setempat tidak menyamai jaminan ketepatan
+  penyimpanan PostgreSQL.
+- Sesi baharu Entry–Close dihadkan kepada 30 hari; sesi lama tidak dipotong.
+- Setiap worker menyimpan cache candle terhad dalam memori dan menyambung
+  janaan pada hujung sesi. Cache akan diisi semula selepas restart atau apabila
+  ruang diperlukan; formula, sejarah dan nilai Close tidak berubah.
+- Ketika janaan carta terlalu sibuk, request boleh menerima HTTP 503 sementara
+  dan carta akan cuba lagi secara automatik. Semak amaran `Candle generation
+  saturated` dalam log Render dan kapasiti memori/CPU jika kerap berlaku.
+- PostgreSQL menggunakan pemeriksaan sambungan sebelum digunakan semula serta
+  timeout; Redis juga mempunyai timeout. Jika storan rate limiter gagal,
+  request yang terlibat menerima HTTP 503 dan kegagalan direkodkan, bukan
+  melangkau had keselamatan.
+- Senarai pengguna, pendaftaran, pengeluaran dan resit menggunakan pagination
+  database. Dalam borang penciptaan atau kemas kini akaun, cari rekod bank dan
+  gunakan butang halaman untuk memilih pendaftaran yang betul.
 
 - Web Service menggunakan `DATABASE_URL` daripada pangkalan data yang betul, bukan SQLite fallback.
 - Pangkalan data dan Web Service berada di region yang sama supaya sambungan dalaman digunakan.

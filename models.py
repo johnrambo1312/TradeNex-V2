@@ -1,10 +1,19 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 
 from candle_engine import build_candles, final_candle_close
 
 db = SQLAlchemy()
+
+ZERO = Decimal("0.00")
+CENT = Decimal("0.01")
+
+
+def money(value):
+    return Decimal(str(value if value is not None else 0)).quantize(CENT)
+
 
 def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)  # simpan sebagai naive UTC, konsisten
@@ -64,10 +73,10 @@ class User(db.Model):
     )
 
     # Modal yang ditetapkan admin; sistem tidak mengubahnya semasa trade atau withdraw.
-    balance = db.Column(db.Float, default=0.0)
+    balance = db.Column(db.Numeric(20, 2), default=ZERO)
     current_rank = db.Column(db.Integer, default=0, nullable=False, server_default="0")
-    withdrawn_total = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
-    realized_profit_loss = db.Column(db.Float, default=0.0, nullable=False, server_default="0")
+    withdrawn_total = db.Column(db.Numeric(20, 2), default=ZERO, nullable=False, server_default="0")
+    realized_profit_loss = db.Column(db.Numeric(20, 2), default=ZERO, nullable=False, server_default="0")
     is_matured = db.Column(db.Boolean, default=False, nullable=False, server_default="false")
     registration_request_id = db.Column(
         db.Integer,
@@ -101,15 +110,16 @@ class User(db.Model):
     @property
     def paid_referral_commission(self):
         return sum(
-            float(commission.amount or 0)
-            for commission in self.referral_commissions
-            if commission.status == "paid"
+            (money(commission.amount)
+             for commission in self.referral_commissions
+             if commission.status == "paid"),
+            ZERO,
         )
 
     def _withdrawal_commission_allocations(self):
         paid_commissions = sorted(
             (
-                (_as_utc_naive(commission.paid_at, _MYT), float(commission.amount or 0))
+                (_as_utc_naive(commission.paid_at, _MYT), money(commission.amount))
                 for commission in self.referral_commissions
                 if commission.status == "paid" and commission.paid_at
             ),
@@ -123,12 +133,12 @@ class User(db.Model):
             ),
         )
         allocations = {}
-        allocated_commission = 0.0
-        eligible_commission = 0.0
+        allocated_commission = ZERO
+        eligible_commission = ZERO
         paid_index = 0
         for withdrawal in withdrawals:
             if withdrawal.status == "rejected":
-                allocations[withdrawal] = 0.0
+                allocations[withdrawal] = ZERO
                 continue
 
             created_at = _as_utc_naive(withdrawal.created_at, timezone.utc)
@@ -140,23 +150,23 @@ class User(db.Model):
                 eligible_commission += paid_commissions[paid_index][1]
                 paid_index += 1
 
-            amount = max(0.0, float(withdrawal.amount or 0))
+            amount = max(ZERO, money(withdrawal.amount))
             recorded_commission = withdrawal.commission_amount
             recorded_account = withdrawal.account_amount
             is_legacy = (
-                float(recorded_commission or 0) == 0
-                and float(recorded_account or 0) == 0
+                money(recorded_commission) == ZERO
+                and money(recorded_account) == ZERO
             )
             if is_legacy:
                 # Legacy requests had no source split; reserve eligible paid commissions first.
                 commission_amount = min(
                     amount,
-                    max(0.0, eligible_commission - allocated_commission),
+                    max(ZERO, eligible_commission - allocated_commission),
                 )
             else:
                 commission_amount = min(
                     amount,
-                    max(0.0, float(recorded_commission or 0)),
+                    max(ZERO, money(recorded_commission)),
                 )
 
             allocations[withdrawal] = commission_amount
@@ -165,32 +175,33 @@ class User(db.Model):
 
     @property
     def withdrawn_commission(self):
-        return sum(self._withdrawal_commission_allocations().values())
+        return sum(self._withdrawal_commission_allocations().values(), ZERO)
 
     @property
     def withdrawable_commission(self):
-        return round(max(0.0, self.paid_referral_commission - self.withdrawn_commission), 2)
+        return max(ZERO, self.paid_referral_commission - self.withdrawn_commission)
 
     @property
     def withdrawn_account_amount(self):
         commission_allocations = self._withdrawal_commission_allocations()
         return sum(
-            max(
-                0.0,
-                float(withdrawal.amount or 0)
-                - commission_allocations.get(withdrawal, 0.0),
+            (max(
+                ZERO,
+                money(withdrawal.amount)
+                - commission_allocations.get(withdrawal, ZERO),
             )
             for withdrawal in self.withdrawal_requests
-            if withdrawal.status != "rejected"
+            if withdrawal.status != "rejected"),
+            ZERO,
         )
 
     @property
     def wallet_balance_before_session(self):
         return round(
             max(
-                0.0,
-                float(self.balance or 0)
-                + float(self.realized_profit_loss or 0)
+                ZERO,
+                money(self.balance)
+                + money(self.realized_profit_loss)
                 - self.withdrawn_account_amount,
             )
             + self.withdrawable_commission,
@@ -201,10 +212,10 @@ class User(db.Model):
     def wallet_account_balance(self):
         return round(
             max(
-                0.0,
-                float(self.balance or 0)
-                + float(self.realized_profit_loss or 0)
-                + self.current_profit_loss
+                ZERO,
+                money(self.balance)
+                + money(self.realized_profit_loss)
+                + Decimal(str(self.current_profit_loss))
                 - self.withdrawn_account_amount,
             ),
             2,
@@ -213,16 +224,16 @@ class User(db.Model):
     @property
     def withdrawable_account_amount(self):
         account_balance = (
-            float(self.balance or 0)
+            money(self.balance)
             if self.is_matured
-            else 0.0
+            else ZERO
         )
         return round(
             max(
-                0.0,
+                ZERO,
                 account_balance
-                + float(self.realized_profit_loss or 0)
-                + self.current_profit_loss
+                + money(self.realized_profit_loss)
+                + Decimal(str(self.current_profit_loss))
                 - self.withdrawn_account_amount,
             ),
             2,
@@ -231,9 +242,10 @@ class User(db.Model):
     @property
     def pending_referral_commission(self):
         return sum(
-            float(commission.amount or 0)
-            for commission in self.referral_commissions
-            if commission.status == "pending"
+            (money(commission.amount)
+             for commission in self.referral_commissions
+             if commission.status == "pending"),
+            ZERO,
         )
 
     def chart_candles(self, now_ts=None):
@@ -348,6 +360,9 @@ class User(db.Model):
     @property
     def is_trade_closed(self):
         """True bila sesi benar-benar tamat: ada Entry, last ialah Close, dan masa Close dah lepas."""
+        return self.is_trade_closed_at(_now_myt())
+
+    def is_trade_closed_at(self, now):
         if not self.entries:
             return False
         sorted_entries = sorted(self.entries, key=lambda e: e.entry_date)
@@ -359,7 +374,7 @@ class User(db.Model):
             return False
 
         # Status "Selesai" hanya selepas masa Close berlalu.
-        return _now_myt() >= last.entry_date
+        return now >= last.entry_date
 
     def set_password(self, raw_password):
         self.password_hash = generate_password_hash(raw_password)
@@ -424,9 +439,9 @@ class WithdrawalRequest(db.Model):
         db.Integer,
         db.ForeignKey("registration_requests.id", ondelete="RESTRICT"),
     )
-    amount = db.Column(db.Float, nullable=False)
-    commission_amount = db.Column(db.Float, nullable=False, default=0.0, server_default="0")
-    account_amount = db.Column(db.Float, nullable=False, default=0.0, server_default="0")
+    amount = db.Column(db.Numeric(20, 2), nullable=False)
+    commission_amount = db.Column(db.Numeric(20, 2), nullable=False, default=ZERO, server_default="0")
+    account_amount = db.Column(db.Numeric(20, 2), nullable=False, default=ZERO, server_default="0")
     account_holder_name = db.Column(db.String(120))
     bank_name = db.Column(db.String(100))
     bank_account_number = db.Column(db.String(34))
@@ -453,7 +468,7 @@ class ReferralCommission(db.Model):
         db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     level = db.Column(db.Integer, nullable=False)
-    amount = db.Column(db.Float, nullable=False)
+    amount = db.Column(db.Numeric(20, 2), nullable=False)
     status = db.Column(db.String(20), nullable=False, default="pending", server_default="pending")
     payable_at = db.Column(db.DateTime, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)

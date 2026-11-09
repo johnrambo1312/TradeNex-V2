@@ -6,10 +6,21 @@ terakhir yang sama. Nilai Close admin hanya rujukan supaya carta berhenti di
 sekitar nilai itu.
 """
 import math
+import threading
+from collections import OrderedDict
 from functools import lru_cache
 
 CANDLE_SEC = 60
 CLOSE_TOLERANCE_PCT = 0.02
+_CACHE_CANDLE_LIMIT = 90_000
+_CACHE_SESSION_LIMIT = 16
+_cache = OrderedDict()
+_cache_lock = threading.RLock()
+_CACHE_LOCK_TIMEOUT = 15
+
+
+class CandleCacheBusy(RuntimeError):
+    """Candle generation is temporarily saturated."""
 
 # (had atas minit, baseVolPct, moveMul, momentumMul, highSpikeTh, midSpikeTh,
 #  highSpikeMin, highSpikeRange, midSpikeMin, midSpikeRange, medSpikeMin,
@@ -59,16 +70,16 @@ def _profile(trade_minutes):
     return _PROFILES[-1][1:]
 
 
-def build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
-    """Candle 1 minit yang sudah lengkap pada masa `now_ts` (saat UTC)."""
+def _build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts,
+                   candles=None, resume=None):
     session_secs = end_ts - start_ts
     elapsed = min(now_ts, end_ts) - start_ts
     if elapsed < 0:
-        return []
+        return [], (start_value, 0.0)
     total_candles = max(1, math.ceil(session_secs / CANDLE_SEC))
     completed = min(total_candles, int(elapsed // CANDLE_SEC))
     if completed <= 0:
-        return []
+        return [], (start_value, 0.0)
 
     (base_vol_pct, move_mul, momentum_mul, high_th, mid_th, high_min, high_range,
      mid_min, mid_range, med_min, med_range, shock_th, shock_min, shock_range,
@@ -76,12 +87,14 @@ def build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
 
     min_price = max(1, start_value * 0.05)
     session_ended = now_ts >= end_ts
-    price = start_value
-    momentum = 0.0
+    price = start_value if resume is None else resume[0]
+    momentum = 0.0 if resume is None else resume[1]
     seed_base = str(user_id)
-    candles = []
+    candles = [] if candles is None else candles
+    previous_state = (price, momentum)
 
-    for ci in range(completed):
+    for ci in range(len(candles), completed):
+        previous_state = (price, momentum)
         r1, r2, r3, r4 = (
             _mulberry32(_hash_seed(f"{seed_base}_c{ci * 4 + offset}"))
             for offset in range(4)
@@ -170,7 +183,51 @@ def build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
         })
         price = close
 
-    return candles
+    return candles, previous_state
+
+
+def build_candles(user_id, start_value, final_target, start_ts, end_ts, now_ts):
+    """Candle lengkap dengan cache terhad; sesi tamat mengira semula candle terakhir."""
+    completed = min(
+        max(1, math.ceil((end_ts - start_ts) / CANDLE_SEC)),
+        max(0, int((min(now_ts, end_ts) - start_ts) // CANDLE_SEC)),
+    )
+    if not completed:
+        return []
+    key = (user_id, start_value, final_target, start_ts, end_ts)
+    if completed > _CACHE_CANDLE_LIMIT:
+        candles, _ = _build_candles(*key, now_ts)
+        return candles
+
+    if not _cache_lock.acquire(timeout=_CACHE_LOCK_TIMEOUT):
+        raise CandleCacheBusy("Candle generation is temporarily saturated.")
+    try:
+        cached = _cache.pop(key, None)
+        ended = now_ts >= end_ts
+        if cached and cached[2] == ended and len(cached[0]) == completed:
+            _cache[key] = cached
+            return list(cached[0])
+
+        if cached and len(cached[0]) <= completed and not cached[2]:
+            candles = list(cached[0][:-1])
+            resume = cached[1]
+        else:
+            candles = []
+            resume = None
+        while _cache and (
+            len(_cache) >= _CACHE_SESSION_LIMIT
+            or sum(len(value[0]) for value in _cache.values()) + completed > _CACHE_CANDLE_LIMIT
+        ):
+            _cache.popitem(last=False)
+        candles, previous_state = _build_candles(
+            *key, now_ts, candles=candles, resume=resume,
+        )
+        _cache[key] = (candles, previous_state, ended)
+        while len(_cache) > _CACHE_SESSION_LIMIT or sum(len(value[0]) for value in _cache.values()) > _CACHE_CANDLE_LIMIT:
+            _cache.popitem(last=False)
+        return list(candles)
+    finally:
+        _cache_lock.release()
 
 
 @lru_cache(maxsize=4096)

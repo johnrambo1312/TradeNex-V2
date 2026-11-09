@@ -1,9 +1,11 @@
 import calendar
+import hashlib
 import math
 import os
 import re
 import secrets
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify
@@ -11,10 +13,13 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from sqlalchemy import inspect as sqlalchemy_inspect, or_, text, update
+from limits.errors import StorageError
+from redis.exceptions import RedisError
+from sqlalchemy import case, inspect as sqlalchemy_inspect, or_, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from candle_engine import CandleCacheBusy
 from models import (
     db,
     User,
@@ -24,6 +29,8 @@ from models import (
     UserLiveBalance,
     WithdrawalRequest,
     ReferralCommission,
+    ZERO,
+    money,
 )
 
 load_dotenv()
@@ -48,9 +55,19 @@ app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION or os.environ.get("FLASK_DEBUG", "0") != "1"
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
 
 csrf = CSRFProtect(app)
-limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[])
+limiter_storage = os.environ.get("REDIS_URL", "").strip()
+if IS_PRODUCTION and not limiter_storage:
+    raise RuntimeError("REDIS_URL mesti ditetapkan untuk rate limiting di production.")
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri=limiter_storage or "memory://",
+    storage_options={"socket_connect_timeout": 3, "socket_timeout": 3} if limiter_storage else None,
+)
 
 # SQLite hanya digunakan untuk development setempat.
 db_url = (os.environ.get("DATABASE_URL") or "").strip()
@@ -59,12 +76,56 @@ if not db_url:
         raise RuntimeError("DATABASE_URL PostgreSQL mesti ditetapkan untuk production.")
     db_url = "sqlite:///tradenex_demo.db"
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 if IS_PRODUCTION and not db_url.startswith(("postgresql://", "postgresql+")):
     raise RuntimeError("DATABASE_URL production mesti menggunakan PostgreSQL, bukan SQLite.")
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+if db_url.startswith("postgresql"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+        "pool_timeout": 10,
+        "connect_args": {"connect_timeout": 5},
+    }
 db.init_app(app)
+
+
+@app.errorhandler(CandleCacheBusy)
+def handle_candle_cache_busy(error):
+    app.logger.warning("Candle generation saturated: %s", error)
+    if request.path.startswith("/api/"):
+        response = jsonify({"ok": False, "message": "Carta sedang sibuk. Sila cuba lagi."})
+    else:
+        response = app.make_response("Carta sedang sibuk. Sila muat semula sebentar lagi.")
+    response.status_code = 503
+    response.headers["Retry-After"] = "15"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.errorhandler(RedisError)
+@app.errorhandler(StorageError)
+def handle_rate_limit_storage_failure(error):
+    app.logger.error("Rate limit storage unavailable: %s", error)
+    if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+        response = jsonify({"ok": False, "message": "Perkhidmatan sementara tidak tersedia. Sila cuba lagi."})
+    else:
+        response = app.make_response("Perkhidmatan sementara tidak tersedia. Sila cuba lagi.")
+    response.status_code = 503
+    response.headers["Retry-After"] = "15"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.after_request
+def prevent_private_response_caching(response):
+    if "user_id" in session or "admin_id" in session:
+        response.headers["Cache-Control"] = "private, no-store"
+    return response
+
 
 @app.context_processor
 def inject_contact_settings():
@@ -133,6 +194,25 @@ def now_myt():
 
 def registration_for_user(user):
     return user.registration_request
+
+
+def chart_revision(user):
+    entries = sorted(user.entries, key=lambda entry: (entry.entry_date, entry.id))
+    values = [
+        (entry.id, entry.entry_date.isoformat(), entry.value, entry.note)
+        for entry in entries
+    ]
+    return hashlib.sha256(repr(values).encode("utf-8")).hexdigest()
+
+
+def parse_money(value):
+    try:
+        amount = Decimal(value)
+        if not amount.is_finite() or abs(amount) >= Decimal("1000000000000000000"):
+            raise ValueError("Amount is outside the supported range")
+        return money(amount)
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("Invalid monetary amount") from exc
 
 
 def next_referral_commission_payable_at(now=None):
@@ -213,25 +293,27 @@ def monthly_referral_commission_breakdowns(commissions, now=None, language="ms")
             ]
             levels.append({
                 "level": level,
-                "amount": sum(float(commission.amount or 0) for commission in level_commissions),
-                "paid_amount": sum(float(commission.amount or 0) for commission in paid_commissions),
-                "pending_amount": sum(float(commission.amount or 0) for commission in pending_commissions),
+                "amount": sum((money(commission.amount) for commission in level_commissions), ZERO),
+                "paid_amount": sum((money(commission.amount) for commission in paid_commissions), ZERO),
+                "pending_amount": sum((money(commission.amount) for commission in pending_commissions), ZERO),
                 "contributors": len({
                     commission.referred_user_id for commission in level_commissions
                 }),
             })
         breakdowns.append({
             "label": label,
-            "total": sum(float(commission.amount or 0) for commission in monthly_commissions),
+            "total": sum((money(commission.amount) for commission in monthly_commissions), ZERO),
             "paid_total": sum(
-                float(commission.amount or 0)
-                for commission in monthly_commissions
-                if commission.status == "paid"
+                (money(commission.amount)
+                 for commission in monthly_commissions
+                 if commission.status == "paid"),
+                ZERO,
             ),
             "pending_total": sum(
-                float(commission.amount or 0)
-                for commission in monthly_commissions
-                if commission.status == "pending"
+                (money(commission.amount)
+                 for commission in monthly_commissions
+                 if commission.status == "pending"),
+                ZERO,
             ),
             "contributors": len({
                 commission.referred_user_id for commission in monthly_commissions
@@ -337,6 +419,7 @@ def _ensure_database_ready():
     ensure_registration_request_schema()
     ensure_user_schema()
     ensure_withdrawal_request_schema()
+    ensure_money_schema()
 
     if not AdminUser.query.filter_by(username="admin").first():
         admin_password = os.environ.get("DEFAULT_ADMIN_PASSWORD", "").strip()
@@ -356,6 +439,33 @@ def _ensure_database_ready():
         db.session.commit()
 
 
+def ensure_money_schema():
+    if db.engine.dialect.name != "postgresql":
+        return
+    columns = {
+        "users": ("balance", "withdrawn_total", "realized_profit_loss"),
+        "withdrawal_requests": ("amount", "commission_amount", "account_amount"),
+        "referral_commissions": ("amount",),
+    }
+    inspector = sqlalchemy_inspect(db.engine)
+    with db.engine.begin() as connection:
+        for table_name, names in columns.items():
+            types = {column["name"]: column["type"] for column in inspector.get_columns(table_name)}
+            for name in names:
+                column_type = types[name]
+                if getattr(column_type, "precision", None) == 20 and getattr(column_type, "scale", None) == 2:
+                    continue
+                if connection.exec_driver_sql(f"SELECT EXISTS (SELECT 1 FROM {table_name})").scalar():
+                    raise RuntimeError(
+                        f"Skema wang {table_name}.{name} memerlukan migrasi. "
+                        "Sandarkan data dan lakukan migrasi yang disahkan sebelum startup."
+                    )
+                connection.exec_driver_sql(
+                    f"ALTER TABLE {table_name} ALTER COLUMN {name} "
+                    f"TYPE NUMERIC(20, 2) USING ROUND({name}::numeric, 2)"
+                )
+
+
 def ensure_user_schema():
     """Tambah medan user yang diperlukan pada pangkalan data sedia ada."""
     inspector = sqlalchemy_inspect(db.engine)
@@ -365,8 +475,8 @@ def ensure_user_schema():
     existing_columns = {column["name"] for column in inspector.get_columns("users")}
     missing_columns = {
         "current_rank": "INTEGER NOT NULL DEFAULT 0",
-        "withdrawn_total": "FLOAT NOT NULL DEFAULT 0",
-        "realized_profit_loss": "FLOAT NOT NULL DEFAULT 0",
+        "withdrawn_total": "NUMERIC(20, 2) NOT NULL DEFAULT 0",
+        "realized_profit_loss": "NUMERIC(20, 2) NOT NULL DEFAULT 0",
         "is_matured": "BOOLEAN NOT NULL DEFAULT FALSE",
         "preferred_language": "VARCHAR(2) NOT NULL DEFAULT 'en'",
         "referral_code": "VARCHAR(9)",
@@ -427,8 +537,8 @@ def ensure_withdrawal_request_schema():
         "account_holder_name": "VARCHAR(120)",
         "bank_name": "VARCHAR(100)",
         "bank_account_number": "VARCHAR(34)",
-        "commission_amount": "FLOAT NOT NULL DEFAULT 0",
-        "account_amount": "FLOAT NOT NULL DEFAULT 0",
+        "commission_amount": "NUMERIC(20, 2) NOT NULL DEFAULT 0",
+        "account_amount": "NUMERIC(20, 2) NOT NULL DEFAULT 0",
         "payment_reference": "VARCHAR(120)",
         "registration_request_id": (
             "INTEGER REFERENCES registration_requests(id) ON DELETE RESTRICT"
@@ -802,7 +912,32 @@ def chart_candles():
     user = db.session.get(User, session["user_id"])
     if not user:
         return jsonify({"candles": []}), 401
-    response = jsonify({"candles": user.chart_candles()})
+    try:
+        start = int(request.args.get("start", "0"))
+    except ValueError:
+        abort(400)
+    if start < 0:
+        abort(400)
+    chart_now = now_myt()
+    chart_now_ts = chart_now.replace(tzinfo=MYT).timestamp()
+    closed = user.is_trade_closed_at(chart_now)
+    revision = chart_revision(user)
+    known_revision = request.args.get("revision")
+    if known_revision == revision and request.args.get("closed") == "1" and closed:
+        response = jsonify({"unchanged": True, "closed": True, "revision": revision})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    if known_revision and known_revision != revision:
+        start = 0
+    candles = user.chart_candles(now_ts=chart_now_ts)
+    if start > len(candles):
+        abort(400)
+    response = jsonify({
+        "candles": candles[start:],
+        "start": start,
+        "closed": closed,
+        "revision": revision,
+    })
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -899,10 +1034,14 @@ def dashboard():
         chart_timestamps = []
         show_chart = False
 
+    chart_now = now_myt()
+    chart_now_ts = chart_now.replace(tzinfo=MYT).timestamp()
     return render_template(
         "dashboard.html",
         user=user,
-        chart_candles=user.chart_candles() if show_chart else [],
+        chart_candles=user.chart_candles(now_ts=chart_now_ts) if show_chart else [],
+        chart_closed=user.is_trade_closed_at(chart_now),
+        chart_revision=chart_revision(user),
         wallet_balance_before_session=user.wallet_balance_before_session,
         chart_labels=chart_labels,
         chart_values=chart_values,
@@ -999,17 +1138,28 @@ def admin_logout():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    users = User.query.order_by(User.created_at.desc(), User.id.desc()).all()
-    all_registration_requests = RegistrationRequest.query.order_by(
-        RegistrationRequest.created_at.desc()
-    ).all()
-    withdrawal_requests = WithdrawalRequest.query.order_by(
-        WithdrawalRequest.created_at.desc()
-    ).all()
-    completed_withdrawals = [
-        withdrawal for withdrawal in withdrawal_requests
-        if withdrawal.status == "processed"
-    ]
+    def page_number(name):
+        try:
+            return max(1, int(request.args.get(name, "1")))
+        except ValueError:
+            return 1
+
+    def query_page(query, page, per_page):
+        count = query.order_by(None).count()
+        pages = max(1, math.ceil(count / per_page))
+        page = min(page, pages)
+        return query.offset((page - 1) * per_page).limit(per_page).all(), count, page, pages
+
+    withdrawal_requests, withdrawal_count, withdrawal_page, withdrawal_pages = query_page(
+        WithdrawalRequest.query.order_by(WithdrawalRequest.created_at.desc(), WithdrawalRequest.id.desc()),
+        page_number("w_page"), 25,
+    )
+    completed_withdrawals, completed_count, receipt_page, receipt_pages = query_page(
+        WithdrawalRequest.query.filter_by(status="processed").order_by(
+            WithdrawalRequest.created_at.desc(), WithdrawalRequest.id.desc()
+        ),
+        page_number("receipt_page"), 25,
+    )
     receipt_withdrawal = None
     receipt_processed_at = None
     receipt_id = request.args.get("receipt_id", "").strip()
@@ -1029,23 +1179,72 @@ def admin_dashboard():
                     receipt_processed_at = processed_at.astimezone(MYT).replace(tzinfo=None)
         if not receipt_withdrawal:
             flash("Resit hanya boleh dijana untuk bayaran yang telah disahkan selesai.", "error")
+    if receipt_withdrawal and receipt_withdrawal not in completed_withdrawals:
+        completed_withdrawals.insert(0, receipt_withdrawal)
 
-    linked_registration_ids = {
-        user.registration_request_id for user in users if user.registration_request_id
-    }
-    protected_registration_ids = linked_registration_ids | {
-        withdrawal.registration_request_id
-        for withdrawal in withdrawal_requests
-        if withdrawal.registration_request_id
-    }
+    def user_list_status(account):
+        if not account.is_active:
+            return "inactive"
+        if account.is_trade_closed:
+            return "closed"
+        return "active" if account.entries else "ready"
+
+    user_query = request.args.get("u_q", "").strip()[:80]
+    user_status = request.args.get("u_status", "")
+    user_maturity = request.args.get("u_mat", "")
+    users_query = User.query
+    if user_query:
+        users_query = users_query.filter(
+            db.func.lower(User.full_name + " " + User.nova_id).contains(user_query.lower(), autoescape=True)
+        )
+    has_entries = User.entries.any()
+    has_entry = User.entries.any(TradeEntry.note.startswith("[Entry]"))
+    last_entry_note = (
+        select(TradeEntry.note).where(TradeEntry.user_id == User.id)
+        .order_by(TradeEntry.entry_date.desc(), TradeEntry.id.desc()).limit(1).scalar_subquery()
+    )
+    last_entry_date = (
+        select(TradeEntry.entry_date).where(TradeEntry.user_id == User.id)
+        .order_by(TradeEntry.entry_date.desc(), TradeEntry.id.desc()).limit(1).scalar_subquery()
+    )
+    closed = has_entry & last_entry_note.startswith("[Close]") & (last_entry_date <= now_myt())
+    if user_status == "inactive":
+        users_query = users_query.filter(User.is_active.is_not(True))
+    elif user_status == "closed":
+        users_query = users_query.filter(User.is_active.is_(True), closed)
+    elif user_status == "active":
+        users_query = users_query.filter(User.is_active.is_(True), has_entries, ~db.func.coalesce(closed, False))
+    elif user_status == "ready":
+        users_query = users_query.filter(User.is_active.is_(True), ~has_entries)
+    elif user_status:
+        users_query = users_query.filter(False)
+    if user_maturity:
+        users_query = users_query.filter(User.is_matured.is_(user_maturity == "matured"))
+    total_users = User.query.count()
+    page_users, filtered_user_count, user_page, user_pages = query_page(
+        users_query.order_by(User.created_at.desc(), User.id.desc()),
+        page_number("u_page"), ADMIN_USERS_PER_PAGE,
+    )
+    manage_user_id = request.args.get("manage_user", "").strip()
+    try:
+        manage_user = db.session.get(User, int(manage_user_id))
+    except ValueError:
+        manage_user = None
+    if manage_user and manage_user not in page_users:
+        page_users = [manage_user] + page_users
+    user_statuses = {account.id: user_list_status(account) for account in page_users}
+
+    page_user_ids = [user.id for user in page_users]
+    level_one = User.query.filter(User.referred_by_id.in_(page_user_ids)).all()
+    level_two = User.query.filter(User.referred_by_id.in_([user.id for user in level_one])).all()
     children_by_parent = {}
-    for user in users:
+    for user in level_one + level_two:
         if user.referred_by_id:
             children_by_parent.setdefault(user.referred_by_id, []).append(user)
 
     referrals_by_user = {}
     incentive_progress_by_user = {}
-    for user in users:
+    for user in page_users:
         level_one = children_by_parent.get(user.id, [])
         level_one_ids = {referral.id for referral in level_one}
         level_two = [
@@ -1063,12 +1262,14 @@ def admin_dashboard():
             "referral_count": referral_count,
             "eligible": bool(next_rank and referral_count >= next_rank[2]),
         }
-    commissions_by_user = {user.id: [] for user in users}
+    commissions_by_user = {user.id: [] for user in page_users}
     commission_totals_by_user = {
-        user.id: {"paid": 0.0, "pending": 0.0} for user in users
+        user.id: {"paid": ZERO, "pending": ZERO} for user in page_users
     }
     commission_by_user_referral_level = {}
-    for commission in ReferralCommission.query.order_by(
+    for commission in ReferralCommission.query.filter(
+        ReferralCommission.beneficiary_user_id.in_(page_user_ids)
+    ).order_by(
         ReferralCommission.created_at.desc()
     ).all():
         commissions_by_user.setdefault(commission.beneficiary_user_id, []).append(commission)
@@ -1077,90 +1278,54 @@ def admin_dashboard():
         ] = commission
         total_key = "paid" if commission.status == "paid" else "pending"
         commission_totals_by_user.setdefault(
-            commission.beneficiary_user_id, {"paid": 0.0, "pending": 0.0}
-        )[total_key] += float(commission.amount or 0)
-
-    def page_number(name):
-        try:
-            return max(1, int(request.args.get(name, "1")))
-        except ValueError:
-            return 1
-
-    def paginate(items, page, per_page):
-        pages = max(1, math.ceil(len(items) / per_page))
-        page = min(page, pages)
-        start = (page - 1) * per_page
-        return items[start:start + per_page], page, pages
-
-    def user_list_status(account):
-        if not account.is_active:
-            return "inactive"
-        if account.is_trade_closed:
-            return "closed"
-        return "active" if account.entries else "ready"
-
-    user_query = request.args.get("u_q", "").strip()[:80]
-    user_status = request.args.get("u_status", "")
-    user_maturity = request.args.get("u_mat", "")
-    needle = user_query.casefold()
-    filtered_users = [
-        account for account in users
-        if (not needle or needle in f"{account.full_name} {account.nova_id}".casefold())
-        and (not user_status or user_list_status(account) == user_status)
-        and (
-            not user_maturity
-            or (user_maturity == "matured") == bool(account.is_matured)
-        )
-    ]
-    page_users, user_page, user_pages = paginate(
-        filtered_users, page_number("u_page"), ADMIN_USERS_PER_PAGE
-    )
-    manage_user_id = request.args.get("manage_user", "").strip()
-    try:
-        manage_user = db.session.get(User, int(manage_user_id))
-    except ValueError:
-        manage_user = None
-    if manage_user and manage_user not in page_users:
-        page_users = [manage_user] + page_users
-    user_statuses = {account.id: user_list_status(account) for account in page_users}
+            commission.beneficiary_user_id, {"paid": ZERO, "pending": ZERO}
+        )[total_key] += money(commission.amount)
 
     registration_query = request.args.get("r_q", "").strip()[:80]
     registration_status = request.args.get("r_status", "")
-    registration_needle = registration_query.casefold()
-
-    def registration_state(registration):
-        if registration.user:
-            return "accepted"
-        if registration.id in protected_registration_ids:
-            return "used"
-        return "pending"
-
-    filtered_registrations = [
-        registration for registration in all_registration_requests
-        if (
-            not registration_needle
-            or registration_needle in (
-                f"{registration.full_name} {registration.request_code} "
-                f"{registration.phone}"
-            ).casefold()
+    linked = RegistrationRequest.user.has()
+    used = db.session.query(WithdrawalRequest.id).filter(
+        WithdrawalRequest.registration_request_id == RegistrationRequest.id
+    ).exists()
+    pending = ~linked & ~used
+    registrations_query = RegistrationRequest.query
+    if registration_query:
+        registration_text = (
+            RegistrationRequest.full_name + " " +
+            db.func.coalesce(RegistrationRequest.request_code, "None") + " " +
+            RegistrationRequest.phone
         )
-        and (not registration_status or registration_state(registration) == registration_status)
-    ]
-    # Permohonan yang menunggu diutamakan di atas; susunan tarikh dikekalkan.
-    filtered_registrations.sort(key=lambda r: registration_state(r) != "pending")
-    registration_requests, registration_page, registration_pages = paginate(
-        filtered_registrations, page_number("r_page"), ADMIN_REGISTRATIONS_PER_PAGE
+        registrations_query = registrations_query.filter(
+            db.func.lower(registration_text).contains(registration_query.lower(), autoescape=True)
+        )
+    if registration_status == "accepted":
+        registrations_query = registrations_query.filter(linked)
+    elif registration_status == "used":
+        registrations_query = registrations_query.filter(~linked, used)
+    elif registration_status == "pending":
+        registrations_query = registrations_query.filter(pending)
+    elif registration_status:
+        registrations_query = registrations_query.filter(False)
+    registration_requests, filtered_registration_count, registration_page, registration_pages = query_page(
+        registrations_query.order_by(
+            case((pending, 0), else_=1),
+            RegistrationRequest.created_at.desc(), RegistrationRequest.id.desc(),
+        ),
+        page_number("r_page"), ADMIN_REGISTRATIONS_PER_PAGE,
     )
-    pending_registration_count = sum(
-        1 for registration in all_registration_requests
-        if registration_state(registration) == "pending"
-    )
+    total_registrations = RegistrationRequest.query.count()
+    pending_registration_count = RegistrationRequest.query.filter(pending).count()
+    registration_ids = [registration.id for registration in registration_requests]
+    protected_registration_ids = {
+        row[0] for row in db.session.query(WithdrawalRequest.registration_request_id)
+        .filter(WithdrawalRequest.registration_request_id.in_(registration_ids)).distinct()
+    }
 
     return render_template(
         "admin_dashboard.html",
         users=page_users,
-        total_users=len(users),
-        filtered_user_count=len(filtered_users),
+        total_users=total_users,
+        filtered_user_count=filtered_user_count,
         user_page=user_page,
         user_pages=user_pages,
         user_statuses=user_statuses,
@@ -1168,16 +1333,21 @@ def admin_dashboard():
         user_status=user_status,
         user_maturity=user_maturity,
         registration_requests=registration_requests,
-        total_registrations=len(all_registration_requests),
-        all_registration_requests=all_registration_requests,
-        filtered_registration_count=len(filtered_registrations),
+        total_registrations=total_registrations,
+        filtered_registration_count=filtered_registration_count,
         pending_registration_count=pending_registration_count,
         registration_page=registration_page,
         registration_pages=registration_pages,
         registration_query=registration_query,
         registration_status=registration_status,
         withdrawal_requests=withdrawal_requests,
+        withdrawal_count=withdrawal_count,
+        withdrawal_page=withdrawal_page,
+        withdrawal_pages=withdrawal_pages,
         completed_withdrawals=completed_withdrawals,
+        completed_count=completed_count,
+        receipt_page=receipt_page,
+        receipt_pages=receipt_pages,
         receipt_withdrawal=receipt_withdrawal,
         receipt_processed_at=receipt_processed_at,
         protected_registration_ids=protected_registration_ids,
@@ -1191,6 +1361,58 @@ def admin_dashboard():
         commission_by_user_referral_level=commission_by_user_referral_level,
         now_myt=now_myt(),
     )
+
+
+@app.route("/admin/api/registration-options")
+@admin_required
+def admin_registration_options():
+    query_text = request.args.get("q", "").strip()[:80]
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+        user_id = int(request.args.get("user_id", "0"))
+    except ValueError:
+        abort(400)
+    if user_id:
+        user = db.get_or_404(User, user_id)
+        current_id = user.registration_request_id
+    else:
+        current_id = None
+    linked = RegistrationRequest.user.has()
+    used = db.session.query(WithdrawalRequest.id).filter(
+        WithdrawalRequest.registration_request_id == RegistrationRequest.id
+    ).exists()
+    eligible = ~linked & ~used
+    if current_id:
+        eligible = or_(eligible, RegistrationRequest.id == current_id)
+    query = RegistrationRequest.query.filter(eligible)
+    if query_text:
+        search_text = (
+            RegistrationRequest.full_name + " "
+            + db.func.coalesce(RegistrationRequest.request_code, "") + " "
+            + RegistrationRequest.phone
+        )
+        query = query.filter(db.func.lower(search_text).contains(query_text.lower(), autoescape=True))
+    count = query.count()
+    per_page = 25
+    pages = max(1, math.ceil(count / per_page))
+    page = min(page, pages)
+    registrations = query.order_by(
+        RegistrationRequest.created_at.desc(), RegistrationRequest.id.desc()
+    ).offset((page - 1) * per_page).limit(per_page).all()
+    response = jsonify({
+        "page": page,
+        "pages": pages,
+        "count": count,
+        "items": [{
+            "id": registration.id,
+            "label": (
+                f"{registration.request_code} — {registration.full_name} · "
+                f"{registration.bank_name} · {registration.bank_account_number}"
+            ),
+        } for registration in registrations],
+    })
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @app.route("/admin/registration/<int:registration_id>/delete", methods=["POST"])
@@ -1301,11 +1523,8 @@ def admin_create_user():
         return redirect(url_for("admin_dashboard"))
 
     try:
-        balance_float = float(balance)
-        if not math.isfinite(balance_float):
-            flash("Modal awal mesti nombor yang sah.", "error")
-            return redirect(url_for("admin_dashboard"))
-        if balance_float < 0:
+        balance_amount = parse_money(balance)
+        if balance_amount < ZERO:
             flash("Modal awal tidak boleh negatif.", "error")
             return redirect(url_for("admin_dashboard"))
     except ValueError:
@@ -1334,7 +1553,7 @@ def admin_create_user():
         referred_by=User.query.filter_by(referral_code=registration.referral_code).first()
         if registration and registration.referral_code else None,
         full_name=full_name,
-        balance=balance_float,
+        balance=balance_amount,
         registration_request=registration,
     )
     user.set_password(password)
@@ -1363,14 +1582,11 @@ def admin_update_user(user_id):
     # Validasi balance (float) kalau ada input
     if balance not in (None, ""):
         try:
-            balance_float = float(balance)
-            if not math.isfinite(balance_float):
-                flash("Modal mesti nombor yang sah.", "error")
-                return redirect(url_for("admin_dashboard"))
-            if balance_float < 0:
+            balance_amount = parse_money(balance)
+            if balance_amount < ZERO:
                 flash("Modal tidak boleh negatif.", "error")
                 return redirect(url_for("admin_dashboard"))
-            user.balance = balance_float
+            user.balance = balance_amount
         except ValueError:
             flash("Format baki tidak sah (mesti angka).", "error")
             return redirect(url_for("admin_dashboard"))
@@ -1444,12 +1660,12 @@ def user_withdrawal_request():
     trade_closed = user.is_trade_closed
 
     try:
-        amount = round(float(request.form.get("amount", "")), 2)
-    except (TypeError, ValueError):
+        amount = parse_money(request.form.get("amount", ""))
+    except ValueError:
         flash("Sila masukkan jumlah pengeluaran yang sah.", "error")
         return redirect(url_for("dashboard"))
 
-    if not math.isfinite(amount) or amount <= 0:
+    if amount <= ZERO:
         flash("Jumlah pengeluaran mesti melebihi RM 0.00.", "error")
         return redirect(url_for("dashboard"))
 
@@ -1483,16 +1699,16 @@ def user_withdrawal_request():
         flash("Akaun belum dipautkan kepada rekod pendaftaran yang tepat. Sila hubungi admin untuk semakan.", "error")
         return redirect(url_for("dashboard"))
 
-    account_amount = 0.0
+    account_amount = ZERO
     commission_amount = amount
     if account_withdrawal_allowed:
         account_amount = round(min(amount, user.withdrawable_account_amount), 2)
         commission_amount = round(amount - account_amount, 2)
 
-    user.withdrawn_total = round(float(user.withdrawn_total or 0) + amount, 2)
+    user.withdrawn_total = money(user.withdrawn_total) + amount
     if trade_closed:
         user.realized_profit_loss = round(
-            float(user.realized_profit_loss or 0) + user.current_profit_loss,
+            money(user.realized_profit_loss) + Decimal(str(user.current_profit_loss)),
             2,
         )
     db.session.add(WithdrawalRequest(
@@ -1533,8 +1749,8 @@ def admin_update_withdrawal(withdrawal_id, action):
 
     if action == "rejected":
         user.withdrawn_total = max(
-            0.0,
-            round(float(user.withdrawn_total or 0) - withdrawal.amount, 2),
+            ZERO,
+            money(user.withdrawn_total) - money(withdrawal.amount),
         )
         withdrawal.status = "rejected"
         flash(f"Permohonan {user.nova_id} ditolak dan RM {withdrawal.amount:,.2f} dipulangkan ke baki.", "success")
@@ -1648,6 +1864,10 @@ def admin_add_entry(user_id):
         flash("Sila masukkan nilai untuk entry graf.", "error")
         return redirect_to_dashboard()
 
+    if len(note) > 247:
+        flash("Catatan entry tidak boleh melebihi 247 aksara.", "error")
+        return redirect_to_dashboard()
+
     # Validasi & parse value (float)
     try:
         value_float = float(value)
@@ -1656,6 +1876,9 @@ def admin_add_entry(user_id):
             return redirect_to_dashboard()
         if value_float < 0:
             flash("Nilai entry tidak boleh negatif.", "error")
+            return redirect_to_dashboard()
+        if value_float >= 1e18:
+            flash("Nilai entry mesti kurang daripada RM 1,000,000,000,000,000,000.", "error")
             return redirect_to_dashboard()
     except ValueError:
         flash("Format nilai tidak sah (mesti angka).", "error")
@@ -1686,6 +1909,13 @@ def admin_add_entry(user_id):
         has_entry = any((e.note or "").startswith("[Entry]") for e in entries)
         if not has_entry:
             flash("Sila tambah sekurang-kurangnya satu Entry sebelum set Close.", "error")
+            return redirect_to_dashboard()
+        first_entry = min(
+            (e for e in entries if (e.note or "").startswith("[Entry]")),
+            key=lambda e: e.entry_date,
+        )
+        if entry_date - first_entry.entry_date > timedelta(days=30):
+            flash("Tempoh sesi Entry hingga Close tidak boleh melebihi 30 hari.", "error")
             return redirect_to_dashboard()
 
     if entry_type == "close":
@@ -1721,7 +1951,7 @@ def _preserve_displayed_balance(user, before_balance):
     db.session.expire(user, ["entries"])
     after_balance = user.wallet_display_balance
     user.realized_profit_loss = round(
-        float(user.realized_profit_loss or 0) + before_balance - after_balance,
+        money(user.realized_profit_loss) + before_balance - after_balance,
         2,
     )
 
